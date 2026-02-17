@@ -91,6 +91,7 @@ h1 {
     radial-gradient(circle at 50% 50%, #f2b22d24, transparent 55%),
     linear-gradient(180deg, #10151f, #0a0d14);
   overflow: hidden;
+  touch-action: none;
 }
 
 .board {
@@ -100,6 +101,7 @@ h1 {
   grid-template-rows: repeat(7, var(--cell));
   gap: var(--gap);
   justify-content: center;
+  touch-action: none;
 }
 
 .effects-layer {

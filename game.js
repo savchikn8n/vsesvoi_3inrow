@@ -34,6 +34,18 @@ let audioCtx = null;
 let swipeGesture = null;
 let suppressClickUntil = 0;
 
+function setupTelegramWebApp() {
+  const tg = window.Telegram?.WebApp;
+  if (!tg) return;
+
+  tg.ready();
+  tg.expand();
+
+  if (typeof tg.disableVerticalSwipes === 'function') {
+    tg.disableVerticalSwipes();
+  }
+}
+
 function randColor() {
   return Math.floor(Math.random() * COLORS);
 }
@@ -949,4 +961,5 @@ settingsCloseBtn.addEventListener('click', closeSettings);
 window.addEventListener('resize', syncEffectsLayer);
 
 updateSoundToggleLabel();
+setupTelegramWebApp();
 resetGame();
