@@ -31,6 +31,8 @@ let hintShownThisTurn = false;
 let hintMove = null;
 let soundEnabled = true;
 let audioCtx = null;
+let swipeGesture = null;
+let suppressClickUntil = 0;
 
 function randColor() {
   return Math.floor(Math.random() * COLORS);
@@ -181,6 +183,10 @@ function drawBoard(highlight = new Set(), blast = new Set()) {
     }
 
     tile.addEventListener('click', onTileClick);
+    tile.addEventListener('pointerdown', onTilePointerDown);
+    tile.addEventListener('pointermove', onTilePointerMove);
+    tile.addEventListener('pointerup', onTilePointerEnd);
+    tile.addEventListener('pointercancel', onTilePointerEnd);
     boardEl.appendChild(tile);
   });
 
@@ -355,6 +361,7 @@ async function animateSwap(a, b, valid) {
 }
 
 function onTileClick(e) {
+  if (Date.now() < suppressClickUntil) return;
   if (locked) return;
 
   const index = Number(e.currentTarget.dataset.index);
@@ -384,6 +391,68 @@ function onTileClick(e) {
   }
 
   trySwap(selected, index);
+}
+
+function swipeTarget(fromIndex, dx, dy) {
+  const [r, c] = idxToPos(fromIndex);
+  const horizontal = Math.abs(dx) >= Math.abs(dy);
+
+  if (horizontal) {
+    const nc = dx > 0 ? c + 1 : c - 1;
+    if (nc < 0 || nc >= SIZE) return null;
+    return posToIdx(r, nc);
+  }
+
+  const nr = dy > 0 ? r + 1 : r - 1;
+  if (nr < 0 || nr >= SIZE) return null;
+  return posToIdx(nr, c);
+}
+
+function onTilePointerDown(e) {
+  if (locked) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+  const index = Number(e.currentTarget.dataset.index);
+  swipeGesture = {
+    pointerId: e.pointerId,
+    fromIndex: index,
+    startX: e.clientX,
+    startY: e.clientY,
+    finished: false,
+  };
+
+  try {
+    e.currentTarget.setPointerCapture(e.pointerId);
+  } catch (_) {
+    // no-op
+  }
+}
+
+function onTilePointerMove(e) {
+  if (!swipeGesture || swipeGesture.finished) return;
+  if (swipeGesture.pointerId !== e.pointerId) return;
+  if (locked) return;
+
+  const dx = e.clientX - swipeGesture.startX;
+  const dy = e.clientY - swipeGesture.startY;
+  if (Math.abs(dx) < 18 && Math.abs(dy) < 18) return;
+
+  const target = swipeTarget(swipeGesture.fromIndex, dx, dy);
+  swipeGesture.finished = true;
+  suppressClickUntil = Date.now() + 380;
+
+  if (target === null) return;
+
+  selected = null;
+  clearHint();
+  drawBoard();
+  trySwap(swipeGesture.fromIndex, target);
+}
+
+function onTilePointerEnd(e) {
+  if (!swipeGesture) return;
+  if (swipeGesture.pointerId !== e.pointerId) return;
+  swipeGesture = null;
 }
 
 function cellIdx(primary, secondary, horizontal) {
@@ -749,7 +818,7 @@ function endGameByTimeout() {
 }
 
 function openBookTable() {
-  window.open('https://t.me/+_E9PeIdR6L8wYzNi', '_blank', 'noopener,noreferrer');
+  window.open('https://t.me/+Ew4VcHco7XBjNDU6', '_blank', 'noopener,noreferrer');
 }
 
 function openDevChannel() {
