@@ -4,6 +4,7 @@ const TURN_SECONDS = 7;
 const HINT_THRESHOLD_SECONDS = 3;
 
 const boardEl = document.getElementById('board');
+const effectsLayerEl = document.getElementById('effects-layer');
 const scoreEl = document.getElementById('score');
 const timerEl = document.getElementById('timer');
 const restartBtn = document.getElementById('restart');
@@ -183,11 +184,97 @@ function drawBoard(highlight = new Set(), blast = new Set()) {
     boardEl.appendChild(tile);
   });
 
+  syncEffectsLayer();
   updateHud();
 }
 
 function getTile(index) {
   return boardEl.querySelector(`.tile[data-index="${index}"]`);
+}
+
+function syncEffectsLayer() {
+  if (!effectsLayerEl) return;
+  effectsLayerEl.style.left = `${boardEl.offsetLeft}px`;
+  effectsLayerEl.style.top = `${boardEl.offsetTop}px`;
+  effectsLayerEl.style.width = `${boardEl.clientWidth}px`;
+  effectsLayerEl.style.height = `${boardEl.clientHeight}px`;
+}
+
+function spawnFlashEffect(x, y) {
+  if (!effectsLayerEl) return;
+  const flash = document.createElement('div');
+  flash.className = 'effect-flash';
+  flash.style.left = `${x}px`;
+  flash.style.top = `${y}px`;
+  effectsLayerEl.appendChild(flash);
+  setTimeout(() => flash.remove(), 260);
+}
+
+function spawnRocketEffect(index, special) {
+  if (!effectsLayerEl) return;
+  const tile = getTile(index);
+  if (!tile) return;
+
+  const boardRect = boardEl.getBoundingClientRect();
+  const tileRect = tile.getBoundingClientRect();
+  const cx = tileRect.left - boardRect.left + tileRect.width / 2;
+  const cy = tileRect.top - boardRect.top + tileRect.height / 2;
+
+  const beam = document.createElement('div');
+  const horizontal = special === 'rocket-h';
+  beam.className = `effect-rocket ${horizontal ? 'h' : 'v'}`;
+
+  if (horizontal) {
+    beam.style.left = '0px';
+    beam.style.top = `${cy - 4}px`;
+    beam.style.width = `${boardRect.width}px`;
+    beam.style.height = '8px';
+  } else {
+    beam.style.left = `${cx - 4}px`;
+    beam.style.top = '0px';
+    beam.style.width = '8px';
+    beam.style.height = `${boardRect.height}px`;
+  }
+
+  effectsLayerEl.appendChild(beam);
+  spawnFlashEffect(cx, cy);
+  setTimeout(() => beam.remove(), 360);
+}
+
+function spawnBombEffect(index) {
+  if (!effectsLayerEl) return;
+  const tile = getTile(index);
+  if (!tile) return;
+
+  const boardRect = boardEl.getBoundingClientRect();
+  const tileRect = tile.getBoundingClientRect();
+  const cx = tileRect.left - boardRect.left + tileRect.width / 2;
+  const cy = tileRect.top - boardRect.top + tileRect.height / 2;
+  const waveSize = tileRect.width * 5;
+
+  const wave = document.createElement('div');
+  wave.className = 'effect-bomb';
+  wave.style.left = `${cx}px`;
+  wave.style.top = `${cy}px`;
+  wave.style.width = `${waveSize}px`;
+  wave.style.height = `${waveSize}px`;
+  effectsLayerEl.appendChild(wave);
+  spawnFlashEffect(cx, cy);
+  setTimeout(() => wave.remove(), 460);
+}
+
+function emitSpecialEffects(specials) {
+  if (!specials.length) return;
+  syncEffectsLayer();
+  specials.forEach(({ idx, special }) => {
+    if (special === 'bomb') {
+      spawnBombEffect(idx);
+      return;
+    }
+    if (special === 'rocket-h' || special === 'rocket-v') {
+      spawnRocketEffect(idx, special);
+    }
+  });
 }
 
 function makeGhostFromTile(tile) {
@@ -476,6 +563,13 @@ function applyRemoval(removals, specialCreates = new Map()) {
   removals.forEach((idx) => {
     if (board[idx]?.special) collectSpecialBlast(idx, blastSet);
   });
+
+  const triggeredSpecials = [];
+  blastSet.forEach((idx) => {
+    const special = board[idx]?.special;
+    if (special) triggeredSpecials.push({ idx, special });
+  });
+  emitSpecialEffects(triggeredSpecials);
 
   blastSet.forEach((idx) => {
     board[idx] = null;
@@ -783,6 +877,7 @@ soundToggleBtn.addEventListener('click', () => {
 });
 devChannelBtn.addEventListener('click', openDevChannel);
 settingsCloseBtn.addEventListener('click', closeSettings);
+window.addEventListener('resize', syncEffectsLayer);
 
 updateSoundToggleLabel();
 resetGame();

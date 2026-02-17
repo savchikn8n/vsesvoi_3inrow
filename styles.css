@@ -102,6 +102,107 @@ h1 {
   justify-content: center;
 }
 
+.effects-layer {
+  position: absolute;
+  pointer-events: none;
+  z-index: 35;
+}
+
+.effect-flash {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: radial-gradient(circle, #fff7ca, #ffd35c 60%, transparent 70%);
+  transform: translate(-50%, -50%);
+  animation: effect-flash 240ms ease-out forwards;
+}
+
+.effect-rocket {
+  position: absolute;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fff2c0, #ffd25f 40%, #ffb524 75%, #fff2c0);
+  box-shadow: 0 0 10px #ffd35f, 0 0 22px #ffbe44aa;
+}
+
+.effect-rocket.h {
+  transform-origin: 50% 50%;
+  animation: rocket-h 340ms ease-out forwards;
+}
+
+.effect-rocket.v {
+  transform-origin: 50% 50%;
+  animation: rocket-v 340ms ease-out forwards;
+}
+
+.effect-bomb {
+  position: absolute;
+  border-radius: 999px;
+  border: 2px solid #ffd977;
+  background: radial-gradient(circle, #ffe9aa66 0%, #ffc84d2e 45%, transparent 72%);
+  transform: translate(-50%, -50%);
+  animation: bomb-wave 420ms ease-out forwards;
+}
+
+@keyframes rocket-h {
+  0% {
+    transform: scaleX(0.2);
+    opacity: 0.15;
+  }
+  35% {
+    transform: scaleX(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+@keyframes rocket-v {
+  0% {
+    transform: scaleY(0.2);
+    opacity: 0.15;
+  }
+  35% {
+    transform: scaleY(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 0;
+  }
+}
+
+@keyframes bomb-wave {
+  0% {
+    transform: translate(-50%, -50%) scale(0.25);
+    opacity: 0.2;
+  }
+  35% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes effect-flash {
+  0% {
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 0.2;
+  }
+  60% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.45);
+    opacity: 0;
+  }
+}
+
 .tile {
   border: 0;
   padding: 0;
