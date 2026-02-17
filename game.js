@@ -4,6 +4,7 @@ const TURN_SECONDS = 7;
 const HINT_THRESHOLD_SECONDS = 3;
 
 const boardEl = document.getElementById('board');
+const boardWrapEl = document.querySelector('.board-wrap');
 const effectsLayerEl = document.getElementById('effects-layer');
 const scoreEl = document.getElementById('score');
 const timerEl = document.getElementById('timer');
@@ -33,6 +34,7 @@ let soundEnabled = true;
 let audioCtx = null;
 let swipeGesture = null;
 let suppressClickUntil = 0;
+let touchInsideBoard = false;
 
 function setupTelegramWebApp() {
   const tg = window.Telegram?.WebApp;
@@ -44,6 +46,38 @@ function setupTelegramWebApp() {
   if (typeof tg.disableVerticalSwipes === 'function') {
     tg.disableVerticalSwipes();
   }
+}
+
+function setupTouchGuards() {
+  if (!boardWrapEl) return;
+
+  const isInsideBoard = (target) =>
+    boardWrapEl.contains(target) || boardEl.contains(target) || effectsLayerEl?.contains(target);
+
+  const onTouchStart = (e) => {
+    touchInsideBoard = isInsideBoard(e.target);
+    if (touchInsideBoard) {
+      e.preventDefault();
+    }
+  };
+
+  const onTouchMove = (e) => {
+    if (touchInsideBoard || isInsideBoard(e.target)) {
+      e.preventDefault();
+    }
+  };
+
+  const onTouchEnd = (e) => {
+    if (touchInsideBoard || isInsideBoard(e.target)) {
+      e.preventDefault();
+    }
+    touchInsideBoard = false;
+  };
+
+  boardWrapEl.addEventListener('touchstart', onTouchStart, { passive: false });
+  boardWrapEl.addEventListener('touchmove', onTouchMove, { passive: false });
+  boardWrapEl.addEventListener('touchend', onTouchEnd, { passive: false });
+  boardWrapEl.addEventListener('touchcancel', onTouchEnd, { passive: false });
 }
 
 function randColor() {
@@ -962,4 +996,5 @@ window.addEventListener('resize', syncEffectsLayer);
 
 updateSoundToggleLabel();
 setupTelegramWebApp();
+setupTouchGuards();
 resetGame();
