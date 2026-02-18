@@ -406,6 +406,7 @@ h1 {
 }
 
 .special-mark {
+  display: block;
   position: absolute;
   right: 3px;
   top: 3px;
