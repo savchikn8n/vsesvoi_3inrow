@@ -406,8 +406,8 @@ async function animateSwap(a, b, valid) {
   }
 }
 
-function handleTileTap(index) {
-  if (Date.now() < suppressClickUntil) return;
+function handleTileTap(index, bypassSuppress = false) {
+  if (!bypassSuppress && Date.now() < suppressClickUntil) return;
   if (locked) return;
 
   if (selected === null) {
@@ -506,7 +506,7 @@ function onTilePointerEnd(e) {
   if (swipeGesture.pointerId !== e.pointerId) return;
   if (!swipeGesture.finished) {
     suppressClickUntil = Date.now() + 220;
-    handleTileTap(swipeGesture.fromIndex);
+    handleTileTap(swipeGesture.fromIndex, true);
   }
   swipeGesture = null;
 }

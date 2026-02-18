@@ -406,26 +406,18 @@ h1 {
 }
 
 .special-mark {
-  display: block;
-  position: absolute;
-  right: 3px;
-  top: 3px;
-  z-index: 2;
-  width: 24px;
-  height: 24px;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  filter: drop-shadow(0 0 6px #ffd884aa);
+  display: none;
 }
 
-.special-rocket-h .special-mark,
-.special-rocket-v .special-mark {
+.tile.special-rocket-h .gem,
+.tile.special-rocket-v .gem {
   background-image: url("./assets/bowl.png");
+  filter: drop-shadow(0 0 10px #ffd37899);
 }
 
-.special-bomb .special-mark {
+.tile.special-bomb .gem {
   background-image: url("./assets/bomb.png");
+  filter: drop-shadow(0 0 10px #ff7f4f99);
 }
 
 .controls {
