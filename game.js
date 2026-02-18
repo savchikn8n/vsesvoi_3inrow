@@ -413,6 +413,10 @@ function onTileClick(e) {
   const index = Number(e.currentTarget.dataset.index);
 
   if (selected === null) {
+    if (hasSpecial(index)) {
+      activateSpecialMove(index, index);
+      return;
+    }
     selected = index;
     clearHint();
     drawBoard();
@@ -744,10 +748,10 @@ async function resolveCascades(swappedPair = null) {
 
     const blastCells = applyRemoval(removals, specialCreates);
     drawBoard(removals, blastCells);
-    await delay(260);
+    await delay(340);
     applyGravity();
     drawBoard();
-    await delay(220);
+    await delay(280);
 
     swappedPair = null;
   }
@@ -907,10 +911,10 @@ async function activateSpecialMove(a, b) {
 
   const blastCells = applyRemoval(blast);
   drawBoard(new Set(), blastCells);
-  await delay(260);
+  await delay(340);
   applyGravity();
   drawBoard();
-  await delay(220);
+  await delay(280);
 
   await resolveCascades();
 
