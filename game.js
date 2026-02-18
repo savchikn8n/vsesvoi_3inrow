@@ -406,11 +406,9 @@ async function animateSwap(a, b, valid) {
   }
 }
 
-function onTileClick(e) {
+function handleTileTap(index) {
   if (Date.now() < suppressClickUntil) return;
   if (locked) return;
-
-  const index = Number(e.currentTarget.dataset.index);
 
   if (selected === null) {
     if (hasSpecial(index)) {
@@ -441,6 +439,10 @@ function onTileClick(e) {
   }
 
   trySwap(selected, index);
+}
+
+function onTileClick(e) {
+  handleTileTap(Number(e.currentTarget.dataset.index));
 }
 
 function swipeTarget(fromIndex, dx, dy) {
@@ -502,6 +504,10 @@ function onTilePointerMove(e) {
 function onTilePointerEnd(e) {
   if (!swipeGesture) return;
   if (swipeGesture.pointerId !== e.pointerId) return;
+  if (!swipeGesture.finished) {
+    suppressClickUntil = Date.now() + 220;
+    handleTileTap(swipeGesture.fromIndex);
+  }
   swipeGesture = null;
 }
 
@@ -557,8 +563,8 @@ function findMatchGroups(arr = board) {
 function chooseSpecialIndex(cells, swappedPair) {
   if (!swappedPair) return cells[Math.floor(cells.length / 2)];
   const [a, b] = swappedPair;
-  if (cells.includes(a)) return a;
   if (cells.includes(b)) return b;
+  if (cells.includes(a)) return a;
   return cells[Math.floor(cells.length / 2)];
 }
 
