@@ -280,14 +280,14 @@ h1 {
   position: relative;
   display: grid;
   place-items: center;
-  background: #000000;
+  background: transparent;
   box-shadow: none;
   transition:
     transform 260ms cubic-bezier(0.2, 0.82, 0.22, 1),
     box-shadow 260ms,
     filter 260ms;
   border-radius: 24px;
-  border: 1px solid #f3b315;
+  border: none;
 }
 
 .tile.falling .gem {
@@ -313,7 +313,7 @@ h1 {
 }
 
 .tile:nth-child(odd) {
-  background: #000000;
+  background: transparent;
 }
 
 .tile:hover {
@@ -427,7 +427,7 @@ h1 {
 }
 
 .type-2 .gem {
-  background-image: url("./assets/hookah.png");
+  background-image: url("./assets/hookah1.png");
 }
 
 .type-3 .gem {
