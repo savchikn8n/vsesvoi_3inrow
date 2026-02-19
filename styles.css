@@ -6,7 +6,7 @@
   --gold-2: #f8de8f;
   --tile-a: #171a20;
   --tile-b: #212732;
-  --cell: min(78px, calc((96vw - 100px) / 7));
+  --cell: 72px;
   --gap: 4px;
 }
 
@@ -30,7 +30,7 @@ body {
 }
 
 .frame {
-  width: min(96vw, 720px);
+  width: min(100vw - 14px, 720px);
   border: 6px solid transparent;
   border-image: linear-gradient(135deg, #855716, var(--gold-2), #9e6e1f) 1;
   padding: 14px;
@@ -154,6 +154,17 @@ h1 {
   animation: bomb-wave 420ms ease-out forwards;
 }
 
+.effect-smoke {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: radial-gradient(circle, #f6f8ffcc 0%, #c7ced9aa 42%, transparent 76%);
+  transform: translate(-50%, -50%);
+  animation: smoke-pop 720ms ease-out forwards;
+  pointer-events: none;
+}
+
 @keyframes rocket-h {
   0% {
     transform: scaleX(0.2);
@@ -213,6 +224,20 @@ h1 {
   }
 }
 
+@keyframes smoke-pop {
+  0% {
+    transform: translate(-50%, -50%) scale(0.45);
+    opacity: 0.15;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -95%) scale(1.45);
+    opacity: 0;
+  }
+}
+
 .tile {
   border: 0;
   padding: 0;
@@ -227,6 +252,27 @@ h1 {
     box-shadow 260ms,
     filter 260ms;
   border-radius: 12px;
+}
+
+.tile.falling .gem {
+  animation: tile-fall 360ms cubic-bezier(0.2, 0.85, 0.22, 1) both;
+}
+
+@keyframes tile-fall {
+  0% {
+    transform: translateY(calc(-1 * var(--fall-distance, 1) * (var(--cell) + var(--gap)))) scale(0.96);
+    opacity: 0.25;
+    filter: blur(0.8px);
+  }
+  60% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
 }
 
 .tile:nth-child(odd) {
@@ -525,7 +571,8 @@ h1 {
 
 @media (max-width: 620px) {
   :root {
-    --cell: min(12vw, 58px);
+    --cell: calc((100vw - 82px) / 7);
+    --gap: 3px;
   }
 
   .controls {

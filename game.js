@@ -147,7 +147,7 @@ function isHorizontalSwap([a, b]) {
 }
 
 function cloneBoard(src = board) {
-  return src.map((cell) => (cell ? { ...cell } : null));
+  return src.map((cell) => (cell ? { color: cell.color, special: cell.special } : null));
 }
 
 function swapIn(arr, a, b) {
@@ -249,6 +249,10 @@ function drawBoard(highlight = new Set(), blast = new Set()) {
     if (cell) {
       tile.classList.add(`type-${cell.color}`);
       if (cell.special) tile.classList.add(`special-${cell.special}`);
+      if (cell._fall && cell._fall > 0) {
+        tile.classList.add('falling');
+        tile.style.setProperty('--fall-distance', String(cell._fall));
+      }
     } else {
       tile.classList.add('empty');
     }
@@ -272,6 +276,12 @@ function drawBoard(highlight = new Set(), blast = new Set()) {
     tile.addEventListener('pointerup', onTilePointerEnd);
     tile.addEventListener('pointercancel', onTilePointerEnd);
     boardEl.appendChild(tile);
+  });
+
+  board.forEach((cell) => {
+    if (cell && cell._fall) {
+      delete cell._fall;
+    }
   });
 
   syncEffectsLayer();
@@ -298,6 +308,27 @@ function spawnFlashEffect(x, y) {
   flash.style.top = `${y}px`;
   effectsLayerEl.appendChild(flash);
   setTimeout(() => flash.remove(), 260);
+}
+
+function spawnSmokeEffect(index) {
+  if (!effectsLayerEl) return;
+  const tile = getTile(index);
+  if (!tile) return;
+
+  const boardRect = boardEl.getBoundingClientRect();
+  const tileRect = tile.getBoundingClientRect();
+  const cx = tileRect.left - boardRect.left + tileRect.width / 2;
+  const cy = tileRect.top - boardRect.top + tileRect.height / 2;
+
+  for (let i = 0; i < 3; i++) {
+    const smoke = document.createElement('div');
+    smoke.className = 'effect-smoke';
+    smoke.style.left = `${cx + (Math.random() * 18 - 9)}px`;
+    smoke.style.top = `${cy + (Math.random() * 12 - 6)}px`;
+    smoke.style.animationDelay = `${i * 45}ms`;
+    effectsLayerEl.appendChild(smoke);
+    setTimeout(() => smoke.remove(), 760);
+  }
 }
 
 function spawnRocketEffect(index, special) {
@@ -365,6 +396,12 @@ function emitSpecialEffects(specials) {
       spawnRocketEffect(idx, special);
     }
   });
+}
+
+function emitSmokeEffects(indices) {
+  if (!indices || indices.size === 0) return;
+  syncEffectsLayer();
+  indices.forEach((idx) => spawnSmokeEffect(idx));
 }
 
 function makeGhostFromTile(tile) {
@@ -737,14 +774,18 @@ function applyGravity() {
     for (let r = SIZE - 1; r >= 0; r--) {
       const idx = posToIdx(r, c);
       if (board[idx] !== null) {
-        board[posToIdx(write, c)] = board[idx];
+        const moved = board[idx];
+        moved._fall = Math.max(0, write - r);
+        board[posToIdx(write, c)] = moved;
         if (write !== r) board[idx] = null;
         write--;
       }
     }
 
     while (write >= 0) {
-      board[posToIdx(write, c)] = makeStableCell(write, c);
+      const spawned = makeStableCell(write, c);
+      spawned._fall = write + 1;
+      board[posToIdx(write, c)] = spawned;
       write--;
     }
   }
@@ -792,8 +833,17 @@ async function resolveCascades(swappedPair = null) {
     combo++;
     const removals = new Set();
     const specialCreates = new Map();
+    const smokeCells = new Set();
 
     groups.forEach((group) => group.cells.forEach((idx) => removals.add(idx)));
+    groups.forEach((group) => {
+      if (group.cells.length !== 3) return;
+      group.cells.forEach((idx) => {
+        if (removals.has(idx) && !board[idx]?.special) {
+          smokeCells.add(idx);
+        }
+      });
+    });
 
     groups.forEach((group) => {
       if (group.cells.length !== 4) return;
@@ -820,12 +870,13 @@ async function resolveCascades(swappedPair = null) {
       upsertSpecialCreate(specialCreates, pivot, 'bomb', component.color);
     });
 
+    emitSmokeEffects(smokeCells);
     const blastCells = applyRemoval(removals, specialCreates);
     drawBoard(removals, blastCells);
-    await delay(340);
+    await delay(420);
     applyGravity();
     drawBoard();
-    await delay(280);
+    await delay(360);
 
     swappedPair = null;
   }
