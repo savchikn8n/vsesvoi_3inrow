@@ -310,7 +310,7 @@ function spawnFlashEffect(x, y) {
   setTimeout(() => flash.remove(), 260);
 }
 
-function spawnSmokeEffect(index) {
+function spawnSmokeEffect(index, tone = 'default') {
   if (!effectsLayerEl) return;
   const tile = getTile(index);
   if (!tile) return;
@@ -322,7 +322,7 @@ function spawnSmokeEffect(index) {
 
   for (let i = 0; i < 3; i++) {
     const smoke = document.createElement('div');
-    smoke.className = 'effect-smoke';
+    smoke.className = tone === 'red' ? 'effect-smoke effect-smoke-red' : 'effect-smoke';
     smoke.style.left = `${cx + (Math.random() * 18 - 9)}px`;
     smoke.style.top = `${cy + (Math.random() * 12 - 6)}px`;
     smoke.style.animationDelay = `${i * 45}ms`;
@@ -398,10 +398,10 @@ function emitSpecialEffects(specials) {
   });
 }
 
-function emitSmokeEffects(indices) {
+function emitSmokeEffects(indices, tone = 'default') {
   if (!indices || indices.size === 0) return;
   syncEffectsLayer();
-  indices.forEach((idx) => spawnSmokeEffect(idx));
+  indices.forEach((idx) => spawnSmokeEffect(idx, tone));
 }
 
 function makeGhostFromTile(tile) {
@@ -791,19 +791,35 @@ function applyGravity() {
   }
 }
 
-function applyRemoval(removals, specialCreates = new Map()) {
+function applyRemoval(
+  removals,
+  specialCreates = new Map(),
+  options = { chainSpecials: true, emitTriggeredEffects: true, smokeTone: null },
+) {
+  const { chainSpecials = true, emitTriggeredEffects = true, smokeTone = null } = options;
   const blastSet = new Set(removals);
 
-  removals.forEach((idx) => {
-    if (board[idx]?.special) collectSpecialBlast(idx, blastSet);
-  });
+  if (chainSpecials) {
+    removals.forEach((idx) => {
+      if (board[idx]?.special) collectSpecialBlast(idx, blastSet);
+    });
+  }
 
   const triggeredSpecials = [];
   blastSet.forEach((idx) => {
     const special = board[idx]?.special;
     if (special) triggeredSpecials.push({ idx, special });
   });
-  emitSpecialEffects(triggeredSpecials);
+
+  if (emitTriggeredEffects) {
+    emitSpecialEffects(triggeredSpecials);
+  }
+
+  if (smokeTone) {
+    emitSmokeEffects(blastSet, smokeTone);
+  } else if (triggeredSpecials.length > 0) {
+    emitSmokeEffects(blastSet, 'red');
+  }
 
   blastSet.forEach((idx) => {
     board[idx] = null;
@@ -870,7 +886,7 @@ async function resolveCascades(swappedPair = null) {
       upsertSpecialCreate(specialCreates, pivot, 'bomb', component.color);
     });
 
-    emitSmokeEffects(smokeCells);
+    emitSmokeEffects(smokeCells, 'default');
     const blastCells = applyRemoval(removals, specialCreates);
     drawBoard(removals, blastCells);
     await delay(420);
@@ -1042,7 +1058,14 @@ async function activateSpecialMove(a, b) {
     });
   }
 
-  const blastCells = applyRemoval(blast);
+  const blastCells =
+    a !== b && activations.length === 2 && hasBomb && hasRocket
+      ? applyRemoval(blast, new Map(), {
+          chainSpecials: false,
+          emitTriggeredEffects: false,
+          smokeTone: 'red',
+        })
+      : applyRemoval(blast, new Map(), { chainSpecials: true, emitTriggeredEffects: true, smokeTone: 'red' });
   drawBoard(new Set(), blastCells);
   await delay(340);
   applyGravity();
