@@ -165,6 +165,10 @@ h1 {
   pointer-events: none;
 }
 
+.effect-smoke-red {
+  background: radial-gradient(circle, #ffd8cfcc 0%, #ff8c7aaa 44%, transparent 78%);
+}
+
 @keyframes rocket-h {
   0% {
     transform: scaleX(0.2);
@@ -260,7 +264,8 @@ h1 {
 
 @keyframes tile-fall {
   0% {
-    transform: translateY(calc(-1 * var(--fall-distance, 1) * (var(--cell) + var(--gap)))) scale(0.96);
+    transform: translateY(calc(-1 * var(--fall-distance, 1) * (var(--cell) + var(--gap)))) scale(0.96)
+      rotate(var(--gem-rot, 0deg));
     opacity: 0.25;
     filter: blur(0.8px);
   }
@@ -269,7 +274,7 @@ h1 {
     filter: blur(0);
   }
   100% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0) scale(1) rotate(var(--gem-rot, 0deg));
     opacity: 1;
     filter: blur(0);
   }
@@ -372,6 +377,7 @@ h1 {
 }
 
 .gem {
+  --gem-rot: 0deg;
   width: 80%;
   aspect-ratio: 1;
   position: relative;
@@ -379,6 +385,7 @@ h1 {
   background-position: center;
   background-size: contain;
   filter: drop-shadow(0 4px 8px #0009);
+  transform: rotate(var(--gem-rot));
 }
 
 .type-0 .gem {
@@ -467,7 +474,7 @@ h1 {
 }
 
 .tile.special-rocket-h .gem {
-  transform: rotate(-90deg);
+  --gem-rot: -90deg;
 }
 
 .tile.special-bomb .gem {
