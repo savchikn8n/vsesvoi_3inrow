@@ -385,17 +385,8 @@ function spawnBombEffect(index) {
 }
 
 function emitSpecialEffects(specials) {
-  if (!specials.length) return;
-  syncEffectsLayer();
-  specials.forEach(({ idx, special }) => {
-    if (special === 'bomb') {
-      spawnBombEffect(idx);
-      return;
-    }
-    if (special === 'rocket-h' || special === 'rocket-v') {
-      spawnRocketEffect(idx, special);
-    }
-  });
+  // Intentionally disabled: for special clears we only use red smoke.
+  void specials;
 }
 
 function emitSmokeEffects(indices, tone = 'default') {

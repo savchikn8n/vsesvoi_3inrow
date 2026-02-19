@@ -1,11 +1,11 @@
 :root {
-  --bg-0: #060707;
-  --bg-1: #11151b;
-  --gold-0: #8e6115;
-  --gold-1: #c7922a;
-  --gold-2: #f8de8f;
-  --tile-a: #171a20;
-  --tile-b: #212732;
+  --bg-0: #000000;
+  --bg-1: #000000;
+  --gold-0: #f3b315;
+  --gold-1: #f3b315;
+  --gold-2: #f3b315;
+  --tile-a: #000000;
+  --tile-b: #000000;
   --cell: 72px;
   --gap: 4px;
 }
@@ -19,27 +19,21 @@ body {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  color: #f8f2d5;
+  color: #ffffff;
   font-family: "Manrope", sans-serif;
-  background:
-    radial-gradient(circle at 50% 12%, #32363d 0%, transparent 45%),
-    radial-gradient(circle at 50% 90%, #3c2c10 0%, transparent 52%),
-    linear-gradient(180deg, var(--bg-1), var(--bg-0));
+  background: #000000;
   touch-action: manipulation;
   overscroll-behavior: none;
 }
 
 .frame {
   width: min(100vw - 14px, 720px);
-  border: 6px solid transparent;
-  border-image: linear-gradient(135deg, #855716, var(--gold-2), #9e6e1f) 1;
+  border: 3px solid #f3b315;
   padding: 14px;
-  background: linear-gradient(180deg, #0c1017dd, #090b10f1);
-  box-shadow:
-    0 0 0 2px #3a2a0f,
-    0 0 36px #ffbf4022,
-    0 0 84px #f0b93f1a;
+  background: #000000;
+  box-shadow: none;
   overflow: hidden;
+  border-radius: 30px;
 }
 
 .hud {
@@ -60,17 +54,56 @@ h1 {
   text-shadow: 0 0 10px #e4ad3588;
 }
 
+.brand {
+  position: relative;
+  justify-self: center;
+  width: min(270px, 38vw);
+  border-radius: 30px;
+  overflow: hidden;
+}
+
+.brand img {
+  width: 100%;
+  display: block;
+}
+
+.brand::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 62%
+  );
+  transform: translateX(-140%);
+  animation: logo-shine 20s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes logo-shine {
+  0%,
+  92% {
+    transform: translateX(-140%);
+  }
+  100% {
+    transform: translateX(140%);
+  }
+}
+
 .panel {
   display: grid;
   justify-items: center;
   padding: 8px 10px;
-  border: 1px solid #a87623;
-  background: linear-gradient(180deg, #151a23, #10141c);
+  border: 2px solid #f3b315;
+  background: #000000;
+  border-radius: 30px;
 }
 
 .label {
   font-size: 0.75rem;
-  color: #ad9359;
+  color: #f3b315;
   text-transform: uppercase;
 }
 
@@ -80,8 +113,8 @@ h1 {
 }
 
 .value.warning {
-  color: #ffd87f;
-  text-shadow: 0 0 8px #ffbc4a88;
+  color: #f3b315;
+  text-shadow: none;
 }
 
 .board-wrap {
@@ -90,13 +123,11 @@ h1 {
   max-width: 100%;
   margin: 0 auto;
   padding: 6px;
-  border: 3px solid #b9872f;
-  background:
-    radial-gradient(circle at 50% 50%, #f2b22d24, transparent 55%),
-    linear-gradient(180deg, #10151fe0, #0a0d14d9);
+  border: 3px solid #f3b315;
+  background: #000000;
   overflow: hidden;
   touch-action: none;
-  border-radius: 18px;
+  border-radius: 30px;
 }
 
 .board {
@@ -108,7 +139,7 @@ h1 {
   justify-content: center;
   margin: 0 auto;
   touch-action: none;
-  border-radius: 14px;
+  border-radius: 30px;
   overflow: hidden;
 }
 
@@ -249,13 +280,14 @@ h1 {
   position: relative;
   display: grid;
   place-items: center;
-  background: linear-gradient(145deg, #191e27cc, #222937bf);
-  box-shadow: inset 0 0 14px #ffffff08;
+  background: #000000;
+  box-shadow: none;
   transition:
     transform 260ms cubic-bezier(0.2, 0.82, 0.22, 1),
     box-shadow 260ms,
     filter 260ms;
-  border-radius: 12px;
+  border-radius: 24px;
+  border: 1px solid #f3b315;
 }
 
 .tile.falling .gem {
@@ -281,7 +313,7 @@ h1 {
 }
 
 .tile:nth-child(odd) {
-  background: linear-gradient(145deg, #141922bf, #1d222ccc);
+  background: #000000;
 }
 
 .tile:hover {
@@ -289,10 +321,8 @@ h1 {
 }
 
 .tile.selected {
-  outline: 2px solid #ffdb8a;
-  box-shadow:
-    inset 0 0 14px #ffcf6f44,
-    0 0 16px #ffbf4f77;
+  outline: 2px solid #ffffff;
+  box-shadow: none;
 }
 
 .tile.match {
@@ -384,7 +414,7 @@ h1 {
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
-  filter: drop-shadow(0 4px 8px #0009);
+  filter: none;
   transform: rotate(var(--gem-rot));
 }
 
@@ -402,13 +432,11 @@ h1 {
 
 .type-3 .gem {
   background-image: url("./assets/gold.png");
-  filter: drop-shadow(0 0 10px #ffd769b3) drop-shadow(0 0 18px #ffd76966);
+  filter: none;
 }
 
 .tile.hint-target {
-  box-shadow:
-    inset 0 0 14px #ffcf6f66,
-    0 0 14px #ffca5f88;
+  box-shadow: 0 0 0 2px #f3b315 inset;
 }
 
 .tile.hint-source.hint-right {
@@ -470,7 +498,7 @@ h1 {
 .tile.special-rocket-h .gem,
 .tile.special-rocket-v .gem {
   background-image: url("./assets/bowl.png");
-  filter: drop-shadow(0 0 10px #ffd37899);
+  filter: none;
 }
 
 .tile.special-rocket-h .gem {
@@ -479,7 +507,7 @@ h1 {
 
 .tile.special-bomb .gem {
   background-image: url("./assets/bomb.png");
-  filter: drop-shadow(0 0 10px #ff7f4f99);
+  filter: none;
 }
 
 .controls {
@@ -491,20 +519,21 @@ h1 {
 }
 
 #restart {
-  border: 1px solid #cd9834;
-  background: linear-gradient(180deg, #ffda83, #d9a23a);
-  color: #2b1f0d;
+  border: 2px solid #f3b315;
+  background: #f3b315;
+  color: #000000;
   font-weight: 700;
   font-family: "Cinzel", serif;
   letter-spacing: 0.04em;
   padding: 8px 16px;
   cursor: pointer;
+  border-radius: 30px;
 }
 
 #status {
   margin: 0;
   font-size: 0.95rem;
-  color: #ccbc96;
+  color: #ffffff;
 }
 
 .modal {
@@ -522,21 +551,22 @@ h1 {
 
 .modal-card {
   width: min(92vw, 460px);
-  border: 2px solid #c99634;
-  background: linear-gradient(180deg, #121824, #0a0f17);
-  box-shadow: 0 0 28px #ffbe4d33;
+  border: 2px solid #f3b315;
+  background: #000000;
+  box-shadow: none;
   padding: 18px;
+  border-radius: 30px;
 }
 
 .modal-card h2 {
   margin: 0 0 10px 0;
   font-family: "Cinzel", serif;
-  color: #ffe1a0;
+  color: #f3b315;
 }
 
 .modal-card p {
   margin: 0 0 14px 0;
-  color: #d8c195;
+  color: #ffffff;
 }
 
 .modal-actions {
@@ -546,14 +576,15 @@ h1 {
 
 .modal-actions button,
 .settings-row button {
-  border: 1px solid #cd9834;
-  background: linear-gradient(180deg, #ffda83, #d9a23a);
-  color: #2b1f0d;
+  border: 2px solid #f3b315;
+  background: #f3b315;
+  color: #000000;
   font-weight: 700;
   font-family: "Cinzel", serif;
   letter-spacing: 0.03em;
   padding: 9px 12px;
   cursor: pointer;
+  border-radius: 30px;
 }
 
 .settings-row {
@@ -562,7 +593,7 @@ h1 {
   justify-content: space-between;
   gap: 12px;
   margin: 12px 0 16px;
-  color: #dbc8a5;
+  color: #ffffff;
 }
 
 .ghost-tile {
