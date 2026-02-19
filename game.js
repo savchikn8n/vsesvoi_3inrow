@@ -88,6 +88,44 @@ function makeCell(color = randColor(), special = null) {
   return { color, special };
 }
 
+function countSameInDirection(r, c, dr, dc, color) {
+  let count = 0;
+  let nr = r + dr;
+  let nc = c + dc;
+  while (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
+    const cell = board[posToIdx(nr, nc)];
+    if (!cell || cell.special || cell.color !== color) break;
+    count++;
+    nr += dr;
+    nc += dc;
+  }
+  return count;
+}
+
+function causesImmediateMatchAt(r, c, color) {
+  const horiz =
+    countSameInDirection(r, c, 0, -1, color) + countSameInDirection(r, c, 0, 1, color);
+  const vert =
+    countSameInDirection(r, c, -1, 0, color) + countSameInDirection(r, c, 1, 0, color);
+  return horiz >= 2 || vert >= 2;
+}
+
+function makeStableCell(r, c) {
+  const pool = Array.from({ length: COLORS }, (_, i) => i);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  for (const color of pool) {
+    if (!causesImmediateMatchAt(r, c, color)) {
+      return makeCell(color);
+    }
+  }
+
+  return makeCell(pool[0]);
+}
+
 function idxToPos(index) {
   return [Math.floor(index / SIZE), index % SIZE];
 }
@@ -532,6 +570,15 @@ function scanLineGroups(arr, horizontal) {
         continue;
       }
 
+      // Specials are activated manually and do not auto-trigger from cascade matches.
+      if (cell.special) {
+        if (run.length >= 3) {
+          groups.push({ cells: [...run], orientation: horizontal ? 'h' : 'v' });
+        }
+        run = [];
+        continue;
+      }
+
       if (run.length === 0) {
         run.push(idx);
         continue;
@@ -662,6 +709,27 @@ function getBlastArea(center, special) {
   return targets;
 }
 
+function getBombRocketComboArea(center) {
+  const [r, c] = idxToPos(center);
+  const targets = new Set();
+
+  for (let row = r - 1; row <= r + 1; row++) {
+    if (row < 0 || row >= SIZE) continue;
+    for (let x = 0; x < SIZE; x++) {
+      targets.add(posToIdx(row, x));
+    }
+  }
+
+  for (let col = c - 1; col <= c + 1; col++) {
+    if (col < 0 || col >= SIZE) continue;
+    for (let y = 0; y < SIZE; y++) {
+      targets.add(posToIdx(y, col));
+    }
+  }
+
+  return targets;
+}
+
 function applyGravity() {
   for (let c = 0; c < SIZE; c++) {
     let write = SIZE - 1;
@@ -676,7 +744,7 @@ function applyGravity() {
     }
 
     while (write >= 0) {
-      board[posToIdx(write, c)] = makeCell();
+      board[posToIdx(write, c)] = makeStableCell(write, c);
       write--;
     }
   }
@@ -910,10 +978,18 @@ async function activateSpecialMove(a, b) {
     return;
   }
 
-  const blast = new Set();
-  activations.forEach(({ idx, special }) => {
-    getBlastArea(idx, special).forEach((n) => blast.add(n));
-  });
+  const hasBomb = activations.some((x) => x.special === 'bomb');
+  const hasRocket = activations.some((x) => x.special === 'rocket-h' || x.special === 'rocket-v');
+
+  let blast = new Set();
+  if (a !== b && activations.length === 2 && hasBomb && hasRocket) {
+    const center = b;
+    blast = getBombRocketComboArea(center);
+  } else {
+    activations.forEach(({ idx, special }) => {
+      getBlastArea(idx, special).forEach((n) => blast.add(n));
+    });
+  }
 
   const blastCells = applyRemoval(blast);
   drawBoard(new Set(), blastCells);
