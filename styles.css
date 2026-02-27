@@ -87,19 +87,11 @@ h1 {
   width: min(270px, 38vw);
   border-radius: 30px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.65),
-    0 2px 0 rgba(255, 255, 255, 0.18) inset,
-    0 -2px 0 rgba(0, 0, 0, 0.35) inset;
-  transform: translateY(-2px);
 }
 
 .brand img {
   width: 100%;
   display: block;
-  filter: contrast(1.04) saturate(1.05);
 }
 
 .brand::after {
@@ -159,12 +151,7 @@ h1 {
   margin: 0 auto;
   padding: 6px;
   border: 3px solid #000000;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(18px) saturate(130%);
-  -webkit-backdrop-filter: blur(18px) saturate(130%);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.14) inset,
-    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  background: #000000;
   overflow: hidden;
   touch-action: none;
   border-radius: 30px;
