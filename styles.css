@@ -24,6 +24,33 @@ body {
   background: #000000;
   touch-action: manipulation;
   overscroll-behavior: none;
+  position: relative;
+  isolation: isolate;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.42)),
+    url("./assets/app-bg.jpg") center / cover no-repeat;
+  transform: scale(1.08);
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  backdrop-filter: blur(22px) saturate(145%);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.18), transparent 36%),
+    radial-gradient(circle at 82% 78%, rgba(243, 179, 21, 0.16), transparent 40%),
+    linear-gradient(rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.18));
+  pointer-events: none;
 }
 
 .frame {
@@ -123,7 +150,7 @@ h1 {
   max-width: 100%;
   margin: 0 auto;
   padding: 6px;
-  border: 3px solid #f3b315;
+  border: 3px solid #000000;
   background: #000000;
   overflow: hidden;
   touch-action: none;
