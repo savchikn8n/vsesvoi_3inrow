@@ -586,8 +586,8 @@ h1 {
   z-index: 130;
   display: grid;
   place-items: center;
-  padding: 18px;
-  background: #000000;
+  padding: 0;
+  background: transparent;
 }
 
 .start-screen.hidden {
@@ -595,14 +595,16 @@ h1 {
 }
 
 .start-card {
-  width: min(100%, 720px);
-  min-height: min(76vh, 680px);
-  border: 1px solid #f3b315;
+  width: min(100vw - 14px, 720px);
+  min-height: unset;
+  border: 3px solid #f3b315;
   border-radius: 30px;
   background: #000000;
-  padding: 20px;
+  padding: 14px;
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 26px;
+  overflow: hidden;
 }
 
 .start-top {
@@ -635,7 +637,7 @@ h1 {
 }
 
 .start-actions {
-  align-self: center;
+  align-self: start;
   justify-self: center;
   width: min(100%, 420px);
   display: grid;
