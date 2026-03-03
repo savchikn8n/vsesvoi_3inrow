@@ -610,18 +610,17 @@ h1 {
 
 .start-top {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .start-record {
-  min-width: 160px;
-  border: 1px solid #f3b315;
-  border-radius: 30px;
-  padding: 10px 14px;
-  background: #000000;
+  min-width: 0;
+  width: 100%;
+  max-width: 220px;
+  padding: 8px 10px;
   display: grid;
   justify-items: center;
-  gap: 2px;
+  gap: 0;
 }
 
 .start-record-label {
@@ -632,7 +631,7 @@ h1 {
 }
 
 .start-record-value {
-  font-size: 1.65rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: #ffffff;
 }
