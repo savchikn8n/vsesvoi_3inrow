@@ -563,6 +563,80 @@ h1 {
   color: #ffffff;
 }
 
+.start-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: #000000;
+}
+
+.start-screen.hidden {
+  display: none;
+}
+
+.start-card {
+  width: min(100%, 720px);
+  min-height: min(76vh, 680px);
+  border: 1px solid #f3b315;
+  border-radius: 30px;
+  background: #000000;
+  padding: 20px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.start-top {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.start-record {
+  min-width: 160px;
+  border: 1px solid #f3b315;
+  border-radius: 30px;
+  padding: 10px 14px;
+  background: #000000;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+.start-record-label {
+  font-size: 0.75rem;
+  color: #f3b315;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.start-record-value {
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.start-actions {
+  align-self: center;
+  justify-self: center;
+  width: min(100%, 420px);
+  display: grid;
+  gap: 12px;
+}
+
+.start-actions button {
+  border: 2px solid #f3b315;
+  background: #f3b315;
+  color: #000000;
+  font-weight: 700;
+  font-family: "Cinzel", serif;
+  letter-spacing: 0.03em;
+  padding: 12px 14px;
+  cursor: pointer;
+  border-radius: 30px;
+}
+
 .modal {
   position: fixed;
   inset: 0;

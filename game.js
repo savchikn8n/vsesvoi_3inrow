@@ -11,6 +11,11 @@ const timerEl = document.getElementById('timer');
 const restartBtn = document.getElementById('restart');
 const statusEl = document.getElementById('status');
 const tileTpl = document.getElementById('tile-template');
+const startScreenEl = document.getElementById('start-screen');
+const bestScoreEl = document.getElementById('best-score');
+const startNewGameBtn = document.getElementById('start-new-game');
+const startLeaderboardBtn = document.getElementById('start-leaderboard');
+const startSettingsBtn = document.getElementById('start-settings');
 const gameOverModalEl = document.getElementById('game-over-modal');
 const settingsModalEl = document.getElementById('settings-modal');
 const finalScoreEl = document.getElementById('final-score');
@@ -35,6 +40,9 @@ let audioCtx = null;
 let swipeGesture = null;
 let suppressClickUntil = 0;
 let touchInsideBoard = false;
+let bestScore = 0;
+
+const BEST_SCORE_KEY = 'gold_match_best_score';
 
 function setupTelegramWebApp() {
   const tg = window.Telegram?.WebApp;
@@ -175,6 +183,52 @@ function updateHud() {
   scoreEl.textContent = String(score);
   timerEl.textContent = String(turnSecondsLeft);
   timerEl.classList.toggle('warning', turnSecondsLeft <= HINT_THRESHOLD_SECONDS);
+  maybeUpdateBestScore();
+}
+
+function loadBestScore() {
+  const value = Number(localStorage.getItem(BEST_SCORE_KEY) || 0);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function saveBestScore(value) {
+  localStorage.setItem(BEST_SCORE_KEY, String(value));
+}
+
+function updateBestScoreUi() {
+  if (bestScoreEl) {
+    bestScoreEl.textContent = String(bestScore);
+  }
+}
+
+function maybeUpdateBestScore() {
+  if (score <= bestScore) return;
+  bestScore = score;
+  saveBestScore(bestScore);
+  updateBestScoreUi();
+}
+
+function showStartScreen() {
+  stopTurnTimer();
+  locked = true;
+  selected = null;
+  clearHint();
+  closeAllModals();
+  startScreenEl?.classList.remove('hidden');
+  updateBestScoreUi();
+}
+
+function hideStartScreen() {
+  startScreenEl?.classList.add('hidden');
+}
+
+function openLeaderboardPlaceholder() {
+  statusEl.textContent = 'Таблица лидеров появится в следующем обновлении.';
+}
+
+function startNewGameFromHome() {
+  hideStartScreen();
+  resetGame();
 }
 
 function ensureAudioContext() {
@@ -1126,6 +1180,7 @@ function resetGame() {
   selected = null;
   locked = false;
   clearHint();
+  hideStartScreen();
   closeAllModals();
   statusEl.textContent = 'Собирайте комбинации по 3+ в ряд.';
   createBoard();
@@ -1137,6 +1192,9 @@ restartBtn.addEventListener('click', resetGame);
 menuNewGameBtn.addEventListener('click', resetGame);
 menuBookTableBtn.addEventListener('click', openBookTable);
 menuSettingsBtn.addEventListener('click', openSettingsFromMenu);
+startNewGameBtn.addEventListener('click', startNewGameFromHome);
+startLeaderboardBtn.addEventListener('click', openLeaderboardPlaceholder);
+startSettingsBtn.addEventListener('click', openSettingsFromMenu);
 soundToggleBtn.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   updateSoundToggleLabel();
@@ -1145,7 +1203,11 @@ devChannelBtn.addEventListener('click', openDevChannel);
 settingsCloseBtn.addEventListener('click', closeSettings);
 window.addEventListener('resize', syncEffectsLayer);
 
+bestScore = loadBestScore();
+updateBestScoreUi();
 updateSoundToggleLabel();
 setupTelegramWebApp();
 setupTouchGuards();
-resetGame();
+createBoard();
+drawBoard();
+showStartScreen();
