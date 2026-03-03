@@ -616,14 +616,18 @@ h1 {
 .start-top {
   display: flex;
   justify-content: flex-start;
+  height: calc(100% / 15);
+  min-height: 56px;
 }
 
 .start-record {
   min-width: 0;
   width: 100%;
   max-width: 220px;
+  height: 100%;
   display: grid;
   justify-items: center;
+  align-content: center;
 }
 
 .start-record-label {
