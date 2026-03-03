@@ -149,7 +149,7 @@ h1 {
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
-  padding: 6px 64px 6px 6px;
+  padding: 6px;
   border: 3px solid #000000;
   background: #000000;
   overflow: hidden;
@@ -177,10 +177,6 @@ h1 {
 }
 
 .exit-to-menu {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
   border: 2px solid #f3b315;
   background: #f3b315;
   color: #000000;
@@ -190,7 +186,6 @@ h1 {
   padding: 10px 12px;
   border-radius: 30px;
   cursor: pointer;
-  z-index: 50;
 }
 
 .effect-flash {
@@ -555,11 +550,16 @@ h1 {
 }
 
 .controls {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.control-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-top: 14px;
+  gap: 12px;
 }
 
 #restart {
@@ -660,7 +660,7 @@ h1 {
   background: #040609cc;
   display: grid;
   place-items: center;
-  z-index: 120;
+  z-index: 220;
 }
 
 .modal.hidden {
@@ -732,17 +732,15 @@ h1 {
   }
 
   .board-wrap {
-    padding-right: 58px;
+    padding-right: 6px;
   }
 
   .exit-to-menu {
-    right: 8px;
     padding: 8px 10px;
     font-size: 0.85rem;
   }
 
-  .controls {
-    flex-direction: column;
-    align-items: flex-start;
+  .control-row {
+    gap: 8px;
   }
 }
