@@ -42,6 +42,23 @@
       </footer>
     </main>
 
+    <section id="start-screen" class="start-screen" aria-label="Стартовый экран">
+      <div class="start-card">
+        <div class="start-top">
+          <div class="start-record">
+            <span class="start-record-label">Мой рекорд</span>
+            <span id="best-score" class="start-record-value">0</span>
+          </div>
+        </div>
+
+        <div class="start-actions">
+          <button id="start-new-game" type="button">Новая игра</button>
+          <button id="start-leaderboard" type="button">Таблица лидеров</button>
+          <button id="start-settings" type="button">Настройка</button>
+        </div>
+      </div>
+    </section>
+
     <div id="game-over-modal" class="modal hidden" aria-hidden="true">
       <div class="modal-card">
         <h2>Время вышло</h2>
@@ -62,7 +79,7 @@
           <button id="sound-toggle" type="button">Включен</button>
         </div>
         <div class="modal-actions">
-          <button id="dev-channel" type="button">Telegram разработчика</button>
+          <button id="dev-channel" type="button">Заказать приложение</button>
           <button id="settings-close" type="button">Закрыть</button>
         </div>
       </div>
