@@ -127,6 +127,7 @@ h1 {
   border: 2px solid #f3b315;
   background: #000000;
   border-radius: 30px;
+  min-height: 86px;
 }
 
 .label {
@@ -581,6 +582,10 @@ h1 {
   color: #ffffff;
 }
 
+.status-hidden {
+  display: none;
+}
+
 .start-screen {
   position: absolute;
   inset: 0;
@@ -617,10 +622,8 @@ h1 {
   min-width: 0;
   width: 100%;
   max-width: 220px;
-  padding: 8px 10px;
   display: grid;
   justify-items: center;
-  gap: 0;
 }
 
 .start-record-label {
