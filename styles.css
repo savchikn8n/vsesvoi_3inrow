@@ -61,6 +61,7 @@ body::after {
   box-shadow: none;
   overflow: hidden;
   border-radius: 30px;
+  position: relative;
 }
 
 .hud {
@@ -581,13 +582,14 @@ h1 {
 }
 
 .start-screen {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 130;
   display: grid;
-  place-items: center;
-  padding: 0;
-  background: transparent;
+  place-items: stretch;
+  padding: 14px;
+  background: #000000;
+  border-radius: inherit;
 }
 
 .start-screen.hidden {
@@ -595,16 +597,15 @@ h1 {
 }
 
 .start-card {
-  width: min(100vw - 14px, 720px);
-  min-height: unset;
-  border: 3px solid #f3b315;
-  border-radius: 30px;
-  background: #000000;
-  padding: 14px;
+  width: 100%;
+  min-height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
   display: grid;
   grid-template-rows: auto auto;
   gap: 26px;
-  overflow: hidden;
 }
 
 .start-top {
