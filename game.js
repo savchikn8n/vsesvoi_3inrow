@@ -9,6 +9,7 @@ const effectsLayerEl = document.getElementById('effects-layer');
 const scoreEl = document.getElementById('score');
 const timerEl = document.getElementById('timer');
 const restartBtn = document.getElementById('restart');
+const exitToMenuBtn = document.getElementById('exit-to-menu');
 const statusEl = document.getElementById('status');
 const tileTpl = document.getElementById('tile-template');
 const startScreenEl = document.getElementById('start-screen');
@@ -20,7 +21,7 @@ const gameOverModalEl = document.getElementById('game-over-modal');
 const settingsModalEl = document.getElementById('settings-modal');
 const finalScoreEl = document.getElementById('final-score');
 const menuNewGameBtn = document.getElementById('menu-new-game');
-const menuBookTableBtn = document.getElementById('menu-book-table');
+const menuExitMenuBtn = document.getElementById('menu-exit-menu');
 const menuSettingsBtn = document.getElementById('menu-settings');
 const soundToggleBtn = document.getElementById('sound-toggle');
 const devChannelBtn = document.getElementById('dev-channel');
@@ -1053,6 +1054,10 @@ function endGameByTimeout() {
   showModal(gameOverModalEl);
 }
 
+function exitToMenu() {
+  showStartScreen();
+}
+
 function openBookTable() {
   window.open('https://t.me/+Ew4VcHco7XBjNDU6', '_blank', 'noopener,noreferrer');
 }
@@ -1189,8 +1194,9 @@ function resetGame() {
 }
 
 restartBtn.addEventListener('click', resetGame);
+exitToMenuBtn.addEventListener('click', exitToMenu);
 menuNewGameBtn.addEventListener('click', resetGame);
-menuBookTableBtn.addEventListener('click', openBookTable);
+menuExitMenuBtn.addEventListener('click', exitToMenu);
 menuSettingsBtn.addEventListener('click', openSettingsFromMenu);
 startNewGameBtn.addEventListener('click', startNewGameFromHome);
 startLeaderboardBtn.addEventListener('click', openLeaderboardPlaceholder);
