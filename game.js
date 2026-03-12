@@ -34,6 +34,10 @@ const profileNameEl = document.getElementById('profile-name');
 const profileStatusEl = document.getElementById('profile-status');
 const profileSaveBtn = document.getElementById('profile-save');
 const avatarPickerEl = document.getElementById('avatar-picker');
+const profileEntryBtn = document.getElementById('profile-entry');
+const profileEntryAvatarEl = document.getElementById('profile-entry-avatar');
+const profileEntryNameEl = document.getElementById('profile-entry-name');
+const profileNameConfirmBtn = document.getElementById('profile-name-confirm');
 
 let board = [];
 let score = 0;
@@ -53,6 +57,9 @@ let bestScore = 0;
 let profile = null;
 let selectedAvatar = 'gold';
 let authBusy = false;
+let profileNameConfirmed = false;
+let confirmedProfileName = '';
+let avatarPicked = false;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const PROFILE_KEY = 'gold_match_profile';
@@ -242,6 +249,7 @@ function saveProfile(next) {
   };
   profile = normalized;
   localStorage.setItem(PROFILE_KEY, JSON.stringify(normalized));
+  updateProfileEntry();
 }
 
 function setAuthStatus(message) {
@@ -310,8 +318,13 @@ function openProfileModal(nextProfile = null) {
     profile = nextProfile;
   }
   profileNameEl.value = profile?.display_name || '';
-  selectedAvatar = profile?.avatar_choice || 'gold';
+  selectedAvatar = profile?.avatar_choice || avatarChoiceFromUrl(profile?.avatar_url) || 'gold';
+  confirmedProfileName = (profile?.display_name || '').trim();
+  profileNameConfirmed = confirmedProfileName.length >= 2;
+  avatarPicked = Boolean(profile?.avatar_choice || profile?.avatar_url);
   updateAvatarSelection();
+  updateProfileNameConfirmState();
+  updateProfileSaveState();
   setProfileStatus('');
   showModal(profileModalEl);
 }
@@ -320,6 +333,26 @@ function updateAvatarSelection() {
   avatarPickerEl?.querySelectorAll('.avatar-option').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.avatar === selectedAvatar);
   });
+}
+
+function updateProfileNameConfirmState() {
+  profileNameConfirmBtn?.classList.toggle('active', profileNameConfirmed);
+}
+
+function updateProfileSaveState() {
+  const canSave = profileNameConfirmed && avatarPicked && Boolean(selectedAvatar);
+  if (profileSaveBtn) profileSaveBtn.disabled = !canSave;
+}
+
+function updateProfileEntry() {
+  if (!profileEntryAvatarEl || !profileEntryNameEl) return;
+  const avatarChoice = profile?.avatar_choice || avatarChoiceFromUrl(profile?.avatar_url) || 'gold';
+  profileEntryAvatarEl.src = avatarChoiceToUrl(avatarChoice);
+  profileEntryNameEl.textContent = profile?.display_name || 'Игрок';
+}
+
+function openProfileEditor() {
+  openProfileModal(profile || loadProfile());
 }
 
 async function ensureAuthFlow() {
@@ -345,6 +378,7 @@ function showStartScreen() {
   }
   startScreenEl?.classList.remove('hidden');
   updateBestScoreUi();
+  updateProfileEntry();
 }
 
 function hideStartScreen() {
@@ -1214,6 +1248,14 @@ function avatarChoiceToUrl(avatarChoice) {
   return map[avatarChoice] || map.gold;
 }
 
+function avatarChoiceFromUrl(url = '') {
+  const match = String(url).toLowerCase();
+  if (match.includes('hookah')) return 'hookah';
+  if (match.includes('steam')) return 'steam';
+  if (match.includes('cole')) return 'cole';
+  return 'gold';
+}
+
 async function handleTelegramAuth() {
   if (authBusy) return;
   authBusy = true;
@@ -1251,8 +1293,20 @@ async function handleTelegramAuth() {
 async function handleProfileSave() {
   if (authBusy) return;
   const displayName = profileNameEl.value.trim();
-  if (!displayName) {
-    setProfileStatus('Введите имя.');
+  if (!profileNameConfirmed) {
+    setProfileStatus('Подтвердите имя зелёной галочкой.');
+    return;
+  }
+  if (!displayName || displayName !== confirmedProfileName) {
+    setProfileStatus('Имя не подтверждено.');
+    return;
+  }
+  if (!selectedAvatar) {
+    setProfileStatus('Выберите аватар.');
+    return;
+  }
+  if (!avatarPicked) {
+    setProfileStatus('Выберите аватар.');
     return;
   }
 
@@ -1286,6 +1340,33 @@ async function handleProfileSave() {
     setProfileStatus(error.message || 'Не удалось сохранить профиль.');
   } finally {
     authBusy = false;
+  }
+}
+
+function handleProfileNameConfirm() {
+  const displayName = profileNameEl.value.trim();
+  if (displayName.length < 2) {
+    profileNameConfirmed = false;
+    confirmedProfileName = '';
+    updateProfileNameConfirmState();
+    updateProfileSaveState();
+    setProfileStatus('Имя должно быть не короче 2 символов.');
+    return;
+  }
+
+  profileNameConfirmed = true;
+  confirmedProfileName = displayName;
+  updateProfileNameConfirmState();
+  updateProfileSaveState();
+  setProfileStatus('Имя подтверждено.');
+}
+
+function handleProfileNameInput() {
+  const current = profileNameEl.value.trim();
+  if (current !== confirmedProfileName) {
+    profileNameConfirmed = false;
+    updateProfileNameConfirmState();
+    updateProfileSaveState();
   }
 }
 
@@ -1424,17 +1505,23 @@ devChannelBtn.addEventListener('click', openDevChannel);
 settingsCloseBtn.addEventListener('click', closeSettings);
 authLoginBtn.addEventListener('click', handleTelegramAuth);
 profileSaveBtn.addEventListener('click', handleProfileSave);
+profileEntryBtn?.addEventListener('click', openProfileEditor);
+profileNameConfirmBtn?.addEventListener('click', handleProfileNameConfirm);
+profileNameEl?.addEventListener('input', handleProfileNameInput);
 avatarPickerEl?.addEventListener('click', (e) => {
   const btn = e.target.closest('.avatar-option');
   if (!btn) return;
   selectedAvatar = btn.dataset.avatar;
+  avatarPicked = true;
   updateAvatarSelection();
+  updateProfileSaveState();
 });
 window.addEventListener('resize', syncEffectsLayer);
 
 bestScore = loadBestScore();
 profile = loadProfile();
 updateBestScoreUi();
+updateProfileEntry();
 updateSoundToggleLabel();
 setupTelegramWebApp();
 setupTouchGuards();
