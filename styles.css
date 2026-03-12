@@ -8,6 +8,8 @@
   --tile-b: #000000;
   --cell: 72px;
   --gap: 4px;
+  --tg-ui-offset: 0px;
+  --app-outer-gap: 10px;
 }
 
 * {
@@ -26,6 +28,10 @@ body {
 }
 
 body {
+  padding-top: calc(env(safe-area-inset-top) + var(--tg-ui-offset));
+  padding-bottom: calc(env(safe-area-inset-bottom) + var(--app-outer-gap));
+  padding-left: 0;
+  padding-right: 0;
   display: grid;
   place-items: center;
   color: #ffffff;
@@ -63,8 +69,11 @@ body::after {
 
 .frame {
   width: min(100vw - 14px, 720px);
-  height: min(calc(100dvh - 14px), 1080px);
-  max-height: calc(100dvh - 14px);
+  height: min(
+    calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--tg-ui-offset) - var(--app-outer-gap)),
+    1080px
+  );
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--tg-ui-offset) - var(--app-outer-gap));
   border: 3px solid #f3b315;
   padding: 14px;
   background: #000000;
@@ -73,6 +82,10 @@ body::after {
   border-radius: 30px;
   position: relative;
   touch-action: none;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  align-content: start;
+  justify-items: center;
 }
 
 .hud {
@@ -81,6 +94,7 @@ body::after {
   align-items: center;
   gap: 8px;
   margin-bottom: 14px;
+  width: 100%;
 }
 
 h1 {
@@ -162,6 +176,7 @@ h1 {
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
+  justify-self: center;
   padding: 6px;
   border: 3px solid #000000;
   background: #000000;
@@ -566,6 +581,7 @@ h1 {
   display: grid;
   gap: 10px;
   margin-top: 14px;
+  width: 100%;
 }
 
 .control-row {
@@ -620,8 +636,10 @@ h1 {
   background: transparent;
   padding: 0;
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: 10px;
+  grid-template-rows: auto auto auto;
+  align-content: center;
+  justify-items: center;
+  gap: clamp(14px, 2.6vh, 24px);
 }
 
 .start-top {
@@ -785,7 +803,7 @@ h1 {
 }
 
 .start-actions {
-  align-self: end;
+  align-self: center;
   justify-self: center;
   width: min(100%, 420px);
   display: grid;
@@ -1086,6 +1104,10 @@ h1 {
 }
 
 @media (max-width: 620px) {
+  :root {
+    --tg-ui-offset: 56px;
+  }
+
   :root {
     --cell: calc((100vw - 82px) / 7);
     --gap: 3px;
