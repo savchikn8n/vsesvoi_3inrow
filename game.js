@@ -72,6 +72,8 @@ let giftBadgeTimer = null;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const PROFILE_KEY = 'gold_match_profile';
+const LEADERBOARD_CACHE_KEY = 'gold_match_leaderboard_cache_v1';
+const LEADERBOARD_CACHE_TTL_MS = 60 * 1000;
 const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUPABASE_FUNCTIONS_BASE = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '';
 
@@ -309,6 +311,10 @@ function apiUrl(path) {
 }
 
 async function postJson(path, payload) {
+  return postJsonWithOptions(path, payload, {});
+}
+
+async function postJsonWithOptions(path, payload, options = {}) {
   const url = apiUrl(path);
   if (!url) {
     throw new Error(
@@ -316,19 +322,61 @@ async function postJson(path, payload) {
     );
   }
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
+  const timeoutMs = Number(options.timeoutMs || 9000);
+  const retries = Number(options.retries || 0);
+  const headers = options.useJsonHeader
+    ? { 'Content-Type': 'application/json' }
+    : { 'Content-Type': 'text/plain;charset=UTF-8' };
 
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data?.error || 'Ошибка запроса');
+  let lastError = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || 'Ошибка запроса');
+      }
+      return data;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      lastError = error;
+      if (attempt === retries) break;
+      await delay(220);
+    }
   }
-  return data;
+
+  if (lastError?.name === 'AbortError') {
+    throw new Error('Превышено время ожидания');
+  }
+  throw lastError || new Error('Load fail');
+}
+
+function loadLeaderboardCache() {
+  try {
+    const raw = localStorage.getItem(LEADERBOARD_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.ts || !Array.isArray(parsed?.items)) return null;
+    return parsed;
+  } catch (_) {
+    return null;
+  }
+}
+
+function saveLeaderboardCache(items) {
+  const payload = {
+    ts: Date.now(),
+    items: Array.isArray(items) ? items : [],
+  };
+  localStorage.setItem(LEADERBOARD_CACHE_KEY, JSON.stringify(payload));
 }
 
 function showAuthModal() {
@@ -474,13 +522,30 @@ async function openLeaderboard() {
   closeAllModals();
   showModal(leaderboardModalEl);
   setLeaderboardLoading(true);
-  renderLeaderboard([], false);
+  const cached = loadLeaderboardCache();
+  if (cached?.items?.length) {
+    renderLeaderboard(cached.items, false);
+  } else {
+    renderLeaderboard([], false);
+  }
   try {
-    const { leaderboard } = await postJson('leaderboard', { limit: 50 });
-    renderLeaderboard(Array.isArray(leaderboard) ? leaderboard : []);
+    const { leaderboard } = await postJsonWithOptions(
+      'leaderboard',
+      { limit: 50 },
+      { timeoutMs: 6500, retries: 2 },
+    );
+    const items = Array.isArray(leaderboard) ? leaderboard : [];
+    renderLeaderboard(items);
+    saveLeaderboardCache(items);
   } catch (error) {
     setLeaderboardLoading(false);
-    setLeaderboardStatus(error.message || 'Не удалось загрузить таблицу.');
+    const cacheFresh = cached && Date.now() - Number(cached.ts || 0) <= LEADERBOARD_CACHE_TTL_MS;
+    if (cacheFresh && cached.items.length) {
+      renderLeaderboard(cached.items, false);
+      setLeaderboardStatus('Слабая сеть: показаны сохраненные результаты.');
+    } else if (!cached?.items?.length) {
+      setLeaderboardStatus(error.message || 'Load fail');
+    }
   } finally {
     setLeaderboardLoading(false);
     leaderboardBusy = false;
