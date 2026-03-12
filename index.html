@@ -52,6 +52,12 @@
             <span class="start-record-label">Мой рекорд</span>
             <span id="best-score" class="start-record-value">0</span>
           </div>
+          <button id="profile-entry" class="profile-entry panel" type="button" aria-label="Профиль">
+            <span class="profile-entry-avatar-wrap">
+              <img id="profile-entry-avatar" class="profile-entry-avatar" src="./assets/gold.png" alt="Аватар профиля" />
+            </span>
+            <span id="profile-entry-name" class="profile-entry-name">Игрок</span>
+          </button>
         </div>
 
         <div class="start-actions">
@@ -106,7 +112,10 @@
         <p>Заполните профиль для таблицы лидеров.</p>
         <div class="profile-form">
           <label for="profile-name" class="profile-label">Имя</label>
-          <input id="profile-name" class="profile-input" type="text" maxlength="24" placeholder="Введите имя" />
+          <div class="profile-name-row">
+            <input id="profile-name" class="profile-input" type="text" maxlength="24" placeholder="Введите имя" />
+            <button id="profile-name-confirm" class="profile-name-confirm" type="button" aria-label="Подтвердить имя">✓</button>
+          </div>
         </div>
         <div class="profile-form">
           <span class="profile-label">Аватар</span>
@@ -127,7 +136,7 @@
         </div>
         <p id="profile-status" class="auth-status" aria-live="polite"></p>
         <div class="modal-actions">
-          <button id="profile-save" type="button">Сохранить профиль</button>
+          <button id="profile-save" type="button" disabled>Сохранить</button>
         </div>
       </div>
     </div>
