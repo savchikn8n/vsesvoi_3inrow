@@ -88,6 +88,45 @@
       </div>
     </div>
 
+    <div id="auth-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card">
+        <h2>Вход</h2>
+        <p>Для сохранения прогресса авторизуйтесь через Telegram.</p>
+        <p id="auth-status" class="auth-status" aria-live="polite"></p>
+        <div class="modal-actions">
+          <button id="auth-login" type="button">Войти через Telegram</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="profile-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card">
+        <h2>Профиль</h2>
+        <p>Заполните профиль для таблицы лидеров.</p>
+        <label for="profile-name" class="profile-label">Имя</label>
+        <input id="profile-name" class="profile-input" type="text" maxlength="24" placeholder="Введите имя" />
+        <span class="profile-label">Аватар</span>
+        <div id="avatar-picker" class="avatar-picker">
+          <button class="avatar-option" type="button" data-avatar="gold">
+            <img src="./assets/gold.png" alt="Аватар gold" />
+          </button>
+          <button class="avatar-option" type="button" data-avatar="hookah">
+            <img src="./assets/hookah1.png" alt="Аватар hookah" />
+          </button>
+          <button class="avatar-option" type="button" data-avatar="steam">
+            <img src="./assets/steam.png" alt="Аватар steam" />
+          </button>
+          <button class="avatar-option" type="button" data-avatar="cole">
+            <img src="./assets/cole.png" alt="Аватар cole" />
+          </button>
+        </div>
+        <p id="profile-status" class="auth-status" aria-live="polite"></p>
+        <div class="modal-actions">
+          <button id="profile-save" type="button">Сохранить профиль</button>
+        </div>
+      </div>
+    </div>
+
     <template id="tile-template">
       <button class="tile" type="button" aria-label="Фишка">
         <span class="gem"></span>
@@ -95,6 +134,9 @@
       </button>
     </template>
 
+    <script>
+      window.__SUPABASE_URL__ = 'https://tnngitplssufqeqpxuib.supabase.co';
+    </script>
     <script src="game.js"></script>
   </body>
 </html>
