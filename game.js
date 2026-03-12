@@ -42,6 +42,9 @@ const profileEntryBtn = document.getElementById('profile-entry');
 const profileEntryAvatarEl = document.getElementById('profile-entry-avatar');
 const profileEntryNameEl = document.getElementById('profile-entry-name');
 const profileNameConfirmBtn = document.getElementById('profile-name-confirm');
+const profileCloseBtn = document.getElementById('profile-close');
+const giftEntryBtn = document.getElementById('gift-entry');
+const giftSoonBadgeEl = document.getElementById('gift-soon-badge');
 
 let board = [];
 let score = 0;
@@ -65,6 +68,7 @@ let profileNameConfirmed = false;
 let confirmedProfileName = '';
 let avatarPicked = false;
 let leaderboardBusy = false;
+let giftBadgeTimer = null;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const PROFILE_KEY = 'gold_match_profile';
@@ -266,7 +270,20 @@ function setProfileStatus(message) {
 }
 
 function setLeaderboardStatus(message) {
-  if (leaderboardStatusEl) leaderboardStatusEl.textContent = message || '';
+  if (!leaderboardStatusEl) return;
+  leaderboardStatusEl.classList.remove('loading');
+  leaderboardStatusEl.textContent = message || '';
+}
+
+function setLeaderboardLoading(loading) {
+  if (!leaderboardStatusEl) return;
+  if (!loading) {
+    leaderboardStatusEl.classList.remove('loading');
+    return;
+  }
+  leaderboardStatusEl.classList.add('loading');
+  leaderboardStatusEl.innerHTML =
+    'Прогружается <span class="loading-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>';
 }
 
 function telegramInitData() {
@@ -364,6 +381,26 @@ function openProfileEditor() {
   openProfileModal(profile || loadProfile());
 }
 
+function closeProfileEditor() {
+  hideModal(profileModalEl);
+  setProfileStatus('');
+  if (isProfileComplete(profile || loadProfile())) {
+    showStartScreen();
+  } else {
+    showAuthModal();
+  }
+}
+
+function showGiftSoonFlag() {
+  if (!giftSoonBadgeEl) return;
+  giftSoonBadgeEl.classList.add('show');
+  if (giftBadgeTimer) clearTimeout(giftBadgeTimer);
+  giftBadgeTimer = setTimeout(() => {
+    giftSoonBadgeEl.classList.remove('show');
+    giftBadgeTimer = null;
+  }, 1400);
+}
+
 async function ensureAuthFlow() {
   const localProfile = loadProfile();
   if (localProfile && isProfileComplete(localProfile)) {
@@ -419,10 +456,11 @@ function makeLeaderboardRow(item, index) {
   return row;
 }
 
-function renderLeaderboard(items = []) {
+function renderLeaderboard(items = [], showEmptyMessage = true) {
   if (!leaderboardListEl) return;
   leaderboardListEl.innerHTML = '';
   if (!items.length) {
+    if (!showEmptyMessage) return;
     setLeaderboardStatus('Пока нет результатов. Стань первым!');
     return;
   }
@@ -435,14 +473,16 @@ async function openLeaderboard() {
   leaderboardBusy = true;
   closeAllModals();
   showModal(leaderboardModalEl);
-  setLeaderboardStatus('Загрузка...');
-  renderLeaderboard([]);
+  setLeaderboardLoading(true);
+  renderLeaderboard([], false);
   try {
     const { leaderboard } = await postJson('leaderboard', { limit: 50 });
     renderLeaderboard(Array.isArray(leaderboard) ? leaderboard : []);
   } catch (error) {
+    setLeaderboardLoading(false);
     setLeaderboardStatus(error.message || 'Не удалось загрузить таблицу.');
   } finally {
+    setLeaderboardLoading(false);
     leaderboardBusy = false;
   }
 }
@@ -1595,8 +1635,10 @@ leaderboardCloseBtn?.addEventListener('click', closeLeaderboard);
 authLoginBtn.addEventListener('click', handleTelegramAuth);
 profileSaveBtn.addEventListener('click', handleProfileSave);
 profileEntryBtn?.addEventListener('click', openProfileEditor);
+profileCloseBtn?.addEventListener('click', closeProfileEditor);
 profileNameConfirmBtn?.addEventListener('click', handleProfileNameConfirm);
 profileNameEl?.addEventListener('input', handleProfileNameInput);
+giftEntryBtn?.addEventListener('click', showGiftSoonFlag);
 avatarPickerEl?.addEventListener('click', (e) => {
   const btn = e.target.closest('.avatar-option');
   if (!btn) return;
