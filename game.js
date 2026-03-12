@@ -26,6 +26,14 @@ const menuSettingsBtn = document.getElementById('menu-settings');
 const soundToggleBtn = document.getElementById('sound-toggle');
 const devChannelBtn = document.getElementById('dev-channel');
 const settingsCloseBtn = document.getElementById('settings-close');
+const authModalEl = document.getElementById('auth-modal');
+const authStatusEl = document.getElementById('auth-status');
+const authLoginBtn = document.getElementById('auth-login');
+const profileModalEl = document.getElementById('profile-modal');
+const profileNameEl = document.getElementById('profile-name');
+const profileStatusEl = document.getElementById('profile-status');
+const profileSaveBtn = document.getElementById('profile-save');
+const avatarPickerEl = document.getElementById('avatar-picker');
 
 let board = [];
 let score = 0;
@@ -42,8 +50,14 @@ let swipeGesture = null;
 let suppressClickUntil = 0;
 let touchInsideBoard = false;
 let bestScore = 0;
+let profile = null;
+let selectedAvatar = 'gold';
+let authBusy = false;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
+const PROFILE_KEY = 'gold_match_profile';
+const SUPABASE_URL = window.__SUPABASE_URL__ || '';
+const SUPABASE_FUNCTIONS_BASE = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '';
 
 function setupTelegramWebApp() {
   const tg = window.Telegram?.WebApp;
@@ -209,12 +223,126 @@ function maybeUpdateBestScore() {
   updateBestScoreUi();
 }
 
+function loadProfile() {
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.telegram_id) return null;
+    return parsed;
+  } catch (_) {
+    return null;
+  }
+}
+
+function saveProfile(next) {
+  const normalized = {
+    ...next,
+    auth_verified: true,
+  };
+  profile = normalized;
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(normalized));
+}
+
+function setAuthStatus(message) {
+  if (authStatusEl) authStatusEl.textContent = message || '';
+}
+
+function setProfileStatus(message) {
+  if (profileStatusEl) profileStatusEl.textContent = message || '';
+}
+
+function telegramInitData() {
+  return window.Telegram?.WebApp?.initData || '';
+}
+
+function hasTelegramContext() {
+  return Boolean(window.Telegram?.WebApp);
+}
+
+function isProfileComplete(userProfile) {
+  return Boolean(
+    userProfile?.auth_verified === true &&
+      userProfile?.telegram_id &&
+      userProfile?.display_name &&
+      userProfile?.avatar_url,
+  );
+}
+
+function apiUrl(path) {
+  if (!SUPABASE_FUNCTIONS_BASE) return '';
+  return `${SUPABASE_FUNCTIONS_BASE}/${path}`;
+}
+
+async function postJson(path, payload) {
+  const url = apiUrl(path);
+  if (!url) {
+    throw new Error(
+      'Не задан SUPABASE_URL. Добавьте window.__SUPABASE_URL__ перед game.js или задайте константу.',
+    );
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data?.error || 'Ошибка запроса');
+  }
+  return data;
+}
+
+function showAuthModal() {
+  hideStartScreen();
+  closeAllModals();
+  setAuthStatus('');
+  showModal(authModalEl);
+}
+
+function openProfileModal(nextProfile = null) {
+  hideModal(authModalEl);
+  if (nextProfile) {
+    profile = nextProfile;
+  }
+  profileNameEl.value = profile?.display_name || '';
+  selectedAvatar = profile?.avatar_choice || 'gold';
+  updateAvatarSelection();
+  setProfileStatus('');
+  showModal(profileModalEl);
+}
+
+function updateAvatarSelection() {
+  avatarPickerEl?.querySelectorAll('.avatar-option').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.avatar === selectedAvatar);
+  });
+}
+
+async function ensureAuthFlow() {
+  const localProfile = loadProfile();
+  if (localProfile && isProfileComplete(localProfile)) {
+    profile = localProfile;
+    showStartScreen();
+    return;
+  }
+
+  showAuthModal();
+}
+
 function showStartScreen() {
   stopTurnTimer();
   locked = true;
   selected = null;
   clearHint();
   closeAllModals();
+  if (!isProfileComplete(profile || loadProfile())) {
+    showAuthModal();
+    return;
+  }
   startScreenEl?.classList.remove('hidden');
   updateBestScoreUi();
 }
@@ -285,6 +413,8 @@ function hideModal(el) {
 function closeAllModals() {
   hideModal(gameOverModalEl);
   hideModal(settingsModalEl);
+  hideModal(authModalEl);
+  hideModal(profileModalEl);
 }
 
 function clearHint() {
@@ -1074,6 +1204,91 @@ function closeSettings() {
   hideModal(settingsModalEl);
 }
 
+function avatarChoiceToUrl(avatarChoice) {
+  const map = {
+    gold: './assets/gold.png',
+    hookah: './assets/hookah1.png',
+    steam: './assets/steam.png',
+    cole: './assets/cole.png',
+  };
+  return map[avatarChoice] || map.gold;
+}
+
+async function handleTelegramAuth() {
+  if (authBusy) return;
+  authBusy = true;
+  setAuthStatus('Проверяем Telegram...');
+
+  try {
+    const initData = telegramInitData();
+    if (!hasTelegramContext() || !initData) {
+      throw new Error('Откройте игру внутри Telegram Mini App.');
+    }
+
+    const result = await postJson('telegram-auth', { initData });
+    const incomingProfile = result?.profile;
+
+    if (!incomingProfile?.telegram_id) {
+      throw new Error('Сервер не вернул профиль.');
+    }
+
+    saveProfile(incomingProfile);
+
+    if (result?.is_profile_complete) {
+      hideModal(authModalEl);
+      showStartScreen();
+      setAuthStatus('');
+    } else {
+      openProfileModal(incomingProfile);
+    }
+  } catch (error) {
+    setAuthStatus(error.message || 'Ошибка авторизации.');
+  } finally {
+    authBusy = false;
+  }
+}
+
+async function handleProfileSave() {
+  if (authBusy) return;
+  const displayName = profileNameEl.value.trim();
+  if (!displayName) {
+    setProfileStatus('Введите имя.');
+    return;
+  }
+
+  authBusy = true;
+  setProfileStatus('Сохраняем профиль...');
+
+  try {
+    const initData = telegramInitData();
+    if (!initData) {
+      throw new Error('Нет данных Telegram для подтверждения.');
+    }
+
+    const payload = {
+      initData,
+      displayName,
+      avatarChoice: selectedAvatar,
+      avatarUrl: avatarChoiceToUrl(selectedAvatar),
+    };
+    const result = await postJson('profile-save', payload);
+    const savedProfile = result?.profile;
+
+    if (!savedProfile?.telegram_id) {
+      throw new Error('Сервер не вернул профиль после сохранения.');
+    }
+
+    saveProfile(savedProfile);
+    hideModal(profileModalEl);
+    setProfileStatus('');
+    showStartScreen();
+  } catch (error) {
+    setProfileStatus(error.message || 'Не удалось сохранить профиль.');
+  } finally {
+    authBusy = false;
+  }
+}
+
 async function activateSpecialMove(a, b) {
   locked = true;
   selected = null;
@@ -1207,13 +1422,22 @@ soundToggleBtn.addEventListener('click', () => {
 });
 devChannelBtn.addEventListener('click', openDevChannel);
 settingsCloseBtn.addEventListener('click', closeSettings);
+authLoginBtn.addEventListener('click', handleTelegramAuth);
+profileSaveBtn.addEventListener('click', handleProfileSave);
+avatarPickerEl?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.avatar-option');
+  if (!btn) return;
+  selectedAvatar = btn.dataset.avatar;
+  updateAvatarSelection();
+});
 window.addEventListener('resize', syncEffectsLayer);
 
 bestScore = loadBestScore();
+profile = loadProfile();
 updateBestScoreUi();
 updateSoundToggleLabel();
 setupTelegramWebApp();
 setupTouchGuards();
 createBoard();
 drawBoard();
-showStartScreen();
+ensureAuthFlow();
