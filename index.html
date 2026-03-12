@@ -52,12 +52,21 @@
             <span class="start-record-label">Мой рекорд</span>
             <span id="best-score" class="start-record-value">0</span>
           </div>
+          <button id="gift-entry" class="gift-entry panel" type="button" aria-label="Подарки">
+            <span class="gift-icon" aria-hidden="true">🎁</span>
+            <span class="gift-label">Подарки</span>
+            <span id="gift-soon-badge" class="gift-soon-badge">Скоро</span>
+          </button>
           <button id="profile-entry" class="profile-entry panel" type="button" aria-label="Профиль">
             <span class="profile-entry-avatar-wrap">
               <img id="profile-entry-avatar" class="profile-entry-avatar" src="./assets/gold.png" alt="Аватар профиля" />
             </span>
             <span id="profile-entry-name" class="profile-entry-name">Игрок</span>
           </button>
+        </div>
+
+        <div class="menu-hero" aria-hidden="true">
+          <img src="./assets/ingamelogo.svg" alt="Все Свои 3 в ряд" />
         </div>
 
         <div class="start-actions">
@@ -118,7 +127,8 @@
     </div>
 
     <div id="profile-modal" class="modal hidden" aria-hidden="true">
-      <div class="modal-card">
+      <div class="modal-card profile-card">
+        <button id="profile-close" class="profile-close" type="button" aria-label="Закрыть">×</button>
         <h2>Профиль</h2>
         <p>Заполните профиль для таблицы лидеров.</p>
         <div class="profile-form">
