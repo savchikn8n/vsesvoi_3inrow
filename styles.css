@@ -683,6 +683,8 @@ h1 {
   box-shadow: none;
   padding: 18px;
   border-radius: 30px;
+  max-height: min(86vh, 760px);
+  overflow-y: auto;
 }
 
 .modal-card h2 {
@@ -723,6 +725,82 @@ h1 {
   color: #ffffff;
 }
 
+.auth-status {
+  min-height: 20px;
+  margin: 8px 0 0;
+  color: #f3b315;
+  font-size: 0.92rem;
+}
+
+.profile-label {
+  display: block;
+  color: #f3b315;
+  font-size: 0.9rem;
+  margin: 6px 0 6px;
+}
+
+.profile-form {
+  width: 100%;
+}
+
+.profile-input {
+  width: 100%;
+  border: 2px solid #f3b315;
+  border-radius: 16px;
+  background: #000000;
+  color: #ffffff;
+  padding: 10px 12px;
+  font-size: 0.96rem;
+  outline: none;
+}
+
+.profile-input:focus {
+  box-shadow: 0 0 0 2px #f3b31544;
+}
+
+.avatar-picker {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.avatar-option {
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 1 / 1;
+  min-height: 64px;
+  border: 2px solid #f3b31555;
+  border-radius: 16px;
+  background: #000000;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.avatar-option img {
+  width: min(42px, 70%);
+  height: auto;
+  max-width: 42px;
+  max-height: 42px;
+  object-fit: contain;
+  display: block;
+}
+
+#profile-modal .avatar-option img {
+  width: 42px !important;
+  height: 42px !important;
+  max-width: 42px !important;
+  max-height: 42px !important;
+}
+
+.avatar-option.active {
+  border-color: #f3b315;
+  box-shadow: 0 0 0 2px #f3b31533;
+}
+
 .ghost-tile {
   position: absolute;
   width: var(--cell);
@@ -751,5 +829,15 @@ h1 {
 
   .control-row {
     gap: 8px;
+  }
+
+  #profile-modal .modal-card {
+    width: min(94vw, 460px);
+    padding: 14px;
+  }
+
+  #profile-modal .avatar-picker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
 }
