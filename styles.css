@@ -746,7 +746,7 @@ h1 {
 
 .menu-hero {
   position: relative;
-  width: min(100%, 420px);
+  width: min(100%, 210px);
   margin: 0 auto;
   border-radius: 24px;
   overflow: hidden;
@@ -1011,19 +1011,18 @@ h1 {
 
 .avatar-picker {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, auto));
-  justify-content: start;
-  gap: 6px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
   margin-bottom: 8px;
 }
 
 .avatar-option {
-  width: 26px;
+  width: 100%;
   min-width: 0;
   aspect-ratio: 1 / 1;
-  min-height: 26px;
+  min-height: 48px;
   border: 2px solid #f3b31555;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #000000;
   display: grid;
   place-items: center;
@@ -1033,19 +1032,19 @@ h1 {
 }
 
 .avatar-option img {
-  width: 10px;
+  width: min(28px, 75%);
   height: auto;
-  max-width: 10px;
-  max-height: 10px;
+  max-width: 28px;
+  max-height: 28px;
   object-fit: contain;
   display: block;
 }
 
 #profile-modal .avatar-option img {
-  width: 10px !important;
-  height: 10px !important;
-  max-width: 10px !important;
-  max-height: 10px !important;
+  width: min(28px, 75%) !important;
+  height: auto !important;
+  max-width: 28px !important;
+  max-height: 28px !important;
 }
 
 .avatar-option.active {
@@ -1100,7 +1099,7 @@ h1 {
   }
 
   #profile-modal .avatar-picker {
-    grid-template-columns: repeat(4, minmax(0, auto));
-    gap: 6px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
   }
 }
