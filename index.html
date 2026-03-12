@@ -104,9 +104,13 @@
       <div class="modal-card">
         <h2>Профиль</h2>
         <p>Заполните профиль для таблицы лидеров.</p>
-        <label for="profile-name" class="profile-label">Имя</label>
-        <input id="profile-name" class="profile-input" type="text" maxlength="24" placeholder="Введите имя" />
-        <span class="profile-label">Аватар</span>
+        <div class="profile-form">
+          <label for="profile-name" class="profile-label">Имя</label>
+          <input id="profile-name" class="profile-input" type="text" maxlength="24" placeholder="Введите имя" />
+        </div>
+        <div class="profile-form">
+          <span class="profile-label">Аватар</span>
+        </div>
         <div id="avatar-picker" class="avatar-picker">
           <button class="avatar-option" type="button" data-avatar="gold">
             <img src="./assets/gold.png" alt="Аватар gold" />
