@@ -766,6 +766,54 @@ h1 {
   color: #ffffff;
 }
 
+.leaderboard-card {
+  max-height: min(84vh, 760px);
+}
+
+.leaderboard-list {
+  display: grid;
+  gap: 8px;
+  margin: 6px 0 12px;
+  max-height: 52vh;
+  overflow-y: auto;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 30px 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 2px solid #f3b31555;
+  border-radius: 14px;
+  padding: 7px 8px;
+}
+
+.leaderboard-rank {
+  color: #f3b315;
+  font-weight: 700;
+  text-align: center;
+}
+
+.leaderboard-avatar {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.leaderboard-name {
+  color: #ffffff;
+  font-size: 0.92rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-score {
+  color: #f3b315;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
 .auth-status {
   min-height: 20px;
   margin: 8px 0 0;

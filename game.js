@@ -19,6 +19,10 @@ const startLeaderboardBtn = document.getElementById('start-leaderboard');
 const startSettingsBtn = document.getElementById('start-settings');
 const gameOverModalEl = document.getElementById('game-over-modal');
 const settingsModalEl = document.getElementById('settings-modal');
+const leaderboardModalEl = document.getElementById('leaderboard-modal');
+const leaderboardStatusEl = document.getElementById('leaderboard-status');
+const leaderboardListEl = document.getElementById('leaderboard-list');
+const leaderboardCloseBtn = document.getElementById('leaderboard-close');
 const finalScoreEl = document.getElementById('final-score');
 const menuNewGameBtn = document.getElementById('menu-new-game');
 const menuExitMenuBtn = document.getElementById('menu-exit-menu');
@@ -60,6 +64,7 @@ let authBusy = false;
 let profileNameConfirmed = false;
 let confirmedProfileName = '';
 let avatarPicked = false;
+let leaderboardBusy = false;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const PROFILE_KEY = 'gold_match_profile';
@@ -260,6 +265,10 @@ function setProfileStatus(message) {
   if (profileStatusEl) profileStatusEl.textContent = message || '';
 }
 
+function setLeaderboardStatus(message) {
+  if (leaderboardStatusEl) leaderboardStatusEl.textContent = message || '';
+}
+
 function telegramInitData() {
   return window.Telegram?.WebApp?.initData || '';
 }
@@ -385,8 +394,61 @@ function hideStartScreen() {
   startScreenEl?.classList.add('hidden');
 }
 
-function openLeaderboardPlaceholder() {
-  statusEl.textContent = 'Таблица лидеров появится в следующем обновлении.';
+function makeLeaderboardRow(item, index) {
+  const row = document.createElement('div');
+  row.className = 'leaderboard-row';
+
+  const rank = document.createElement('span');
+  rank.className = 'leaderboard-rank';
+  rank.textContent = String(index + 1);
+
+  const avatar = document.createElement('img');
+  avatar.className = 'leaderboard-avatar';
+  avatar.src = avatarChoiceToUrl(item.avatar_choice || avatarChoiceFromUrl(item.avatar_url));
+  avatar.alt = 'avatar';
+
+  const name = document.createElement('span');
+  name.className = 'leaderboard-name';
+  name.textContent = item.display_name || 'Игрок';
+
+  const scoreValue = document.createElement('span');
+  scoreValue.className = 'leaderboard-score';
+  scoreValue.textContent = String(item.best_score ?? 0);
+
+  row.append(rank, avatar, name, scoreValue);
+  return row;
+}
+
+function renderLeaderboard(items = []) {
+  if (!leaderboardListEl) return;
+  leaderboardListEl.innerHTML = '';
+  if (!items.length) {
+    setLeaderboardStatus('Пока нет результатов. Стань первым!');
+    return;
+  }
+  setLeaderboardStatus('');
+  items.forEach((item, idx) => leaderboardListEl.appendChild(makeLeaderboardRow(item, idx)));
+}
+
+async function openLeaderboard() {
+  if (leaderboardBusy) return;
+  leaderboardBusy = true;
+  closeAllModals();
+  showModal(leaderboardModalEl);
+  setLeaderboardStatus('Загрузка...');
+  renderLeaderboard([]);
+  try {
+    const { leaderboard } = await postJson('leaderboard', { limit: 50 });
+    renderLeaderboard(Array.isArray(leaderboard) ? leaderboard : []);
+  } catch (error) {
+    setLeaderboardStatus(error.message || 'Не удалось загрузить таблицу.');
+  } finally {
+    leaderboardBusy = false;
+  }
+}
+
+function closeLeaderboard() {
+  hideModal(leaderboardModalEl);
 }
 
 function startNewGameFromHome() {
@@ -447,6 +509,7 @@ function hideModal(el) {
 function closeAllModals() {
   hideModal(gameOverModalEl);
   hideModal(settingsModalEl);
+  hideModal(leaderboardModalEl);
   hideModal(authModalEl);
   hideModal(profileModalEl);
 }
@@ -1179,6 +1242,29 @@ function handleTurnTimeout() {
   endGameByTimeout();
 }
 
+async function submitBestScoreIfNeeded() {
+  if (!profile?.telegram_id) return;
+  const localBest = Math.max(Number(profile.best_score || 0), score);
+  if (localBest <= Number(profile.best_score || 0)) return;
+
+  try {
+    const initData = telegramInitData();
+    if (!initData) return;
+
+    const result = await postJson('score-submit', {
+      initData,
+      bestScore: localBest,
+    });
+    if (result?.profile) {
+      saveProfile(result.profile);
+    } else {
+      saveProfile({ ...profile, best_score: localBest });
+    }
+  } catch (_) {
+    // score sync is non-blocking for gameplay
+  }
+}
+
 function startTurnTimer() {
   stopTurnTimer();
   resetTurnTimer();
@@ -1216,9 +1302,11 @@ function endGameByTimeout() {
   finalScoreEl.textContent = `Ваш счёт: ${score}`;
   drawBoard();
   showModal(gameOverModalEl);
+  submitBestScoreIfNeeded();
 }
 
 function exitToMenu() {
+  submitBestScoreIfNeeded();
   showStartScreen();
 }
 
@@ -1495,7 +1583,7 @@ menuNewGameBtn.addEventListener('click', resetGame);
 menuExitMenuBtn.addEventListener('click', exitToMenu);
 menuSettingsBtn.addEventListener('click', openSettingsFromMenu);
 startNewGameBtn.addEventListener('click', startNewGameFromHome);
-startLeaderboardBtn.addEventListener('click', openLeaderboardPlaceholder);
+startLeaderboardBtn.addEventListener('click', openLeaderboard);
 startSettingsBtn.addEventListener('click', openSettingsFromMenu);
 soundToggleBtn.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
@@ -1503,6 +1591,7 @@ soundToggleBtn.addEventListener('click', () => {
 });
 devChannelBtn.addEventListener('click', openDevChannel);
 settingsCloseBtn.addEventListener('click', closeSettings);
+leaderboardCloseBtn?.addEventListener('click', closeLeaderboard);
 authLoginBtn.addEventListener('click', handleTelegramAuth);
 profileSaveBtn.addEventListener('click', handleProfileSave);
 profileEntryBtn?.addEventListener('click', openProfileEditor);
