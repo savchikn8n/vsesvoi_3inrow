@@ -1,5 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Content-Type': 'application/json',
+};
+
 function toHex(buffer: ArrayBuffer) {
   return [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
@@ -52,10 +59,14 @@ async function verifyTelegramInitData(initData: string, botToken: string) {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders,
     });
   }
 
@@ -75,14 +86,14 @@ Deno.serve(async (req) => {
     if (!initData || typeof initData !== 'string') {
       return new Response(JSON.stringify({ error: 'initData is required' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
+        headers: corsHeaders,
       });
     }
 
     if (!displayName || typeof displayName !== 'string' || displayName.trim().length < 2) {
       return new Response(JSON.stringify({ error: 'displayName must be at least 2 characters' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
+        headers: corsHeaders,
       });
     }
 
@@ -109,12 +120,12 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ profile: data }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders,
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message || 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders,
     });
   }
 });
