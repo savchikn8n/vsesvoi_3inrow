@@ -209,9 +209,9 @@ function getAmbientZones(state) {
   return zones;
 }
 
-function getAmbientLanes(zone, size) {
-  const laneGap = 10;
-  const laneWidth = Math.max(72, size * 0.82);
+function getAmbientLanes(zone) {
+  const laneGap = 18;
+  const laneWidth = 156;
   const usableWidth = zone.right - zone.left;
   const laneCount = Math.max(1, Math.floor(usableWidth / laneWidth));
   const lanes = [];
@@ -219,12 +219,9 @@ function getAmbientLanes(zone, size) {
   for (let i = 0; i < laneCount; i++) {
     const laneLeft = zone.left + i * laneWidth;
     const laneCenter = laneLeft + laneWidth / 2;
-    const jitter = (Math.random() * 10 - 5) * 0.8;
-    const left = laneCenter - size / 2 + jitter;
-    if (left < zone.left || left + size > zone.right) continue;
     lanes.push({
       id: `${Math.round(zone.top)}-${i}`,
-      left,
+      center: laneCenter,
       laneWidth,
     });
   }
@@ -263,13 +260,14 @@ function createAmbientItem(state) {
     swayDuration = 5200 + Math.random() * 2200;
   }
 
-  const lanes = getAmbientLanes(zone, size);
+  const lanes = getAmbientLanes(zone);
   const now = performance.now();
   const freeLanes = lanes.filter((lane) => (state.laneReadyAt.get(lane.id) || 0) <= now);
   if (!freeLanes.length) return null;
 
   const lane = freeLanes[Math.floor(Math.random() * freeLanes.length)];
-  const left = lane.left;
+  const left = lane.center - size / 2;
+  if (left < zone.left || left + size > zone.right) return null;
   const startTop = zone.bottom + size * (0.15 + Math.random() * 0.5);
   const travel = zoneHeight + size * (1.5 + Math.random() * 0.6);
   const tilt = (8 + Math.random() * 14) * (Math.random() > 0.5 ? 1 : -1);
@@ -300,7 +298,7 @@ function createAmbientItem(state) {
   layer.appendChild(item);
 
   const pixelsPerMs = travel / duration;
-  const safeGapPx = size * (1.45 + Math.random() * 0.35);
+  const safeGapPx = size * (1.95 + Math.random() * 0.25);
   const laneCooldownMs = safeGapPx / Math.max(0.01, pixelsPerMs);
   state.laneReadyAt.set(lane.id, now + laneCooldownMs);
 
