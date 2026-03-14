@@ -678,11 +678,22 @@ function openProfileEditor() {
 function closeProfileEditor() {
   hideModal(profileModalEl);
   setProfileStatus('');
-  if (isProfileComplete(profile || loadProfile())) {
-    showStartScreen();
-  } else {
+  const hasProfile = isProfileComplete(profile || loadProfile());
+  const startVisible = Boolean(startScreenEl && !startScreenEl.classList.contains('hidden'));
+
+  if (!hasProfile) {
     showAuthModal();
+    return;
   }
+
+  if (startVisible) {
+    updateBestScoreUi();
+    updateProfileEntry();
+    syncAmbientGameMask();
+    return;
+  }
+
+  showStartScreen();
 }
 
 function showGiftSoonFlag() {
