@@ -1117,27 +1117,7 @@ h1 {
 }
 
 .profile-name-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
-  gap: 8px;
-  align-items: center;
-}
-
-.profile-name-confirm {
-  width: 42px;
-  height: 42px;
-  border: 2px solid #3cbf57;
-  background: #0f2d14;
-  color: #56e272;
-  border-radius: var(--ui-radius);
-  font-weight: 700;
-  font-size: 1rem;
-  cursor: pointer;
-}
-
-.profile-name-confirm.active {
-  background: #3cbf57;
-  color: #06150a;
+  display: block;
 }
 
 .avatar-picker {
