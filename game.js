@@ -91,14 +91,14 @@ const ambientState = {
     layer: ambientLayerEl,
     items: new Set(),
     timerId: null,
-    targetCount: 8,
+    targetCount: 12,
     mode: 'gameplay',
   },
   start: {
     layer: startAmbientLayerEl,
     items: new Set(),
     timerId: null,
-    targetCount: 10,
+    targetCount: 14,
     mode: 'start',
   },
 };
@@ -290,9 +290,12 @@ function scheduleAmbientSpawn(state) {
 
   const tick = () => {
     if (state.items.size < state.targetCount) {
-      createAmbientItem(state);
+      const burstCount = state.items.size <= state.targetCount - 3 ? 2 : 1;
+      for (let i = 0; i < burstCount; i++) {
+        createAmbientItem(state);
+      }
     }
-    state.timerId = window.setTimeout(tick, 700 + Math.random() * 700);
+    state.timerId = window.setTimeout(tick, 420 + Math.random() * 420);
   };
 
   state.timerId = window.setTimeout(tick, 200);
