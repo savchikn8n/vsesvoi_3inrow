@@ -36,8 +36,6 @@ async function verifyTelegramInitData(initData: string, botToken: string) {
     .map(([key, value]) => `${key}=${value}`)
     .join('\n');
 
-  // Telegram WebApp validation:
-  // secret = HMAC_SHA256("WebAppData", bot_token)
   const secretRaw = await hmacSha256Raw(new TextEncoder().encode('WebAppData'), botToken);
   const calculated = await hmacSha256Hex(secretRaw, dataCheckString);
 
@@ -77,21 +75,14 @@ Deno.serve(async (req) => {
     if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error('Missing required environment variables');
     }
+
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false },
     });
 
-    const { initData, displayName, avatarChoice, avatarUrl } = await req.json();
-
+    const { initData } = await req.json();
     if (!initData || typeof initData !== 'string') {
       return new Response(JSON.stringify({ error: 'initData is required' }), {
-        status: 400,
-        headers: corsHeaders,
-      });
-    }
-
-    if (!displayName || typeof displayName !== 'string' || displayName.trim().length < 2) {
-      return new Response(JSON.stringify({ error: 'displayName must be at least 2 characters' }), {
         status: 400,
         headers: corsHeaders,
       });
@@ -105,9 +96,6 @@ Deno.serve(async (req) => {
         {
           telegram_id: user.id,
           telegram_username: user.username || null,
-          display_name: displayName.trim().slice(0, 24),
-          avatar_choice: avatarChoice || 'gold',
-          avatar_url: avatarUrl || null,
           last_seen_at: new Date().toISOString(),
         },
         { onConflict: 'telegram_id' },
@@ -130,3 +118,4 @@ Deno.serve(async (req) => {
     });
   }
 });
+
