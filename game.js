@@ -1424,6 +1424,21 @@ function getBombRocketComboArea(center) {
   return targets;
 }
 
+function getRocketRocketComboArea(center) {
+  const [r, c] = idxToPos(center);
+  const targets = new Set();
+
+  for (let x = 0; x < SIZE; x++) {
+    targets.add(posToIdx(r, x));
+  }
+
+  for (let y = 0; y < SIZE; y++) {
+    targets.add(posToIdx(y, c));
+  }
+
+  return targets;
+}
+
 function applyGravity() {
   for (let c = 0; c < SIZE; c++) {
     let write = SIZE - 1;
@@ -1461,6 +1476,10 @@ function applyRemoval(
       if (board[idx]?.special) collectSpecialBlast(idx, blastSet);
     });
   }
+
+  specialCreates.forEach((_, idx) => {
+    blastSet.delete(idx);
+  });
 
   const triggeredSpecials = [];
   blastSet.forEach((idx) => {
@@ -1839,9 +1858,15 @@ async function activateSpecialMove(a, b) {
 
   const hasBomb = activations.some((x) => x.special === 'bomb');
   const hasRocket = activations.some((x) => x.special === 'rocket-h' || x.special === 'rocket-v');
+  const rocketCount = activations.filter(
+    (x) => x.special === 'rocket-h' || x.special === 'rocket-v',
+  ).length;
 
   let blast = new Set();
-  if (a !== b && activations.length === 2 && hasBomb && hasRocket) {
+  if (a !== b && activations.length === 2 && rocketCount === 2) {
+    const center = b;
+    blast = getRocketRocketComboArea(center);
+  } else if (a !== b && activations.length === 2 && hasBomb && hasRocket) {
     const center = b;
     blast = getBombRocketComboArea(center);
   } else {
