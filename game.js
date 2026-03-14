@@ -94,6 +94,7 @@ const ambientState = {
     targetCount: 999,
     mode: 'gameplay',
     lastIconKey: null,
+    laneReadyAt: new Map(),
   },
   start: {
     layer: startAmbientLayerEl,
@@ -102,6 +103,7 @@ const ambientState = {
     targetCount: 999,
     mode: 'start',
     lastIconKey: null,
+    laneReadyAt: new Map(),
   },
 };
 
@@ -262,8 +264,8 @@ function createAmbientItem(state) {
   }
 
   const lanes = getAmbientLanes(zone, size);
-  const busyLaneIds = new Set(Array.from(state.items, (item) => item.laneId));
-  const freeLanes = lanes.filter((lane) => !busyLaneIds.has(lane.id));
+  const now = performance.now();
+  const freeLanes = lanes.filter((lane) => (state.laneReadyAt.get(lane.id) || 0) <= now);
   if (!freeLanes.length) return null;
 
   const lane = freeLanes[Math.floor(Math.random() * freeLanes.length)];
@@ -297,6 +299,11 @@ function createAmbientItem(state) {
   item.appendChild(inner);
   layer.appendChild(item);
 
+  const pixelsPerMs = travel / duration;
+  const safeGapPx = size * (1.45 + Math.random() * 0.35);
+  const laneCooldownMs = safeGapPx / Math.max(0.01, pixelsPerMs);
+  state.laneReadyAt.set(lane.id, now + laneCooldownMs);
+
   const record = { node: item, key: icon.key, laneId: lane.id };
   state.items.add(record);
 
@@ -318,7 +325,7 @@ function scheduleAmbientSpawn(state) {
 
   const fillAvailableLanes = () => {
     let spawned = 0;
-    while (spawned < 4) {
+    while (spawned < 8) {
       const item = createAmbientItem(state);
       if (!item) break;
       spawned++;
@@ -329,11 +336,11 @@ function scheduleAmbientSpawn(state) {
     if (state.items.size < state.targetCount) {
       fillAvailableLanes();
     }
-    state.timerId = window.setTimeout(tick, 45 + Math.random() * 35);
+    state.timerId = window.setTimeout(tick, 20 + Math.random() * 15);
   };
 
   fillAvailableLanes();
-  state.timerId = window.setTimeout(tick, 200);
+  state.timerId = window.setTimeout(tick, 40);
 }
 
 function setupAmbientLayers() {
@@ -347,6 +354,7 @@ function refreshAmbientLayers() {
   Object.values(ambientState).forEach((state) => {
     state.items.forEach((item) => item.node.remove());
     state.items.clear();
+    state.laneReadyAt.clear();
     scheduleAmbientSpawn(state);
   });
 }
