@@ -79,11 +79,11 @@ const LEADERBOARD_CACHE_TTL_MS = 60 * 1000;
 const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUPABASE_FUNCTIONS_BASE = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '';
 const AMBIENT_ICON_SOURCES = [
-  { key: 'dualsence', src: './assets/dualsence.svg' },
-  { key: 'satyr', src: './assets/satyr-logo.svg' },
-  { key: 'hookah-1', src: './assets/hookah_1.svg' },
-  { key: 'teapot', src: './assets/teapot.svg' },
-  { key: 'hookah-2', src: './assets/hookah_2.svg' },
+  { key: 'dualsence', src: './assets/dualsence.png' },
+  { key: 'satyr', src: './assets/satyr.png' },
+  { key: 'hookah-1', src: './assets/hookah_1.png' },
+  { key: 'teapot', src: './assets/teapot.png' },
+  { key: 'hookah-2', src: './assets/hookah_2.png' },
 ];
 const AMBIENT_MAX_DUPLICATES = 3;
 
