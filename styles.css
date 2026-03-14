@@ -101,6 +101,18 @@ body::after {
   opacity: 0;
 }
 
+.ambient-game-mask {
+  position: absolute;
+  background: #000000;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: var(--ui-radius);
+}
+
+.ambient-game-mask.hidden {
+  display: none;
+}
+
 .ambient-item {
   position: absolute;
   left: 0;

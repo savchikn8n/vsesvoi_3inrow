@@ -7,6 +7,7 @@ const boardEl = document.getElementById('board');
 const boardWrapEl = document.querySelector('.board-wrap');
 const effectsLayerEl = document.getElementById('effects-layer');
 const ambientLayerEl = document.getElementById('ambient-layer');
+const ambientGameMaskEl = document.getElementById('ambient-game-mask');
 const startAmbientLayerEl = document.getElementById('start-ambient-layer');
 const scoreEl = document.getElementById('score');
 const timerEl = document.getElementById('timer');
@@ -180,38 +181,19 @@ function getAmbientZones(state) {
     ];
   }
 
-  const hudRect = document.querySelector('.hud')?.getBoundingClientRect();
-  const controlsRect = document.querySelector('.controls')?.getBoundingClientRect();
-  if (!hudRect || !controlsRect) return [];
-
-  const topZoneBottom = Math.max(0, hudRect.top - layerRect.top - 10);
-  const bottomZoneTop = Math.min(height, controlsRect.bottom - layerRect.top + 10);
-  const zones = [];
-
-  if (topZoneBottom >= 80) {
-    zones.push({
+  return [
+    {
       left: 0,
       right: width,
       top: 0,
-      bottom: topZoneBottom,
-    });
-  }
-
-  if (height - bottomZoneTop >= 80) {
-    zones.push({
-      left: 0,
-      right: width,
-      top: bottomZoneTop,
       bottom: height,
-    });
-  }
-
-  return zones;
+    },
+  ];
 }
 
-function getAmbientLanes(zone) {
-  const laneGap = 18;
-  const laneWidth = 156;
+function getAmbientLanes(zone, size) {
+  const laneGap = 10;
+  const laneWidth = Math.max(72, size * 0.82);
   const usableWidth = zone.right - zone.left;
   const laneCount = Math.max(1, Math.floor(usableWidth / laneWidth));
   const lanes = [];
@@ -219,9 +201,12 @@ function getAmbientLanes(zone) {
   for (let i = 0; i < laneCount; i++) {
     const laneLeft = zone.left + i * laneWidth;
     const laneCenter = laneLeft + laneWidth / 2;
+    const jitter = (Math.random() * 10 - 5) * 0.8;
+    const left = laneCenter - size / 2 + jitter;
+    if (left < zone.left || left + size > zone.right) continue;
     lanes.push({
       id: `${Math.round(zone.top)}-${i}`,
-      center: laneCenter,
+      left,
       laneWidth,
     });
   }
@@ -260,14 +245,13 @@ function createAmbientItem(state) {
     swayDuration = 5200 + Math.random() * 2200;
   }
 
-  const lanes = getAmbientLanes(zone);
+  const lanes = getAmbientLanes(zone, size);
   const now = performance.now();
   const freeLanes = lanes.filter((lane) => (state.laneReadyAt.get(lane.id) || 0) <= now);
   if (!freeLanes.length) return null;
 
   const lane = freeLanes[Math.floor(Math.random() * freeLanes.length)];
-  const left = lane.center - size / 2;
-  if (left < zone.left || left + size > zone.right) return null;
+  const left = lane.left;
   const startTop = zone.bottom + size * (0.15 + Math.random() * 0.5);
   const travel = zoneHeight + size * (1.5 + Math.random() * 0.6);
   const tilt = (8 + Math.random() * 14) * (Math.random() > 0.5 ? 1 : -1);
@@ -298,7 +282,7 @@ function createAmbientItem(state) {
   layer.appendChild(item);
 
   const pixelsPerMs = travel / duration;
-  const safeGapPx = size * (1.95 + Math.random() * 0.25);
+  const safeGapPx = size * (1.45 + Math.random() * 0.35);
   const laneCooldownMs = safeGapPx / Math.max(0.01, pixelsPerMs);
   state.laneReadyAt.set(lane.id, now + laneCooldownMs);
 
@@ -346,6 +330,7 @@ function setupAmbientLayers() {
     if (!state.layer) return;
     scheduleAmbientSpawn(state);
   });
+  syncAmbientGameMask();
 }
 
 function refreshAmbientLayers() {
@@ -355,6 +340,31 @@ function refreshAmbientLayers() {
     state.laneReadyAt.clear();
     scheduleAmbientSpawn(state);
   });
+  syncAmbientGameMask();
+}
+
+function syncAmbientGameMask() {
+  if (!ambientGameMaskEl) return;
+  if (!startScreenEl?.classList.contains('hidden')) {
+    ambientGameMaskEl.classList.add('hidden');
+    return;
+  }
+
+  const frameRect = document.querySelector('.frame')?.getBoundingClientRect();
+  const hudRect = document.querySelector('.hud')?.getBoundingClientRect();
+  const controlsRect = document.querySelector('.controls')?.getBoundingClientRect();
+  if (!frameRect || !hudRect || !controlsRect) {
+    ambientGameMaskEl.classList.add('hidden');
+    return;
+  }
+
+  const top = Math.max(0, hudRect.top - frameRect.top - 8);
+  const bottom = Math.min(frameRect.height, controlsRect.bottom - frameRect.top + 8);
+  ambientGameMaskEl.style.left = '0px';
+  ambientGameMaskEl.style.right = '0px';
+  ambientGameMaskEl.style.top = `${top}px`;
+  ambientGameMaskEl.style.height = `${Math.max(0, bottom - top)}px`;
+  ambientGameMaskEl.classList.remove('hidden');
 }
 
 function randColor() {
@@ -710,11 +720,13 @@ function showStartScreen() {
   updateBestScoreUi();
   updateProfileEntry();
   refreshAmbientLayers();
+  syncAmbientGameMask();
 }
 
 function hideStartScreen() {
   startScreenEl?.classList.add('hidden');
   refreshAmbientLayers();
+  syncAmbientGameMask();
 }
 
 function makeLeaderboardRow(item, index) {
@@ -1919,6 +1931,7 @@ function resetGame() {
   drawBoard();
   startTurnTimer();
   refreshAmbientLayers();
+  syncAmbientGameMask();
 }
 
 restartBtn.addEventListener('click', resetGame);
@@ -1954,6 +1967,7 @@ avatarPickerEl?.addEventListener('click', (e) => {
 window.addEventListener('resize', () => {
   syncEffectsLayer();
   refreshAmbientLayers();
+  syncAmbientGameMask();
 });
 
 bestScore = loadBestScore();
