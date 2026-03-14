@@ -743,6 +743,11 @@ function hideStartScreen() {
 function makeLeaderboardRow(item, index) {
   const row = document.createElement('div');
   row.className = 'leaderboard-row';
+  row.dataset.telegramId = String(item.telegram_id || '');
+
+  if (profile?.telegram_id && String(item.telegram_id) === String(profile.telegram_id)) {
+    row.classList.add('is-current-user');
+  }
 
   const rank = document.createElement('span');
   rank.className = 'leaderboard-rank';
@@ -775,6 +780,11 @@ function renderLeaderboard(items = [], showEmptyMessage = true) {
   }
   setLeaderboardStatus('');
   items.forEach((item, idx) => leaderboardListEl.appendChild(makeLeaderboardRow(item, idx)));
+
+  const currentUserRow = leaderboardListEl.querySelector('.leaderboard-row.is-current-user');
+  if (currentUserRow) {
+    currentUserRow.scrollIntoView({ block: 'nearest' });
+  }
 }
 
 async function openLeaderboard() {
