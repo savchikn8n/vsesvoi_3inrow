@@ -91,15 +91,17 @@ const ambientState = {
     layer: ambientLayerEl,
     items: new Set(),
     timerId: null,
-    targetCount: 22,
+    targetCount: 999,
     mode: 'gameplay',
+    lastIconKey: null,
   },
   start: {
     layer: startAmbientLayerEl,
     items: new Set(),
     timerId: null,
-    targetCount: 28,
+    targetCount: 999,
     mode: 'start',
+    lastIconKey: null,
   },
 };
 
@@ -147,8 +149,13 @@ function setupTouchGuards() {
   boardWrapEl.addEventListener('touchcancel', onTouchEnd, { passive: false });
 }
 
-function pickAmbientIcon() {
-  return AMBIENT_ICON_SOURCES[Math.floor(Math.random() * AMBIENT_ICON_SOURCES.length)] || null;
+function pickAmbientIcon(state) {
+  const pool = AMBIENT_ICON_SOURCES.filter((icon) => icon.key !== state.lastIconKey);
+  const source = (pool.length ? pool : AMBIENT_ICON_SOURCES)[
+    Math.floor(Math.random() * (pool.length ? pool.length : AMBIENT_ICON_SOURCES.length))
+  ];
+  if (source) state.lastIconKey = source.key;
+  return source || null;
 }
 
 function getAmbientZones(state) {
@@ -230,7 +237,7 @@ function createAmbientItem(state) {
   const zones = getAmbientZones(state);
   if (!zones.length) return null;
 
-  const icon = pickAmbientIcon();
+  const icon = pickAmbientIcon(state);
   if (!icon) return null;
 
   const zone = zones[Math.floor(Math.random() * zones.length)];
@@ -309,16 +316,23 @@ function scheduleAmbientSpawn(state) {
   if (!state.layer) return;
   if (state.timerId) clearTimeout(state.timerId);
 
-  const tick = () => {
-    if (state.items.size < state.targetCount) {
-      const burstCount = state.items.size <= state.targetCount - 4 ? 3 : 1;
-      for (let i = 0; i < burstCount; i++) {
-        createAmbientItem(state);
-      }
+  const fillAvailableLanes = () => {
+    let spawned = 0;
+    while (spawned < 4) {
+      const item = createAmbientItem(state);
+      if (!item) break;
+      spawned++;
     }
-    state.timerId = window.setTimeout(tick, 90 + Math.random() * 80);
   };
 
+  const tick = () => {
+    if (state.items.size < state.targetCount) {
+      fillAvailableLanes();
+    }
+    state.timerId = window.setTimeout(tick, 45 + Math.random() * 35);
+  };
+
+  fillAvailableLanes();
   state.timerId = window.setTimeout(tick, 200);
 }
 
