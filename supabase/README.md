@@ -2,19 +2,20 @@
 
 1. Run SQL from `supabase/sql/001_init_profiles.sql` in Supabase SQL editor.
 2. Run SQL from `supabase/sql/002_inactive_notifications.sql` in Supabase SQL editor.
-3. Set Edge Functions secrets:
+3. Run SQL from `supabase/sql/003_telegram_names.sql` in Supabase SQL editor.
+4. Set Edge Functions secrets:
    - `TELEGRAM_BOT_TOKEN`
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `REMINDER_CRON_SECRET`
-4. Deploy functions:
+5. Deploy functions:
    - `supabase functions deploy telegram-auth`
    - `supabase functions deploy profile-save`
    - `supabase functions deploy leaderboard`
    - `supabase functions deploy score-submit`
    - `supabase functions deploy touch-session`
    - `supabase functions deploy send-inactive-reminders`
-5. In frontend, set global variable before loading `game.js`:
+6. In frontend, set global variable before loading `game.js`:
 
 ```html
 <script>
@@ -22,14 +23,14 @@
 </script>
 ```
 
-6. Endpoints used by frontend:
+7. Endpoints used by frontend:
    - `POST /functions/v1/telegram-auth`
    - `POST /functions/v1/profile-save`
    - `POST /functions/v1/leaderboard`
    - `POST /functions/v1/score-submit`
    - `POST /functions/v1/touch-session`
 
-7. To send reminders after 24 hours of inactivity:
+8. To send reminders after 24 hours of inactivity:
    - schedule `POST /functions/v1/send-inactive-reminders` once per hour
    - pass header `x-cron-secret: YOUR_REMINDER_CRON_SECRET`
    - users are selected when:
@@ -37,7 +38,7 @@
      - `last_seen_at <= now() - 24 hours`
      - `last_inactive_reminder_at is null` or older than the user's latest `last_seen_at`
 
-8. Example scheduling in Supabase Cron (official approach: `pg_cron + pg_net + Vault`):
+9. Example scheduling in Supabase Cron (official approach: `pg_cron + pg_net + Vault`):
 
 ```sql
 select vault.create_secret('https://tnngitplssufqeqpxuib.supabase.co', 'project_url')

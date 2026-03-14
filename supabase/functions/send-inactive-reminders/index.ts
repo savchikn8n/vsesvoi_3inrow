@@ -34,6 +34,13 @@ function pickTemplate(displayName: string, bestScore: number) {
   return factory({ name: displayName, score: bestScore });
 }
 
+function reminderName(item: {
+  telegram_first_name?: string | null;
+  display_name?: string | null;
+}) {
+  return item.telegram_first_name?.trim() || item.display_name?.trim() || 'Игрок';
+}
+
 async function sendTelegramMessage(botToken: string, chatId: number, text: string, cta: string) {
   const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: 'POST',
@@ -101,7 +108,7 @@ Deno.serve(async (req) => {
     const { data, error } = await admin
       .from('profiles')
       .select(
-        'telegram_id, display_name, best_score, last_seen_at, last_inactive_reminder_at, notifications_enabled',
+        'telegram_id, telegram_first_name, display_name, best_score, last_seen_at, last_inactive_reminder_at, notifications_enabled',
       )
       .eq('notifications_enabled', true)
       .lte('last_seen_at', inactiveBeforeIso)
@@ -121,7 +128,7 @@ Deno.serve(async (req) => {
     const results = [];
     for (const item of candidates) {
       const message = pickTemplate(
-        item.display_name || 'Игрок',
+        reminderName(item),
         Number(item.best_score || 0),
       );
 
