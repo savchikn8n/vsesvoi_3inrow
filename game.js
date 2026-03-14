@@ -69,6 +69,7 @@ let authBusy = false;
 let avatarPicked = false;
 let leaderboardBusy = false;
 let giftBadgeTimer = null;
+let touchSessionSent = false;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const PROFILE_KEY = 'gold_match_profile';
@@ -539,6 +540,22 @@ function hasTelegramContext() {
   return Boolean(window.Telegram?.WebApp);
 }
 
+async function touchSession() {
+  if (touchSessionSent) return;
+  const initData = telegramInitData();
+  if (!hasTelegramContext() || !initData) return;
+
+  touchSessionSent = true;
+  try {
+    const result = await postJson('touch-session', { initData });
+    if (result?.profile?.telegram_id) {
+      saveProfile({ ...(profile || {}), ...result.profile });
+    }
+  } catch (_) {
+    touchSessionSent = false;
+  }
+}
+
 function isProfileComplete(userProfile) {
   return Boolean(
     userProfile?.auth_verified === true &&
@@ -701,6 +718,7 @@ async function ensureAuthFlow() {
   if (localProfile && isProfileComplete(localProfile)) {
     profile = localProfile;
     showStartScreen();
+    void touchSession();
     return;
   }
 
@@ -1729,6 +1747,7 @@ async function handleTelegramAuth() {
     }
 
     saveProfile(incomingProfile);
+    touchSessionSent = true;
 
     if (result?.is_profile_complete) {
       hideModal(authModalEl);

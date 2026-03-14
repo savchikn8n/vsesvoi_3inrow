@@ -108,10 +108,11 @@ Deno.serve(async (req) => {
           display_name: displayName.trim().slice(0, 24),
           avatar_choice: avatarChoice || 'gold',
           avatar_url: avatarUrl || null,
+          last_seen_at: new Date().toISOString(),
         },
         { onConflict: 'telegram_id' },
       )
-      .select('telegram_id, telegram_username, display_name, avatar_choice, avatar_url, best_score')
+      .select('telegram_id, telegram_username, display_name, avatar_choice, avatar_url, best_score, last_seen_at, notifications_enabled')
       .single();
 
     if (error) {

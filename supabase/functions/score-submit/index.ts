@@ -117,10 +117,11 @@ Deno.serve(async (req) => {
           telegram_id: user.id,
           telegram_username: user.username || null,
           best_score: nextBest,
+          last_seen_at: new Date().toISOString(),
         },
         { onConflict: 'telegram_id' },
       )
-      .select('telegram_id, telegram_username, display_name, avatar_choice, avatar_url, best_score')
+      .select('telegram_id, telegram_username, display_name, avatar_choice, avatar_url, best_score, last_seen_at, notifications_enabled')
       .single();
 
     if (error) {
