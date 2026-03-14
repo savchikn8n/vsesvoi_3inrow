@@ -44,7 +44,6 @@ const avatarPickerEl = document.getElementById('avatar-picker');
 const profileEntryBtn = document.getElementById('profile-entry');
 const profileEntryAvatarEl = document.getElementById('profile-entry-avatar');
 const profileEntryNameEl = document.getElementById('profile-entry-name');
-const profileNameConfirmBtn = document.getElementById('profile-name-confirm');
 const profileCloseBtn = document.getElementById('profile-close');
 const giftEntryBtn = document.getElementById('gift-entry');
 const giftSoonBadgeEl = document.getElementById('gift-soon-badge');
@@ -67,8 +66,6 @@ let bestScore = 0;
 let profile = null;
 let selectedAvatar = 'gold';
 let authBusy = false;
-let profileNameConfirmed = false;
-let confirmedProfileName = '';
 let avatarPicked = false;
 let leaderboardBusy = false;
 let giftBadgeTimer = null;
@@ -639,11 +636,8 @@ function openProfileModal(nextProfile = null) {
   }
   profileNameEl.value = profile?.display_name || '';
   selectedAvatar = profile?.avatar_choice || avatarChoiceFromUrl(profile?.avatar_url) || 'gold';
-  confirmedProfileName = (profile?.display_name || '').trim();
-  profileNameConfirmed = confirmedProfileName.length >= 2;
   avatarPicked = Boolean(profile?.avatar_choice || profile?.avatar_url);
   updateAvatarSelection();
-  updateProfileNameConfirmState();
   updateProfileSaveState();
   setProfileStatus('');
   showModal(profileModalEl);
@@ -655,12 +649,8 @@ function updateAvatarSelection() {
   });
 }
 
-function updateProfileNameConfirmState() {
-  profileNameConfirmBtn?.classList.toggle('active', profileNameConfirmed);
-}
-
 function updateProfileSaveState() {
-  const canSave = profileNameConfirmed && avatarPicked && Boolean(selectedAvatar);
+  const canSave = profileNameEl.value.trim().length >= 2 && avatarPicked && Boolean(selectedAvatar);
   if (profileSaveBtn) profileSaveBtn.disabled = !canSave;
 }
 
@@ -1757,12 +1747,8 @@ async function handleTelegramAuth() {
 async function handleProfileSave() {
   if (authBusy) return;
   const displayName = profileNameEl.value.trim();
-  if (!profileNameConfirmed) {
-    setProfileStatus('Подтвердите имя зелёной галочкой.');
-    return;
-  }
-  if (!displayName || displayName !== confirmedProfileName) {
-    setProfileStatus('Имя не подтверждено.');
+  if (displayName.length < 2) {
+    setProfileStatus('Имя должно быть не короче 2 символов.');
     return;
   }
   if (!selectedAvatar) {
@@ -1807,31 +1793,8 @@ async function handleProfileSave() {
   }
 }
 
-function handleProfileNameConfirm() {
-  const displayName = profileNameEl.value.trim();
-  if (displayName.length < 2) {
-    profileNameConfirmed = false;
-    confirmedProfileName = '';
-    updateProfileNameConfirmState();
-    updateProfileSaveState();
-    setProfileStatus('Имя должно быть не короче 2 символов.');
-    return;
-  }
-
-  profileNameConfirmed = true;
-  confirmedProfileName = displayName;
-  updateProfileNameConfirmState();
-  updateProfileSaveState();
-  setProfileStatus('Имя подтверждено.');
-}
-
 function handleProfileNameInput() {
-  const current = profileNameEl.value.trim();
-  if (current !== confirmedProfileName) {
-    profileNameConfirmed = false;
-    updateProfileNameConfirmState();
-    updateProfileSaveState();
-  }
+  updateProfileSaveState();
 }
 
 async function activateSpecialMove(a, b) {
@@ -1974,7 +1937,6 @@ authLoginBtn.addEventListener('click', handleTelegramAuth);
 profileSaveBtn.addEventListener('click', handleProfileSave);
 profileEntryBtn?.addEventListener('click', openProfileEditor);
 profileCloseBtn?.addEventListener('click', closeProfileEditor);
-profileNameConfirmBtn?.addEventListener('click', handleProfileNameConfirm);
 profileNameEl?.addEventListener('input', handleProfileNameInput);
 giftEntryBtn?.addEventListener('click', showGiftSoonFlag);
 avatarPickerEl?.addEventListener('click', (e) => {
