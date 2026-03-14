@@ -6,6 +6,8 @@ const HINT_THRESHOLD_SECONDS = 3;
 const boardEl = document.getElementById('board');
 const boardWrapEl = document.querySelector('.board-wrap');
 const effectsLayerEl = document.getElementById('effects-layer');
+const ambientLayerEl = document.getElementById('ambient-layer');
+const startAmbientLayerEl = document.getElementById('start-ambient-layer');
 const scoreEl = document.getElementById('score');
 const timerEl = document.getElementById('timer');
 const restartBtn = document.getElementById('restart');
@@ -76,6 +78,31 @@ const LEADERBOARD_CACHE_KEY = 'gold_match_leaderboard_cache_v1';
 const LEADERBOARD_CACHE_TTL_MS = 60 * 1000;
 const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUPABASE_FUNCTIONS_BASE = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '';
+const AMBIENT_ICON_SOURCES = [
+  { key: 'dualsence', src: './assets/dualsence.svg' },
+  { key: 'satyr', src: './assets/satyr-logo.svg' },
+  { key: 'hookah-1', src: './assets/hookah_1.svg' },
+  { key: 'teapot', src: './assets/teapot.svg' },
+  { key: 'hookah-2', src: './assets/hookah_2.svg' },
+];
+const AMBIENT_MAX_DUPLICATES = 3;
+
+const ambientState = {
+  gameplay: {
+    layer: ambientLayerEl,
+    items: new Set(),
+    timerId: null,
+    targetCount: 6,
+    mode: 'gameplay',
+  },
+  start: {
+    layer: startAmbientLayerEl,
+    items: new Set(),
+    timerId: null,
+    targetCount: 8,
+    mode: 'start',
+  },
+};
 
 function setupTelegramWebApp() {
   const tg = window.Telegram?.WebApp;
@@ -119,6 +146,162 @@ function setupTouchGuards() {
   boardWrapEl.addEventListener('touchmove', onTouchMove, { passive: false });
   boardWrapEl.addEventListener('touchend', onTouchEnd, { passive: false });
   boardWrapEl.addEventListener('touchcancel', onTouchEnd, { passive: false });
+}
+
+function countAmbientIcons(state, key) {
+  let count = 0;
+  state.items.forEach((item) => {
+    if (item.key === key) count++;
+  });
+  return count;
+}
+
+function pickAmbientIcon(state) {
+  const candidates = AMBIENT_ICON_SOURCES.filter(
+    (icon) => countAmbientIcons(state, icon.key) < AMBIENT_MAX_DUPLICATES,
+  );
+  if (!candidates.length) return null;
+
+  candidates.sort((a, b) => countAmbientIcons(state, a.key) - countAmbientIcons(state, b.key));
+  const minCount = countAmbientIcons(state, candidates[0].key);
+  const leastUsed = candidates.filter((icon) => countAmbientIcons(state, icon.key) === minCount);
+  return leastUsed[Math.floor(Math.random() * leastUsed.length)];
+}
+
+function getAmbientZones(state) {
+  const layer = state.layer;
+  if (!layer) return [];
+
+  const layerRect = layer.getBoundingClientRect();
+  const width = layerRect.width;
+  const height = layerRect.height;
+  if (width < 40 || height < 120) return [];
+
+  if (state.mode === 'start') {
+    return [
+      {
+        left: 0,
+        right: width,
+        top: 0,
+        bottom: height,
+      },
+    ];
+  }
+
+  const hudRect = document.querySelector('.hud')?.getBoundingClientRect();
+  const controlsRect = document.querySelector('.controls')?.getBoundingClientRect();
+  if (!hudRect || !controlsRect) return [];
+
+  const topZoneBottom = Math.max(0, hudRect.top - layerRect.top - 10);
+  const bottomZoneTop = Math.min(height, controlsRect.bottom - layerRect.top + 10);
+  const zones = [];
+
+  if (topZoneBottom >= 80) {
+    zones.push({
+      left: 0,
+      right: width,
+      top: 0,
+      bottom: topZoneBottom,
+    });
+  }
+
+  if (height - bottomZoneTop >= 80) {
+    zones.push({
+      left: 0,
+      right: width,
+      top: bottomZoneTop,
+      bottom: height,
+    });
+  }
+
+  return zones;
+}
+
+function createAmbientItem(state) {
+  const layer = state.layer;
+  if (!layer) return null;
+
+  const zones = getAmbientZones(state);
+  if (!zones.length) return null;
+
+  const icon = pickAmbientIcon(state);
+  if (!icon) return null;
+
+  const zone = zones[Math.floor(Math.random() * zones.length)];
+  const zoneWidth = zone.right - zone.left;
+  const zoneHeight = zone.bottom - zone.top;
+  const size = Math.round(48 + Math.random() * 52);
+  const maxX = Math.max(zone.left, zone.right - size);
+  const left = zone.left + Math.random() * Math.max(1, maxX - zone.left);
+  const startTop = zone.bottom + size * (0.2 + Math.random() * 0.4);
+  const travel = zoneHeight + size * (1.5 + Math.random() * 0.6);
+  const duration = 18000 + Math.random() * 14000;
+  const swayDuration = 4200 + Math.random() * 2200;
+  const tilt = 10 + Math.random() * 10;
+
+  const item = document.createElement('div');
+  item.className = 'ambient-item';
+  item.style.left = `${left}px`;
+  item.style.top = `${startTop}px`;
+  item.style.setProperty('--ambient-size', `${size}px`);
+  item.style.setProperty('--ambient-duration', `${duration}ms`);
+  item.style.setProperty('--ambient-sway-duration', `${swayDuration}ms`);
+  item.style.setProperty('--ambient-tilt', `${tilt}deg`);
+  item.style.setProperty('--ambient-travel', `${travel}px`);
+
+  const inner = document.createElement('div');
+  inner.className = 'ambient-item-inner';
+
+  const image = document.createElement('img');
+  image.src = icon.src;
+  image.alt = '';
+  image.loading = 'lazy';
+  inner.appendChild(image);
+  item.appendChild(inner);
+  layer.appendChild(item);
+
+  const record = { node: item, key: icon.key };
+  state.items.add(record);
+
+  item.addEventListener(
+    'animationend',
+    () => {
+      item.remove();
+      state.items.delete(record);
+    },
+    { once: true },
+  );
+
+  return record;
+}
+
+function scheduleAmbientSpawn(state) {
+  if (!state.layer) return;
+  if (state.timerId) clearTimeout(state.timerId);
+
+  const tick = () => {
+    if (state.items.size < state.targetCount) {
+      createAmbientItem(state);
+    }
+    state.timerId = window.setTimeout(tick, 1100 + Math.random() * 1200);
+  };
+
+  state.timerId = window.setTimeout(tick, 200);
+}
+
+function setupAmbientLayers() {
+  Object.values(ambientState).forEach((state) => {
+    if (!state.layer) return;
+    scheduleAmbientSpawn(state);
+  });
+}
+
+function refreshAmbientLayers() {
+  Object.values(ambientState).forEach((state) => {
+    state.items.forEach((item) => item.node.remove());
+    state.items.clear();
+    scheduleAmbientSpawn(state);
+  });
 }
 
 function randColor() {
@@ -473,10 +656,12 @@ function showStartScreen() {
   startScreenEl?.classList.remove('hidden');
   updateBestScoreUi();
   updateProfileEntry();
+  refreshAmbientLayers();
 }
 
 function hideStartScreen() {
   startScreenEl?.classList.add('hidden');
+  refreshAmbientLayers();
 }
 
 function makeLeaderboardRow(item, index) {
@@ -1680,6 +1865,7 @@ function resetGame() {
   createBoard();
   drawBoard();
   startTurnTimer();
+  refreshAmbientLayers();
 }
 
 restartBtn.addEventListener('click', resetGame);
@@ -1712,7 +1898,10 @@ avatarPickerEl?.addEventListener('click', (e) => {
   updateAvatarSelection();
   updateProfileSaveState();
 });
-window.addEventListener('resize', syncEffectsLayer);
+window.addEventListener('resize', () => {
+  syncEffectsLayer();
+  refreshAmbientLayers();
+});
 
 bestScore = loadBestScore();
 profile = loadProfile();
@@ -1721,6 +1910,7 @@ updateProfileEntry();
 updateSoundToggleLabel();
 setupTelegramWebApp();
 setupTouchGuards();
+setupAmbientLayers();
 createBoard();
 drawBoard();
 ensureAuthFlow();
