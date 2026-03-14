@@ -85,21 +85,20 @@ const AMBIENT_ICON_SOURCES = [
   { key: 'teapot', src: './assets/teapot.png' },
   { key: 'hookah-2', src: './assets/hookah_2.png' },
 ];
-const AMBIENT_MAX_DUPLICATES = 3;
 
 const ambientState = {
   gameplay: {
     layer: ambientLayerEl,
     items: new Set(),
     timerId: null,
-    targetCount: 6,
+    targetCount: 8,
     mode: 'gameplay',
   },
   start: {
     layer: startAmbientLayerEl,
     items: new Set(),
     timerId: null,
-    targetCount: 8,
+    targetCount: 10,
     mode: 'start',
   },
 };
@@ -148,24 +147,8 @@ function setupTouchGuards() {
   boardWrapEl.addEventListener('touchcancel', onTouchEnd, { passive: false });
 }
 
-function countAmbientIcons(state, key) {
-  let count = 0;
-  state.items.forEach((item) => {
-    if (item.key === key) count++;
-  });
-  return count;
-}
-
-function pickAmbientIcon(state) {
-  const candidates = AMBIENT_ICON_SOURCES.filter(
-    (icon) => countAmbientIcons(state, icon.key) < AMBIENT_MAX_DUPLICATES,
-  );
-  if (!candidates.length) return null;
-
-  candidates.sort((a, b) => countAmbientIcons(state, a.key) - countAmbientIcons(state, b.key));
-  const minCount = countAmbientIcons(state, candidates[0].key);
-  const leastUsed = candidates.filter((icon) => countAmbientIcons(state, icon.key) === minCount);
-  return leastUsed[Math.floor(Math.random() * leastUsed.length)];
+function pickAmbientIcon() {
+  return AMBIENT_ICON_SOURCES[Math.floor(Math.random() * AMBIENT_ICON_SOURCES.length)] || null;
 }
 
 function getAmbientZones(state) {
@@ -217,6 +200,28 @@ function getAmbientZones(state) {
   return zones;
 }
 
+function getAmbientLanes(zone, size) {
+  const laneGap = 14;
+  const laneWidth = size + laneGap;
+  const usableWidth = zone.right - zone.left;
+  const laneCount = Math.max(1, Math.floor(usableWidth / laneWidth));
+  const lanes = [];
+
+  for (let i = 0; i < laneCount; i++) {
+    const laneLeft = zone.left + i * laneWidth;
+    const laneCenter = laneLeft + laneWidth / 2;
+    const left = laneCenter - size / 2;
+    if (left < zone.left || left + size > zone.right) continue;
+    lanes.push({
+      id: `${Math.round(zone.top)}-${i}`,
+      left,
+      laneWidth,
+    });
+  }
+
+  return lanes;
+}
+
 function createAmbientItem(state) {
   const layer = state.layer;
   if (!layer) return null;
@@ -224,18 +229,22 @@ function createAmbientItem(state) {
   const zones = getAmbientZones(state);
   if (!zones.length) return null;
 
-  const icon = pickAmbientIcon(state);
+  const icon = pickAmbientIcon();
   if (!icon) return null;
 
   const zone = zones[Math.floor(Math.random() * zones.length)];
-  const zoneWidth = zone.right - zone.left;
   const zoneHeight = zone.bottom - zone.top;
-  const size = Math.round(48 + Math.random() * 52);
-  const maxX = Math.max(zone.left, zone.right - size);
-  const left = zone.left + Math.random() * Math.max(1, maxX - zone.left);
+  const size = Math.round(42 + Math.random() * 70);
+  const lanes = getAmbientLanes(zone, size);
+  const busyLaneIds = new Set(Array.from(state.items, (item) => item.laneId));
+  const freeLanes = lanes.filter((lane) => !busyLaneIds.has(lane.id));
+  if (!freeLanes.length) return null;
+
+  const lane = freeLanes[Math.floor(Math.random() * freeLanes.length)];
+  const left = lane.left;
   const startTop = zone.bottom + size * (0.2 + Math.random() * 0.4);
   const travel = zoneHeight + size * (1.5 + Math.random() * 0.6);
-  const duration = 18000 + Math.random() * 14000;
+  const duration = (18000 + Math.random() * 14000) * 1.1;
   const swayDuration = 4200 + Math.random() * 2200;
   const tilt = 10 + Math.random() * 10;
 
@@ -260,7 +269,7 @@ function createAmbientItem(state) {
   item.appendChild(inner);
   layer.appendChild(item);
 
-  const record = { node: item, key: icon.key };
+  const record = { node: item, key: icon.key, laneId: lane.id };
   state.items.add(record);
 
   item.addEventListener(
@@ -283,7 +292,7 @@ function scheduleAmbientSpawn(state) {
     if (state.items.size < state.targetCount) {
       createAmbientItem(state);
     }
-    state.timerId = window.setTimeout(tick, 1100 + Math.random() * 1200);
+    state.timerId = window.setTimeout(tick, 700 + Math.random() * 700);
   };
 
   state.timerId = window.setTimeout(tick, 200);
