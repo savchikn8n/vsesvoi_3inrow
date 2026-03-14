@@ -980,8 +980,9 @@ h1 {
   display: grid;
   gap: 8px;
   margin: 6px 0 12px;
-  max-height: 52vh;
+  max-height: calc((34px + 14px + 4px) * 5 + 32px);
   overflow-y: auto;
+  padding-right: 4px;
 }
 
 .leaderboard-row {
@@ -992,6 +993,13 @@ h1 {
   border: 2px solid #f3b31555;
   border-radius: var(--ui-radius);
   padding: 7px 8px;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.leaderboard-row.is-current-user {
+  border-color: #f3b315;
+  background: linear-gradient(90deg, rgba(243, 179, 21, 0.18), rgba(243, 179, 21, 0.06));
+  box-shadow: 0 0 0 1px rgba(243, 179, 21, 0.35);
 }
 
 .leaderboard-rank {

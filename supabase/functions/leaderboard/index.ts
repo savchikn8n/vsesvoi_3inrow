@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
 
     const { data, error } = await admin
       .from('profiles')
-      .select('display_name, avatar_choice, avatar_url, best_score')
+      .select('telegram_id, display_name, avatar_choice, avatar_url, best_score')
       .order('best_score', { ascending: false })
       .limit(limit);
 
