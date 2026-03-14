@@ -117,6 +117,7 @@ body::after {
   height: 100%;
   animation: ambient-sway var(--ambient-sway-duration, 5.8s) ease-in-out infinite alternate;
   transform-origin: 50% 50%;
+  animation-delay: var(--ambient-delay, 0ms);
 }
 
 .ambient-item img {
@@ -146,10 +147,10 @@ body::after {
 
 @keyframes ambient-sway {
   0% {
-    transform: translateX(-10px) rotate(calc(var(--ambient-tilt, 12deg) * -1));
+    transform: translateX(calc(var(--ambient-shift, 10px) * -1)) rotate(calc(var(--ambient-tilt, 12deg) * -1));
   }
   100% {
-    transform: translateX(10px) rotate(var(--ambient-tilt, 12deg));
+    transform: translateX(var(--ambient-shift, 10px)) rotate(var(--ambient-tilt, 12deg));
   }
 }
 

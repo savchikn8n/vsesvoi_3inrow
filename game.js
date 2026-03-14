@@ -91,14 +91,14 @@ const ambientState = {
     layer: ambientLayerEl,
     items: new Set(),
     timerId: null,
-    targetCount: 12,
+    targetCount: 22,
     mode: 'gameplay',
   },
   start: {
     layer: startAmbientLayerEl,
     items: new Set(),
     timerId: null,
-    targetCount: 14,
+    targetCount: 28,
     mode: 'start',
   },
 };
@@ -201,8 +201,8 @@ function getAmbientZones(state) {
 }
 
 function getAmbientLanes(zone, size) {
-  const laneGap = 14;
-  const laneWidth = size + laneGap;
+  const laneGap = 10;
+  const laneWidth = Math.max(72, size * 0.82);
   const usableWidth = zone.right - zone.left;
   const laneCount = Math.max(1, Math.floor(usableWidth / laneWidth));
   const lanes = [];
@@ -210,7 +210,8 @@ function getAmbientLanes(zone, size) {
   for (let i = 0; i < laneCount; i++) {
     const laneLeft = zone.left + i * laneWidth;
     const laneCenter = laneLeft + laneWidth / 2;
-    const left = laneCenter - size / 2;
+    const jitter = (Math.random() * 10 - 5) * 0.8;
+    const left = laneCenter - size / 2 + jitter;
     if (left < zone.left || left + size > zone.right) continue;
     lanes.push({
       id: `${Math.round(zone.top)}-${i}`,
@@ -234,7 +235,25 @@ function createAmbientItem(state) {
 
   const zone = zones[Math.floor(Math.random() * zones.length)];
   const zoneHeight = zone.bottom - zone.top;
-  const size = Math.round(42 + Math.random() * 70);
+  const depthRoll = Math.random();
+  let size = 0;
+  let duration = 0;
+  let swayDuration = 0;
+
+  if (depthRoll < 0.34) {
+    size = Math.round(34 + Math.random() * 20);
+    duration = 28000 + Math.random() * 12000;
+    swayDuration = 3200 + Math.random() * 1600;
+  } else if (depthRoll < 0.74) {
+    size = Math.round(52 + Math.random() * 28);
+    duration = 22000 + Math.random() * 11000;
+    swayDuration = 4200 + Math.random() * 2000;
+  } else {
+    size = Math.round(82 + Math.random() * 36);
+    duration = 18000 + Math.random() * 9000;
+    swayDuration = 5200 + Math.random() * 2200;
+  }
+
   const lanes = getAmbientLanes(zone, size);
   const busyLaneIds = new Set(Array.from(state.items, (item) => item.laneId));
   const freeLanes = lanes.filter((lane) => !busyLaneIds.has(lane.id));
@@ -242,11 +261,11 @@ function createAmbientItem(state) {
 
   const lane = freeLanes[Math.floor(Math.random() * freeLanes.length)];
   const left = lane.left;
-  const startTop = zone.bottom + size * (0.2 + Math.random() * 0.4);
+  const startTop = zone.bottom + size * (0.15 + Math.random() * 0.5);
   const travel = zoneHeight + size * (1.5 + Math.random() * 0.6);
-  const duration = (18000 + Math.random() * 14000) * 1.1;
-  const swayDuration = 4200 + Math.random() * 2200;
-  const tilt = 10 + Math.random() * 10;
+  const tilt = (8 + Math.random() * 14) * (Math.random() > 0.5 ? 1 : -1);
+  const shift = 6 + Math.random() * 16;
+  const negativeDelay = -1 * Math.round(Math.random() * swayDuration);
 
   const item = document.createElement('div');
   item.className = 'ambient-item';
@@ -257,6 +276,8 @@ function createAmbientItem(state) {
   item.style.setProperty('--ambient-sway-duration', `${swayDuration}ms`);
   item.style.setProperty('--ambient-tilt', `${tilt}deg`);
   item.style.setProperty('--ambient-travel', `${travel}px`);
+  item.style.setProperty('--ambient-shift', `${shift}px`);
+  item.style.setProperty('--ambient-delay', `${negativeDelay}ms`);
 
   const inner = document.createElement('div');
   inner.className = 'ambient-item-inner';
@@ -290,12 +311,12 @@ function scheduleAmbientSpawn(state) {
 
   const tick = () => {
     if (state.items.size < state.targetCount) {
-      const burstCount = state.items.size <= state.targetCount - 3 ? 2 : 1;
+      const burstCount = state.items.size <= state.targetCount - 4 ? 3 : 1;
       for (let i = 0; i < burstCount; i++) {
         createAmbientItem(state);
       }
     }
-    state.timerId = window.setTimeout(tick, 420 + Math.random() * 420);
+    state.timerId = window.setTimeout(tick, 90 + Math.random() * 80);
   };
 
   state.timerId = window.setTimeout(tick, 200);
