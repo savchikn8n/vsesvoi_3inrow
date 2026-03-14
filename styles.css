@@ -107,7 +107,7 @@ body::after {
   top: 0;
   width: var(--ambient-size, 76px);
   height: var(--ambient-size, 76px);
-  opacity: 0.3;
+  opacity: 0.5;
   animation: ambient-rise var(--ambient-duration, 24s) linear forwards;
   will-change: transform;
 }
@@ -133,10 +133,10 @@ body::after {
     opacity: 0;
   }
   10% {
-    opacity: 0.2;
+    opacity: 0.34;
   }
   50% {
-    opacity: 0.3;
+    opacity: 0.5;
   }
   100% {
     transform: translate3d(0, calc(-1 * var(--ambient-travel, 860px)), 0);
