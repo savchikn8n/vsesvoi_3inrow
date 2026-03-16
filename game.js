@@ -18,6 +18,8 @@ const tileTpl = document.getElementById('tile-template');
 const startScreenEl = document.getElementById('start-screen');
 const bestScoreEl = document.getElementById('best-score');
 const scoreTitleEl = document.getElementById('score-title');
+const scoreTitleTriggerEl = document.getElementById('score-title-trigger');
+const scoreTitleLevelEl = document.getElementById('score-title-level');
 const startNewGameBtn = document.getElementById('start-new-game');
 const startLeaderboardBtn = document.getElementById('start-leaderboard');
 const startSettingsBtn = document.getElementById('start-settings');
@@ -27,6 +29,8 @@ const leaderboardModalEl = document.getElementById('leaderboard-modal');
 const leaderboardStatusEl = document.getElementById('leaderboard-status');
 const leaderboardListEl = document.getElementById('leaderboard-list');
 const leaderboardCloseBtn = document.getElementById('leaderboard-close');
+const titlesModalEl = document.getElementById('titles-modal');
+const titlesCloseBtn = document.getElementById('titles-close');
 const finalScoreEl = document.getElementById('final-score');
 const menuNewGameBtn = document.getElementById('menu-new-game');
 const menuExitMenuBtn = document.getElementById('menu-exit-menu');
@@ -476,7 +480,19 @@ function saveBestScore(value) {
   localStorage.setItem(BEST_SCORE_KEY, String(value));
 }
 
+function scoreLevel(value) {
+  if (value >= 200000) return 8;
+  if (value >= 170000) return 7;
+  if (value >= 140000) return 6;
+  if (value >= 110000) return 5;
+  if (value >= 80000) return 4;
+  if (value >= 40000) return 3;
+  if (value >= 10000) return 2;
+  return 1;
+}
+
 function scoreTitle(value) {
+  if (value >= 200000) return 'СВОЯК';
   if (value >= 170000 && value < 200000) return 'Своеобразный';
   if (value >= 140000 && value < 170000) return 'Во всём виноваты Свои';
   if (value >= 110000 && value < 140000) return 'ИнтерСвой';
@@ -492,6 +508,9 @@ function updateBestScoreUi() {
   }
   if (scoreTitleEl) {
     scoreTitleEl.textContent = scoreTitle(bestScore);
+  }
+  if (scoreTitleLevelEl) {
+    scoreTitleLevelEl.textContent = String(scoreLevel(bestScore));
   }
 }
 
@@ -852,6 +871,15 @@ function closeLeaderboard() {
   hideModal(leaderboardModalEl);
 }
 
+function openTitlesModal() {
+  closeAllModals();
+  showModal(titlesModalEl);
+}
+
+function closeTitlesModal() {
+  hideModal(titlesModalEl);
+}
+
 function startNewGameFromHome() {
   hideStartScreen();
   resetGame();
@@ -911,6 +939,7 @@ function closeAllModals() {
   hideModal(gameOverModalEl);
   hideModal(settingsModalEl);
   hideModal(leaderboardModalEl);
+  hideModal(titlesModalEl);
   hideModal(authModalEl);
   hideModal(profileModalEl);
 }
@@ -2121,6 +2150,8 @@ soundToggleBtn.addEventListener('click', () => {
 devChannelBtn.addEventListener('click', openDevChannel);
 settingsCloseBtn.addEventListener('click', closeSettings);
 leaderboardCloseBtn?.addEventListener('click', closeLeaderboard);
+scoreTitleTriggerEl?.addEventListener('click', openTitlesModal);
+titlesCloseBtn?.addEventListener('click', closeTitlesModal);
 authLoginBtn.addEventListener('click', handleTelegramAuth);
 profileSaveBtn.addEventListener('click', handleProfileSave);
 profileEntryBtn?.addEventListener('click', openProfileEditor);
