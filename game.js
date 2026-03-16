@@ -1973,7 +1973,7 @@ async function activateSpecialMove(a, b) {
   const blastCells =
     a !== b && activations.length === 2 && hasBomb && hasRocket
       ? applyRemoval(blast, new Map(), {
-          chainSpecials: false,
+          chainSpecials: true,
           emitTriggeredEffects: false,
           smokeTone: 'red',
         })
