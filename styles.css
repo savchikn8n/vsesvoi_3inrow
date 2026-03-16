@@ -769,13 +769,14 @@ h1 {
 
 .score-title-crown {
   position: relative;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   flex: 0 0 auto;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23F7C83E' d='M12 50V22l10 8 10-14 10 14 10-8v28H12Zm2-4h36V29l-8 6-10-14-10 14-8-6v17Zm4 10h28a4 4 0 0 0 4-4H14a4 4 0 0 0 4 4Z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23F7C83E' d='M10 54V18l11 9 11-15 11 15 11-9v36H10Z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
+  transform: translateY(-1px);
 }
 
 .score-title-level {
@@ -784,10 +785,10 @@ h1 {
   display: grid;
   place-items: center;
   color: #000000;
-  font-size: 0.7rem;
-  font-weight: 800;
+  font-size: 0.82rem;
+  font-weight: 900;
   line-height: 1;
-  transform: translateY(1px);
+  transform: translateY(2px);
 }
 
 .score-title {
@@ -813,6 +814,7 @@ h1 {
 .titles-list {
   display: grid;
   gap: 8px;
+  margin-bottom: 14px;
 }
 
 .titles-row {
@@ -836,11 +838,11 @@ h1 {
   color: #000000;
   font-weight: 800;
   font-size: 0.76rem;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23F7C83E' d='M12 50V22l10 8 10-14 10 14 10-8v28H12Zm2-4h36V29l-8 6-10-14-10 14-8-6v17Zm4 10h28a4 4 0 0 0 4-4H14a4 4 0 0 0 4 4Z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23F7C83E' d='M10 54V18l11 9 11-15 11 15 11-9v36H10Z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
-  transform: translateY(1px);
+  transform: translateY(-1px);
 }
 
 .start-top {
@@ -1327,12 +1329,12 @@ h1 {
   }
 
   .score-title-crown {
-    width: 21px;
-    height: 21px;
+    width: 24px;
+    height: 24px;
   }
 
   .score-title-level {
-    font-size: 0.64rem;
+    font-size: 0.72rem;
   }
 
   #profile-modal .modal-card {
