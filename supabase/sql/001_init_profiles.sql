@@ -6,6 +6,7 @@ create table if not exists public.profiles (
   avatar_url text,
   best_score integer not null default 0,
   clap_balance integer not null default 0,
+  beta_claps_migrated boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
