@@ -833,16 +833,19 @@ h1 {
 .titles-crown {
   width: 22px;
   height: 22px;
-  display: inline-grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: #000000;
   font-weight: 800;
   font-size: 0.76rem;
+  line-height: 1;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23F7C83E' d='M10 54V18l11 9 11-15 11 15 11-9v36H10Z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
-  transform: translateY(-1px);
+  transform: translateY(1px);
+  padding-top: 3px;
 }
 
 .start-top {
