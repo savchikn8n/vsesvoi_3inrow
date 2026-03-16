@@ -440,7 +440,7 @@ h1 {
 }
 
 .tile.falling .gem {
-  animation: tile-fall 430ms cubic-bezier(0.2, 0.85, 0.22, 1) both;
+  animation: tile-fall 480ms cubic-bezier(0.18, 0.78, 0.24, 1) both;
 }
 
 @keyframes tile-fall {
@@ -454,13 +454,13 @@ h1 {
     opacity: 1;
     filter: blur(0);
   }
-  78% {
-    transform: translateY(3px) scale(1.015) rotate(var(--gem-rot, 0deg));
+  76% {
+    transform: translateY(1.5px) scale(1.008) rotate(var(--gem-rot, 0deg));
     opacity: 1;
     filter: blur(0);
   }
-  90% {
-    transform: translateY(-1px) scale(0.996) rotate(var(--gem-rot, 0deg));
+  88% {
+    transform: translateY(-0.5px) scale(0.998) rotate(var(--gem-rot, 0deg));
     opacity: 1;
     filter: blur(0);
   }
