@@ -1365,6 +1365,51 @@ function upsertSpecialCreate(map, idx, special, color) {
   }
 }
 
+function buildMatchResolution(groups, swappedPair = null, preserveIndices = new Set()) {
+  const removals = new Set();
+  const specialCreates = new Map();
+  const smokeCells = new Set();
+
+  groups.forEach((group) => group.cells.forEach((idx) => removals.add(idx)));
+  preserveIndices.forEach((idx) => removals.delete(idx));
+
+  groups.forEach((group) => {
+    if (group.cells.length !== 3) return;
+    group.cells.forEach((idx) => {
+      if (removals.has(idx) && !board[idx]?.special) {
+        smokeCells.add(idx);
+      }
+    });
+  });
+
+  groups.forEach((group) => {
+    if (group.cells.length !== 4) return;
+    const pivot = chooseSpecialIndex(group.cells, swappedPair);
+    removals.delete(pivot);
+
+    const rocketType =
+      swappedPair
+        ? isHorizontalSwap(swappedPair)
+          ? 'rocket-h'
+          : 'rocket-v'
+        : group.orientation === 'h'
+          ? 'rocket-h'
+          : 'rocket-v';
+
+    upsertSpecialCreate(specialCreates, pivot, rocketType, board[pivot].color);
+  });
+
+  const components = getMatchedComponents(groups);
+  components.forEach((component) => {
+    if (component.cells.length <= 4) return;
+    const pivot = chooseSpecialIndex(component.cells, swappedPair);
+    removals.delete(pivot);
+    upsertSpecialCreate(specialCreates, pivot, 'bomb', component.color);
+  });
+
+  return { removals, specialCreates, smokeCells };
+}
+
 function getMatchedComponents(groups) {
   const matchedSet = new Set();
   groups.forEach((group) => group.cells.forEach((idx) => matchedSet.add(idx)));
@@ -1575,44 +1620,8 @@ async function resolveCascades(swappedPair = null) {
 
     combo++;
     locked = true;
-    const removals = new Set();
-    const specialCreates = new Map();
-    const smokeCells = new Set();
-
-    groups.forEach((group) => group.cells.forEach((idx) => removals.add(idx)));
-    groups.forEach((group) => {
-      if (group.cells.length !== 3) return;
-      group.cells.forEach((idx) => {
-        if (removals.has(idx) && !board[idx]?.special) {
-          smokeCells.add(idx);
-        }
-      });
-    });
-
-    groups.forEach((group) => {
-      if (group.cells.length !== 4) return;
-      const pivot = chooseSpecialIndex(group.cells, swappedPair);
-      removals.delete(pivot);
-
-      const rocketType =
-        swappedPair && combo === 1
-          ? isHorizontalSwap(swappedPair)
-            ? 'rocket-h'
-            : 'rocket-v'
-          : group.orientation === 'h'
-            ? 'rocket-h'
-            : 'rocket-v';
-
-      upsertSpecialCreate(specialCreates, pivot, rocketType, board[pivot].color);
-    });
-
-    const components = getMatchedComponents(groups);
-    components.forEach((component) => {
-      if (component.cells.length <= 4) return;
-      const pivot = chooseSpecialIndex(component.cells, swappedPair);
-      removals.delete(pivot);
-      upsertSpecialCreate(specialCreates, pivot, 'bomb', component.color);
-    });
+    const firstSwap = swappedPair && combo === 1 ? swappedPair : null;
+    const { removals, specialCreates, smokeCells } = buildMatchResolution(groups, firstSwap);
 
     emitSmokeEffects(smokeCells, 'default');
     const blastCells = applyRemoval(removals, specialCreates);
@@ -1913,6 +1922,23 @@ async function activateSpecialMove(a, b) {
     await animateSwap(a, b, true);
     swapIn(board, a, b);
     playSwapSound();
+  }
+
+  const preserveIndices = new Set();
+  if (board[a]?.special) preserveIndices.add(a);
+  if (b !== a && board[b]?.special) preserveIndices.add(b);
+
+  const preGroups = findMatchGroups(board);
+  if (preGroups.length > 0) {
+    const { removals, specialCreates, smokeCells } = buildMatchResolution(preGroups, [a, b], preserveIndices);
+    emitSmokeEffects(smokeCells, 'default');
+    const preBlastCells = applyRemoval(removals, specialCreates, {
+      chainSpecials: false,
+      emitTriggeredEffects: false,
+      smokeTone: null,
+    });
+    drawBoard(removals, preBlastCells);
+    if (!(await interruptibleDelay(260, actionSession))) return;
   }
 
   const activations = [];
