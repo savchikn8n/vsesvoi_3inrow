@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
       auth: { persistSession: false },
     });
 
-    const { initData, bestScore } = await req.json();
+    const { initData, bestScore, clapBalance } = await req.json();
     if (!initData || typeof initData !== 'string') {
       return new Response(JSON.stringify({ error: 'initData is required' }), {
         status: 400,
@@ -96,11 +96,19 @@ Deno.serve(async (req) => {
       });
     }
 
+    const incomingClaps = Number(clapBalance ?? 0);
+    if (!Number.isFinite(incomingClaps) || incomingClaps < 0) {
+      return new Response(JSON.stringify({ error: 'clapBalance must be a positive number' }), {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
+
     const user = await verifyTelegramInitData(initData, BOT_TOKEN);
 
     const { data: existing, error: readError } = await admin
       .from('profiles')
-      .select('telegram_id, telegram_username, telegram_first_name, telegram_last_name, display_name, avatar_choice, avatar_url, best_score')
+      .select('telegram_id, telegram_username, telegram_first_name, telegram_last_name, display_name, avatar_choice, avatar_url, best_score, clap_balance')
       .eq('telegram_id', user.id)
       .maybeSingle();
 
@@ -109,6 +117,7 @@ Deno.serve(async (req) => {
     }
 
     const nextBest = Math.max(Number(existing?.best_score || 0), Math.floor(incoming));
+    const nextClaps = Math.max(Number(existing?.clap_balance || 0), Math.floor(incomingClaps));
 
     const { data, error } = await admin
       .from('profiles')
@@ -119,11 +128,12 @@ Deno.serve(async (req) => {
           telegram_first_name: user.first_name || null,
           telegram_last_name: user.last_name || null,
           best_score: nextBest,
+          clap_balance: nextClaps,
           last_seen_at: new Date().toISOString(),
         },
         { onConflict: 'telegram_id' },
       )
-      .select('telegram_id, telegram_username, telegram_first_name, telegram_last_name, display_name, avatar_choice, avatar_url, best_score, last_seen_at, notifications_enabled')
+      .select('telegram_id, telegram_username, telegram_first_name, telegram_last_name, display_name, avatar_choice, avatar_url, best_score, clap_balance, last_seen_at, notifications_enabled')
       .single();
 
     if (error) {
