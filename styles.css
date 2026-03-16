@@ -13,6 +13,14 @@
   --ui-radius: 8px;
 }
 
+@font-face {
+  font-family: "MuseoCyrlTitle";
+  src: url("./assets/MuseoCyrl-900.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -731,12 +739,30 @@ h1 {
   background: transparent;
   padding: 0;
   display: grid;
-  grid-template-rows: auto auto auto;
+  grid-template-rows: auto auto auto auto;
   align-content: center;
   justify-items: center;
-  gap: clamp(14px, 2.6vh, 24px);
+  gap: clamp(10px, 2.1vh, 18px);
   position: relative;
   z-index: 1;
+}
+
+.start-title-wrap {
+  width: min(100%, 420px);
+  display: grid;
+  justify-items: center;
+}
+
+.score-title {
+  max-width: 100%;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
+  font-size: clamp(1rem, 2.1vw, 1.34rem);
+  line-height: 1.02;
+  letter-spacing: 0.01em;
+  color: #f7c83e;
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
 .start-top {
@@ -1216,6 +1242,10 @@ h1 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     min-height: 36px;
     gap: 8px;
+  }
+
+  .score-title {
+    font-size: 0.96rem;
   }
 
   #profile-modal .modal-card {
