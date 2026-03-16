@@ -10,6 +10,7 @@ const ambientLayerEl = document.getElementById('ambient-layer');
 const ambientGameMaskEl = document.getElementById('ambient-game-mask');
 const startAmbientLayerEl = document.getElementById('start-ambient-layer');
 const scoreEl = document.getElementById('score');
+const hudClapsEl = document.getElementById('hud-claps');
 const timerEl = document.getElementById('timer');
 const restartBtn = document.getElementById('restart');
 const exitToMenuBtn = document.getElementById('exit-to-menu');
@@ -70,6 +71,8 @@ let swipeGesture = null;
 let suppressClickUntil = 0;
 let touchInsideBoard = false;
 let bestScore = 0;
+let clapBalance = 0;
+let clapsAwardedThisRun = 0;
 let profile = null;
 let selectedAvatar = 'gold';
 let authBusy = false;
@@ -81,6 +84,7 @@ let activeComboConstraint = null;
 let bufferedMove = null;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
+const CLAPS_BALANCE_KEY = 'gold_match_claps_balance';
 const PROFILE_KEY = 'gold_match_profile';
 const LEADERBOARD_CACHE_KEY = 'gold_match_leaderboard_cache_v1';
 const LEADERBOARD_CACHE_TTL_MS = 60 * 1000;
@@ -493,9 +497,13 @@ function directionClass(from, to) {
 
 function updateHud() {
   scoreEl.textContent = String(score);
+  if (hudClapsEl) {
+    hudClapsEl.textContent = String(clapBalance);
+  }
   timerEl.textContent = String(turnSecondsLeft);
   timerEl.classList.toggle('warning', turnSecondsLeft <= HINT_THRESHOLD_SECONDS);
   maybeUpdateBestScore();
+  maybeAwardClapsFromScore();
 }
 
 function loadBestScore() {
@@ -505,6 +513,15 @@ function loadBestScore() {
 
 function saveBestScore(value) {
   localStorage.setItem(BEST_SCORE_KEY, String(value));
+}
+
+function loadClapBalance() {
+  const value = Number(localStorage.getItem(CLAPS_BALANCE_KEY) || 0);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+}
+
+function saveClapBalance(value) {
+  localStorage.setItem(CLAPS_BALANCE_KEY, String(Math.max(0, Math.floor(value))));
 }
 
 function scoreLevel(value) {
@@ -529,16 +546,12 @@ function scoreTitle(value) {
   return 'Тупо Свой';
 }
 
-function clapCount(value) {
-  return Math.floor(Math.max(0, Number(value) || 0) / 10000);
-}
-
 function updateBestScoreUi() {
   if (bestScoreEl) {
     bestScoreEl.textContent = String(bestScore);
   }
   if (clapsCountEl) {
-    clapsCountEl.textContent = String(clapCount(bestScore));
+    clapsCountEl.textContent = String(clapBalance);
   }
   if (scoreTitleEl) {
     scoreTitleEl.textContent = scoreTitle(bestScore);
@@ -555,12 +568,31 @@ function maybeUpdateBestScore() {
   updateBestScoreUi();
 }
 
+function maybeAwardClapsFromScore() {
+  const earnedThresholds = Math.floor(Math.max(0, score) / 10000);
+  if (earnedThresholds <= clapsAwardedThisRun) return;
+  const delta = earnedThresholds - clapsAwardedThisRun;
+  clapsAwardedThisRun = earnedThresholds;
+  clapBalance += delta;
+  saveClapBalance(clapBalance);
+  if (profile) {
+    saveProfile({ ...profile, clap_balance: clapBalance });
+  } else {
+    updateBestScoreUi();
+  }
+  void syncProgressIfNeeded();
+}
+
 function loadProfile() {
   try {
     const raw = localStorage.getItem(PROFILE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || !parsed.telegram_id) return null;
+    if (Number.isFinite(Number(parsed.clap_balance))) {
+      clapBalance = Math.max(clapBalance, Math.floor(Number(parsed.clap_balance)));
+      saveClapBalance(clapBalance);
+    }
     return parsed;
   } catch (_) {
     return null;
@@ -572,9 +604,16 @@ function saveProfile(next) {
     ...next,
     auth_verified: true,
   };
+  if (Number.isFinite(Number(normalized.clap_balance))) {
+    clapBalance = Math.max(clapBalance, Math.floor(Number(normalized.clap_balance)));
+    normalized.clap_balance = clapBalance;
+    saveClapBalance(clapBalance);
+  }
   profile = normalized;
   localStorage.setItem(PROFILE_KEY, JSON.stringify(normalized));
   updateProfileEntry();
+  updateBestScoreUi();
+  updateHud();
 }
 
 function setAuthStatus(message) {
@@ -1869,10 +1908,13 @@ function handleTurnTimeout() {
   endGameByTimeout();
 }
 
-async function submitBestScoreIfNeeded() {
+async function syncProgressIfNeeded() {
   if (!profile?.telegram_id) return;
   const localBest = Math.max(Number(profile.best_score || 0), score);
-  if (localBest <= Number(profile.best_score || 0)) return;
+  const localClaps = Math.max(Number(profile.clap_balance || 0), clapBalance);
+  const bestChanged = localBest > Number(profile.best_score || 0);
+  const clapsChanged = localClaps > Number(profile.clap_balance || 0);
+  if (!bestChanged && !clapsChanged) return;
 
   try {
     const initData = telegramInitData();
@@ -1881,11 +1923,12 @@ async function submitBestScoreIfNeeded() {
     const result = await postJson('score-submit', {
       initData,
       bestScore: localBest,
+      clapBalance: localClaps,
     });
     if (result?.profile) {
       saveProfile(result.profile);
     } else {
-      saveProfile({ ...profile, best_score: localBest });
+      saveProfile({ ...profile, best_score: localBest, clap_balance: localClaps });
     }
   } catch (_) {
     // score sync is non-blocking for gameplay
@@ -1929,11 +1972,11 @@ function endGameByTimeout() {
   finalScoreEl.textContent = `Ваш счёт: ${score}`;
   drawBoard();
   showModal(gameOverModalEl);
-  submitBestScoreIfNeeded();
+  syncProgressIfNeeded();
 }
 
 function exitToMenu() {
-  submitBestScoreIfNeeded();
+  syncProgressIfNeeded();
   showStartScreen();
 }
 
@@ -2228,6 +2271,7 @@ function interruptibleDelay(ms, sessionId) {
 
 function resetGame() {
   score = 0;
+  clapsAwardedThisRun = 0;
   selected = null;
   locked = false;
   bufferedMove = null;
@@ -2282,6 +2326,7 @@ window.addEventListener('resize', () => {
 });
 
 bestScore = loadBestScore();
+clapBalance = loadClapBalance();
 profile = loadProfile();
 updateBestScoreUi();
 preloadAvatarAssets();

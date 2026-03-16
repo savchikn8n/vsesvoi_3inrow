@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
         },
         { onConflict: 'telegram_id' },
       )
-      .select('telegram_id, telegram_username, telegram_first_name, telegram_last_name, display_name, avatar_choice, avatar_url, best_score, last_seen_at, notifications_enabled')
+      .select('telegram_id, telegram_username, telegram_first_name, telegram_last_name, display_name, avatar_choice, avatar_url, best_score, clap_balance, last_seen_at, notifications_enabled')
       .single();
 
     if (error) {

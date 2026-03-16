@@ -187,6 +187,16 @@ body::after {
   z-index: 2;
 }
 
+.hud-side {
+  display: grid;
+  gap: 6px;
+}
+
+.hud-side-left {
+  justify-self: start;
+  width: min(132px, 26vw);
+}
+
 h1 {
   margin: 0;
   font-family: "Cinzel", serif;
@@ -200,7 +210,7 @@ h1 {
 .brand {
   position: relative;
   justify-self: center;
-  width: min(270px, 38vw);
+  width: min(210px, 30vw);
   border-radius: var(--ui-radius);
   overflow: hidden;
 }
@@ -243,6 +253,45 @@ h1 {
   background: #000000;
   border-radius: var(--ui-radius);
   min-height: 86px;
+}
+
+.panel-compact {
+  min-height: 44px;
+  padding: 7px 10px;
+}
+
+.hud-timer {
+  justify-self: end;
+  width: min(132px, 26vw);
+}
+
+.panel-claps {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-claps-icon {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+}
+
+.panel-claps-icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.panel-claps-value {
+  display: block;
+  width: 100%;
+  text-align: center;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .label {
@@ -954,7 +1003,9 @@ h1 {
 }
 
 .gift-count {
-  justify-self: start;
+  justify-self: stretch;
+  width: 100%;
+  text-align: center;
   color: #ffffff;
   font-size: 1.18rem;
   font-weight: 800;
