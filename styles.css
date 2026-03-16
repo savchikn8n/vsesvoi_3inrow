@@ -1130,8 +1130,10 @@ h1 {
 .leaderboard-avatar {
   width: 34px;
   height: 34px;
-  object-fit: contain;
   display: block;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
   contain: paint;
 }
 

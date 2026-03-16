@@ -825,14 +825,10 @@ function makeLeaderboardRow(item, index) {
   rank.className = 'leaderboard-rank';
   rank.textContent = String(index + 1);
 
-  const avatar = document.createElement('img');
+  const avatar = document.createElement('span');
   avatar.className = 'leaderboard-avatar';
-  avatar.src = avatarChoiceToUrl(item.avatar_choice || avatarChoiceFromUrl(item.avatar_url));
-  avatar.alt = 'avatar';
-  avatar.loading = 'eager';
-  avatar.decoding = 'sync';
-  avatar.width = 34;
-  avatar.height = 34;
+  avatar.setAttribute('aria-hidden', 'true');
+  avatar.style.backgroundImage = `url("${avatarChoiceToUrl(item.avatar_choice || avatarChoiceFromUrl(item.avatar_url))}")`;
 
   const name = document.createElement('span');
   name.className = 'leaderboard-name';
@@ -1722,6 +1718,9 @@ async function resolveCascades(swappedPair = null) {
       await trySwap(move.from, move.to);
       return false;
     }
+    if (bufferedMove && !canSwapMakeMatch(bufferedMove.from, bufferedMove.to)) {
+      bufferedMove = null;
+    }
     if (!(await interruptibleDelay(240, sessionId))) return false;
     locked = true;
     clearComboConstraint();
@@ -2093,6 +2092,7 @@ async function trySwap(a, b) {
   const actionSession = ++cascadeSession;
   bufferedMove = null;
   clearComboConstraint();
+  const snapshot = cloneBoard(board);
 
   const specialMove = hasSpecial(a) || hasSpecial(b);
   if (specialMove) {
@@ -2109,6 +2109,7 @@ async function trySwap(a, b) {
   if (actionSession !== cascadeSession) return;
 
   if (!valid) {
+    board = snapshot;
     statusEl.textContent = 'Нет совпадения. Попробуйте другой ход.';
     drawBoard();
     locked = false;
