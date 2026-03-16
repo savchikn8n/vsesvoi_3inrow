@@ -772,7 +772,7 @@ h1 {
   width: 28px;
   height: 28px;
   flex: 0 0 auto;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23F7C83E' d='M10 54V18l11 9 11-15 11 15 11-9v36H10Z'/%3E%3C/svg%3E");
+  background-image: url("./assets/crown.svg");
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
@@ -788,7 +788,7 @@ h1 {
   font-size: 0.82rem;
   font-weight: 900;
   line-height: 1;
-  transform: translateY(2px);
+  transform: translateY(5px);
 }
 
 .score-title {
@@ -840,12 +840,12 @@ h1 {
   font-weight: 800;
   font-size: 0.76rem;
   line-height: 1;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23F7C83E' d='M10 54V18l11 9 11-15 11 15 11-9v36H10Z'/%3E%3C/svg%3E");
+  background-image: url("./assets/crown.svg");
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
   transform: translateY(1px);
-  padding-top: 3px;
+  padding-top: 7px;
 }
 
 .start-top {
@@ -1157,15 +1157,15 @@ h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding-top: 2px;
   color: #000000;
   font-size: 0.62rem;
   font-weight: 900;
   line-height: 1;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23F7C83E' d='M10 54V18l11 9 11-15 11 15 11-9v36H10Z'/%3E%3C/svg%3E");
+  background-image: url("./assets/crown.svg");
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
+  padding-top: 5px;
 }
 
 .leaderboard-score {
@@ -1365,6 +1365,7 @@ h1 {
 
   .score-title-level {
     font-size: 0.72rem;
+    transform: translateY(4px);
   }
 
   #profile-modal .modal-card {
