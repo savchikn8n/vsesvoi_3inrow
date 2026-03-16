@@ -71,6 +71,8 @@ let leaderboardBusy = false;
 let giftBadgeTimer = null;
 let touchSessionSent = false;
 let cascadeSession = 0;
+let activeComboConstraint = null;
+let bufferedMove = null;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const PROFILE_KEY = 'gold_match_profile';
@@ -903,6 +905,40 @@ function clearHint() {
   hintMove = null;
 }
 
+function makeConstraintFromIndices(indices) {
+  const rows = new Set();
+  const cols = new Set();
+  indices.forEach((idx) => {
+    const [r, c] = idxToPos(idx);
+    rows.add(r);
+    cols.add(c);
+  });
+  return { rows, cols };
+}
+
+function clearComboConstraint() {
+  activeComboConstraint = null;
+}
+
+function canInteractIndex(index) {
+  if (index === null || index === undefined) return false;
+  if (!locked) return true;
+  if (!activeComboConstraint) return false;
+  const [r, c] = idxToPos(index);
+  return !activeComboConstraint.rows.has(r) && !activeComboConstraint.cols.has(c);
+}
+
+function canInteractPair(a, b) {
+  return canInteractIndex(a) && canInteractIndex(b);
+}
+
+function queueBufferedMove(from, to) {
+  if (!canInteractPair(from, to)) return false;
+  bufferedMove = { from, to };
+  selected = null;
+  return true;
+}
+
 function drawBoard(highlight = new Set(), blast = new Set()) {
   boardEl.innerHTML = '';
 
@@ -1141,10 +1177,10 @@ async function animateSwap(a, b, valid) {
 
 function handleTileTap(index, bypassSuppress = false) {
   if (!bypassSuppress && Date.now() < suppressClickUntil) return;
-  if (locked) return;
+  if (locked && !canInteractIndex(index)) return;
 
   if (selected === null) {
-    if (hasSpecial(index)) {
+    if (!locked && hasSpecial(index)) {
       activateSpecialMove(index, index);
       return;
     }
@@ -1155,7 +1191,7 @@ function handleTileTap(index, bypassSuppress = false) {
   }
 
   if (selected === index) {
-    if (hasSpecial(index)) {
+    if (!locked && hasSpecial(index)) {
       activateSpecialMove(index, index);
       return;
     }
@@ -1168,6 +1204,13 @@ function handleTileTap(index, bypassSuppress = false) {
     selected = index;
     clearHint();
     drawBoard();
+    return;
+  }
+
+  if (locked) {
+    if (areAdjacent(selected, index) && queueBufferedMove(selected, index)) {
+      drawBoard();
+    }
     return;
   }
 
@@ -1194,10 +1237,10 @@ function swipeTarget(fromIndex, dx, dy) {
 }
 
 function onTilePointerDown(e) {
-  if (locked) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
 
   const index = Number(e.currentTarget.dataset.index);
+  if (!canInteractIndex(index)) return;
   swipeGesture = {
     pointerId: e.pointerId,
     fromIndex: index,
@@ -1216,7 +1259,6 @@ function onTilePointerDown(e) {
 function onTilePointerMove(e) {
   if (!swipeGesture || swipeGesture.finished) return;
   if (swipeGesture.pointerId !== e.pointerId) return;
-  if (locked) return;
 
   const dx = e.clientX - swipeGesture.startX;
   const dy = e.clientY - swipeGesture.startY;
@@ -1227,10 +1269,16 @@ function onTilePointerMove(e) {
   suppressClickUntil = Date.now() + 380;
 
   if (target === null) return;
+  if (!canInteractPair(swipeGesture.fromIndex, target)) return;
 
   selected = null;
   clearHint();
   drawBoard();
+  if (locked) {
+    queueBufferedMove(swipeGesture.fromIndex, target);
+    drawBoard();
+    return;
+  }
   trySwap(swipeGesture.fromIndex, target);
 }
 
@@ -1568,13 +1616,22 @@ async function resolveCascades(swappedPair = null) {
 
     emitSmokeEffects(smokeCells, 'default');
     const blastCells = applyRemoval(removals, specialCreates);
+    activeComboConstraint = makeConstraintFromIndices(blastCells);
     drawBoard(removals, blastCells);
     if (!(await interruptibleDelay(420, sessionId))) return false;
     applyGravity();
     drawBoard();
     locked = false;
+    if (bufferedMove && canSwapMakeMatch(bufferedMove.from, bufferedMove.to)) {
+      const move = bufferedMove;
+      bufferedMove = null;
+      clearComboConstraint();
+      await trySwap(move.from, move.to);
+      return false;
+    }
     if (!(await interruptibleDelay(240, sessionId))) return false;
     locked = true;
+    clearComboConstraint();
 
     swappedPair = null;
   }
@@ -1584,6 +1641,7 @@ async function resolveCascades(swappedPair = null) {
     statusEl.textContent = `Каскад x${combo}!`;
   }
 
+  clearComboConstraint();
   return true;
 }
 
@@ -1848,6 +1906,8 @@ async function activateSpecialMove(a, b) {
   locked = true;
   selected = null;
   clearHint();
+  bufferedMove = null;
+  clearComboConstraint();
 
   if (a !== b) {
     await animateSwap(a, b, true);
@@ -1919,8 +1979,10 @@ async function activateSpecialMove(a, b) {
 }
 
 async function trySwap(a, b) {
-  if (locked) return;
+  if (locked || !canInteractPair(a, b)) return;
   const actionSession = ++cascadeSession;
+  bufferedMove = null;
+  clearComboConstraint();
 
   const specialMove = hasSpecial(a) || hasSpecial(b);
   if (specialMove) {
@@ -1991,6 +2053,8 @@ function resetGame() {
   score = 0;
   selected = null;
   locked = false;
+  bufferedMove = null;
+  clearComboConstraint();
   clearHint();
   hideStartScreen();
   closeAllModals();
