@@ -934,55 +934,87 @@ h1 {
   color: #ffffff;
   cursor: pointer;
   display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 2px;
-  padding: 6px;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
 }
 
-.gift-icon {
-  font-size: 1.3rem;
+.gift-currency {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+}
+
+.gift-currency img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.gift-count {
+  justify-self: start;
+  color: #ffffff;
+  font-size: 1.18rem;
+  font-weight: 800;
   line-height: 1;
-  filter: saturate(1.2);
-}
-
-.gift-label {
-  font-size: 0.62rem;
-  color: #f3b315;
-  text-transform: uppercase;
 }
 
 .gift-soon-badge {
   position: absolute;
   left: 50%;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   transform: translateX(-50%) translateY(-4px);
   background: #000000;
   color: #f3b315;
-  border: 1px solid #f3b315;
+  border: 2px solid #f3b315;
   border-radius: var(--ui-radius);
-  padding: 3px 8px;
-  font-size: 0.7rem;
+  padding: 6px 14px;
+  font-size: 0.84rem;
+  font-weight: 800;
   opacity: 0;
   pointer-events: none;
   transition: opacity 160ms ease, transform 160ms ease;
   z-index: 20;
+  white-space: nowrap;
 }
 
 .gift-soon-badge::before {
   content: "";
   position: absolute;
   left: 50%;
-  top: -5px;
+  top: -7px;
   transform: translateX(-50%);
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-bottom: 5px solid #f3b315;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 7px solid #f3b315;
 }
 
 .gift-soon-badge.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+.start-gifts-btn {
+  position: relative;
+}
+
+.start-gifts-soon-badge {
+  top: 50%;
+  left: 50%;
+  transform: translateX(-50%) translateY(calc(-100% - 14px));
+}
+
+.start-gifts-soon-badge.show {
+  transform: translateX(-50%) translateY(calc(-100% - 10px));
+}
+
+.start-gifts-soon-badge::before {
+  top: auto;
+  bottom: -7px;
+  border-bottom: 0;
+  border-top: 7px solid #f3b315;
 }
 
 .menu-hero {

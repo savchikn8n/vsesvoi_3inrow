@@ -64,10 +64,11 @@
             <span class="start-record-label">Мой рекорд</span>
             <span id="best-score" class="start-record-value">0</span>
           </div>
-          <button id="gift-entry" class="gift-entry panel" type="button" aria-label="Подарки">
-            <span class="gift-icon" aria-hidden="true">🎁</span>
-            <span class="gift-label">Подарки</span>
-            <span id="gift-soon-badge" class="gift-soon-badge">Скоро</span>
+          <button id="gift-entry" class="gift-entry panel" type="button" aria-label="Ладошки">
+            <span class="gift-currency" aria-hidden="true">
+              <img src="./assets/claps.svg" alt="" />
+            </span>
+            <span id="claps-count" class="gift-count">0</span>
           </button>
           <button id="profile-entry" class="profile-entry panel" type="button" aria-label="Профиль">
             <span class="profile-entry-avatar-wrap">
@@ -84,6 +85,10 @@
         <div class="start-actions">
           <button id="start-new-game" type="button">Новая игра</button>
           <button id="start-leaderboard" type="button">Таблица лидеров</button>
+          <button id="start-gifts" class="start-gifts-btn" type="button">
+            Подарки
+            <span id="start-gifts-soon-badge" class="gift-soon-badge start-gifts-soon-badge">Скоро</span>
+          </button>
           <button id="start-settings" type="button">Настройка</button>
         </div>
         </div>
