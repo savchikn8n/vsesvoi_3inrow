@@ -52,9 +52,7 @@ const profileEntryBtn = document.getElementById('profile-entry');
 const profileEntryAvatarEl = document.getElementById('profile-entry-avatar');
 const profileEntryNameEl = document.getElementById('profile-entry-name');
 const profileCloseBtn = document.getElementById('profile-close');
-const giftEntryBtn = document.getElementById('gift-entry');
 const clapsCountEl = document.getElementById('claps-count');
-const startGiftsSoonBadgeEl = document.getElementById('start-gifts-soon-badge');
 
 let board = [];
 let score = 0;
@@ -842,9 +840,8 @@ function closeProfileEditor() {
   showStartScreen();
 }
 
-function toggleSoonFlag(target) {
-  if (!target) return;
-  target.classList.toggle('show');
+function toggleGiftsButtonFlip() {
+  startGiftsBtn?.classList.toggle('is-flipped');
 }
 
 async function ensureAuthFlow() {
@@ -2309,8 +2306,7 @@ profileSaveBtn.addEventListener('click', handleProfileSave);
 profileEntryBtn?.addEventListener('click', openProfileEditor);
 profileCloseBtn?.addEventListener('click', closeProfileEditor);
 profileNameEl?.addEventListener('input', handleProfileNameInput);
-giftEntryBtn?.addEventListener('click', () => toggleSoonFlag(startGiftsSoonBadgeEl));
-startGiftsBtn?.addEventListener('click', () => toggleSoonFlag(startGiftsSoonBadgeEl));
+startGiftsBtn?.addEventListener('click', toggleGiftsButtonFlip);
 avatarPickerEl?.addEventListener('click', (e) => {
   const btn = e.target.closest('.avatar-option');
   if (!btn) return;

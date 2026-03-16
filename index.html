@@ -23,8 +23,7 @@
       <div id="ambient-game-mask" class="ambient-game-mask hidden" aria-hidden="true"></div>
       <header class="hud">
         <div class="hud-side hud-side-left">
-          <div class="panel panel-compact">
-            <span class="label">Счёт</span>
+          <div class="panel panel-compact panel-score" aria-label="Счёт">
             <span id="score" class="value">0</span>
           </div>
           <div class="panel panel-compact panel-claps" aria-label="Ладошки">
@@ -93,9 +92,11 @@
         <div class="start-actions">
           <button id="start-new-game" type="button">Новая игра</button>
           <button id="start-leaderboard" type="button">Таблица лидеров</button>
-          <button id="start-gifts" class="start-gifts-btn" type="button">
-            Подарки
-            <span id="start-gifts-soon-badge" class="gift-soon-badge start-gifts-soon-badge">Скоро</span>
+          <button id="start-gifts" class="start-gifts-btn" type="button" aria-label="Подарки">
+            <span class="start-gifts-card">
+              <span class="start-gifts-face start-gifts-front">Подарки</span>
+              <span class="start-gifts-face start-gifts-back">Скоро</span>
+            </span>
           </button>
           <button id="start-settings" type="button">Настройка</button>
         </div>
