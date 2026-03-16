@@ -120,8 +120,32 @@ function setupTelegramWebApp() {
   const tg = window.Telegram?.WebApp;
   if (!tg) return;
 
+  const expandToFullscreen = () => {
+    tg.expand();
+    if (typeof tg.requestFullscreen === 'function') {
+      try {
+        const result = tg.requestFullscreen();
+        if (result && typeof result.catch === 'function') {
+          result.catch(() => {});
+        }
+      } catch (_) {
+        // Ignore unsupported/fullscreen-denied cases and keep expanded mode.
+      }
+    }
+  };
+
   tg.ready();
-  tg.expand();
+  expandToFullscreen();
+
+  if (typeof tg.onEvent === 'function') {
+    tg.onEvent('activated', expandToFullscreen);
+    tg.onEvent('viewportChanged', () => {
+      window.requestAnimationFrame(expandToFullscreen);
+    });
+  }
+
+  window.setTimeout(expandToFullscreen, 60);
+  window.setTimeout(expandToFullscreen, 240);
 
   if (typeof tg.disableVerticalSwipes === 'function') {
     tg.disableVerticalSwipes();
