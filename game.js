@@ -80,6 +80,7 @@ let touchSessionSent = false;
 let cascadeSession = 0;
 let activeComboConstraint = null;
 let bufferedMove = null;
+let giftsFlipTimer = null;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const CLAPS_BALANCE_KEY = 'gold_match_claps_balance';
@@ -841,7 +842,22 @@ function closeProfileEditor() {
 }
 
 function toggleGiftsButtonFlip() {
-  startGiftsBtn?.classList.toggle('is-flipped');
+  if (!startGiftsBtn) return;
+
+  const willFlip = !startGiftsBtn.classList.contains('is-flipped');
+  startGiftsBtn.classList.toggle('is-flipped', willFlip);
+
+  if (giftsFlipTimer) {
+    clearTimeout(giftsFlipTimer);
+    giftsFlipTimer = null;
+  }
+
+  if (willFlip) {
+    giftsFlipTimer = setTimeout(() => {
+      startGiftsBtn.classList.remove('is-flipped');
+      giftsFlipTimer = null;
+    }, 2000);
+  }
 }
 
 async function ensureAuthFlow() {
