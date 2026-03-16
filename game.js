@@ -17,6 +17,7 @@ const statusEl = document.getElementById('status');
 const tileTpl = document.getElementById('tile-template');
 const startScreenEl = document.getElementById('start-screen');
 const bestScoreEl = document.getElementById('best-score');
+const scoreTitleEl = document.getElementById('score-title');
 const startNewGameBtn = document.getElementById('start-new-game');
 const startLeaderboardBtn = document.getElementById('start-leaderboard');
 const startSettingsBtn = document.getElementById('start-settings');
@@ -475,9 +476,22 @@ function saveBestScore(value) {
   localStorage.setItem(BEST_SCORE_KEY, String(value));
 }
 
+function scoreTitle(value) {
+  if (value >= 170000 && value < 200000) return 'Своеобразный';
+  if (value >= 140000 && value < 170000) return 'Во всём виноваты Свои';
+  if (value >= 110000 && value < 140000) return 'ИнтерСвой';
+  if (value >= 80000 && value < 110000) return 'Свой против Хищника';
+  if (value >= 40000 && value < 80000) return 'Свой среди Своих';
+  if (value >= 10000 && value < 40000) return 'В доску Свой';
+  return 'Тупо Свой';
+}
+
 function updateBestScoreUi() {
   if (bestScoreEl) {
     bestScoreEl.textContent = String(bestScore);
+  }
+  if (scoreTitleEl) {
+    scoreTitleEl.textContent = scoreTitle(bestScore);
   }
 }
 
