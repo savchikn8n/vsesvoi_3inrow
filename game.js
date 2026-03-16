@@ -92,6 +92,7 @@ const AMBIENT_ICON_SOURCES = [
   { key: 'teapot', src: './assets/teapot.png' },
   { key: 'hookah-2', src: './assets/hookah_2.png' },
 ];
+const AVATAR_ASSET_URLS = ['./assets/gold.png', './assets/hookah1.png', './assets/steam.png', './assets/cole.png'];
 
 const ambientState = {
   gameplay: {
@@ -714,6 +715,15 @@ function updateProfileEntry() {
   profileEntryNameEl.textContent = profile?.display_name || 'Игрок';
 }
 
+function preloadAvatarAssets() {
+  AVATAR_ASSET_URLS.forEach((src) => {
+    const img = new Image();
+    img.decoding = 'async';
+    img.loading = 'eager';
+    img.src = src;
+  });
+}
+
 function openProfileEditor() {
   openProfileModal(profile || loadProfile());
 }
@@ -801,16 +811,28 @@ function makeLeaderboardRow(item, index) {
   avatar.className = 'leaderboard-avatar';
   avatar.src = avatarChoiceToUrl(item.avatar_choice || avatarChoiceFromUrl(item.avatar_url));
   avatar.alt = 'avatar';
+  avatar.loading = 'eager';
+  avatar.decoding = 'sync';
+  avatar.width = 34;
+  avatar.height = 34;
 
   const name = document.createElement('span');
   name.className = 'leaderboard-name';
   name.textContent = item.display_name || 'Игрок';
 
+  const nameWrap = document.createElement('div');
+  nameWrap.className = 'leaderboard-name-wrap';
+
+  const crown = document.createElement('span');
+  crown.className = 'leaderboard-title-crown';
+  crown.textContent = String(scoreLevel(Number(item.best_score || 0)));
+
   const scoreValue = document.createElement('span');
   scoreValue.className = 'leaderboard-score';
   scoreValue.textContent = String(item.best_score ?? 0);
 
-  row.append(rank, avatar, name, scoreValue);
+  nameWrap.append(name, crown);
+  row.append(rank, avatar, nameWrap, scoreValue);
   return row;
 }
 
@@ -2175,6 +2197,7 @@ window.addEventListener('resize', () => {
 bestScore = loadBestScore();
 profile = loadProfile();
 updateBestScoreUi();
+preloadAvatarAssets();
 updateProfileEntry();
 updateSoundToggleLabel();
 setupTelegramWebApp();
