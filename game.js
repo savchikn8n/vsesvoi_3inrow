@@ -22,6 +22,7 @@ const scoreTitleTriggerEl = document.getElementById('score-title-trigger');
 const scoreTitleLevelEl = document.getElementById('score-title-level');
 const startNewGameBtn = document.getElementById('start-new-game');
 const startLeaderboardBtn = document.getElementById('start-leaderboard');
+const startGiftsBtn = document.getElementById('start-gifts');
 const startSettingsBtn = document.getElementById('start-settings');
 const gameOverModalEl = document.getElementById('game-over-modal');
 const settingsModalEl = document.getElementById('settings-modal');
@@ -51,7 +52,8 @@ const profileEntryAvatarEl = document.getElementById('profile-entry-avatar');
 const profileEntryNameEl = document.getElementById('profile-entry-name');
 const profileCloseBtn = document.getElementById('profile-close');
 const giftEntryBtn = document.getElementById('gift-entry');
-const giftSoonBadgeEl = document.getElementById('gift-soon-badge');
+const clapsCountEl = document.getElementById('claps-count');
+const startGiftsSoonBadgeEl = document.getElementById('start-gifts-soon-badge');
 
 let board = [];
 let score = 0;
@@ -73,7 +75,6 @@ let selectedAvatar = 'gold';
 let authBusy = false;
 let avatarPicked = false;
 let leaderboardBusy = false;
-let giftBadgeTimer = null;
 let touchSessionSent = false;
 let cascadeSession = 0;
 let activeComboConstraint = null;
@@ -528,9 +529,16 @@ function scoreTitle(value) {
   return 'Тупо Свой';
 }
 
+function clapCount(value) {
+  return Math.floor(Math.max(0, Number(value) || 0) / 10000);
+}
+
 function updateBestScoreUi() {
   if (bestScoreEl) {
     bestScoreEl.textContent = String(bestScore);
+  }
+  if (clapsCountEl) {
+    clapsCountEl.textContent = String(clapCount(bestScore));
   }
   if (scoreTitleEl) {
     scoreTitleEl.textContent = scoreTitle(bestScore);
@@ -795,14 +803,9 @@ function closeProfileEditor() {
   showStartScreen();
 }
 
-function showGiftSoonFlag() {
-  if (!giftSoonBadgeEl) return;
-  giftSoonBadgeEl.classList.add('show');
-  if (giftBadgeTimer) clearTimeout(giftBadgeTimer);
-  giftBadgeTimer = setTimeout(() => {
-    giftSoonBadgeEl.classList.remove('show');
-    giftBadgeTimer = null;
-  }, 1400);
+function toggleSoonFlag(target) {
+  if (!target) return;
+  target.classList.toggle('show');
 }
 
 async function ensureAuthFlow() {
@@ -2262,7 +2265,8 @@ profileSaveBtn.addEventListener('click', handleProfileSave);
 profileEntryBtn?.addEventListener('click', openProfileEditor);
 profileCloseBtn?.addEventListener('click', closeProfileEditor);
 profileNameEl?.addEventListener('input', handleProfileNameInput);
-giftEntryBtn?.addEventListener('click', showGiftSoonFlag);
+giftEntryBtn?.addEventListener('click', () => toggleSoonFlag(startGiftsSoonBadgeEl));
+startGiftsBtn?.addEventListener('click', () => toggleSoonFlag(startGiftsSoonBadgeEl));
 avatarPickerEl?.addEventListener('click', (e) => {
   const btn = e.target.closest('.avatar-option');
   if (!btn) return;
