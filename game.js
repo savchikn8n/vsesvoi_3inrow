@@ -742,6 +742,10 @@ function preloadAvatarAssets() {
   return Promise.all(AVATAR_ASSET_URLS.map((src) => preloadAvatarAsset(src)));
 }
 
+function leaderboardAvatarUrl(item) {
+  return avatarChoiceToUrl(item.avatar_choice || avatarChoiceFromUrl(item.avatar_url));
+}
+
 function openProfileEditor() {
   openProfileModal(profile || loadProfile());
 }
@@ -828,7 +832,7 @@ function makeLeaderboardRow(item, index) {
   const avatar = document.createElement('span');
   avatar.className = 'leaderboard-avatar';
   avatar.setAttribute('aria-hidden', 'true');
-  avatar.style.backgroundImage = `url("${avatarChoiceToUrl(item.avatar_choice || avatarChoiceFromUrl(item.avatar_url))}")`;
+  avatar.style.backgroundImage = `url("${leaderboardAvatarUrl(item)}")`;
 
   const name = document.createElement('span');
   name.className = 'leaderboard-name';
@@ -850,52 +854,87 @@ function makeLeaderboardRow(item, index) {
   return row;
 }
 
-function renderLeaderboard(items = [], showEmptyMessage = true) {
+function setLeaderboardListReady(ready) {
   if (!leaderboardListEl) return;
-  leaderboardListEl.innerHTML = '';
-  if (!items.length) {
-    if (!showEmptyMessage) return;
-    setLeaderboardStatus('Пока нет результатов. Стань первым!');
-    return;
-  }
-  setLeaderboardStatus('');
-  items.forEach((item, idx) => leaderboardListEl.appendChild(makeLeaderboardRow(item, idx)));
+  leaderboardListEl.classList.toggle('is-ready', ready);
+}
 
+function clearLeaderboardList() {
+  if (!leaderboardListEl) return;
+  leaderboardListEl.replaceChildren();
+  setLeaderboardListReady(false);
+}
+
+async function buildLeaderboardFragment(items = []) {
+  const fragment = document.createDocumentFragment();
+  const avatarUrls = [...new Set(items.map((item) => leaderboardAvatarUrl(item)))];
+  await Promise.all(avatarUrls.map((src) => preloadAvatarAsset(src)));
+  items.forEach((item, idx) => fragment.appendChild(makeLeaderboardRow(item, idx)));
+  return fragment;
+}
+
+function focusCurrentLeaderboardUser() {
   const currentUserRow = leaderboardListEl.querySelector('.leaderboard-row.is-current-user');
   if (currentUserRow) {
     currentUserRow.scrollIntoView({ block: 'nearest' });
   }
 }
 
+function commitLeaderboardRender(fragment, items = [], showEmptyMessage = true) {
+  if (!leaderboardListEl) return;
+  leaderboardListEl.replaceChildren(fragment);
+  if (!items.length) {
+    setLeaderboardListReady(false);
+    if (showEmptyMessage) {
+      setLeaderboardStatus('Пока нет результатов. Стань первым!');
+    }
+    return;
+  }
+
+  setLeaderboardStatus('');
+  requestAnimationFrame(() => {
+    setLeaderboardListReady(true);
+    focusCurrentLeaderboardUser();
+  });
+}
+
 async function openLeaderboard() {
   if (leaderboardBusy) return;
   leaderboardBusy = true;
   closeAllModals();
-  showModal(leaderboardModalEl);
+  clearLeaderboardList();
   setLeaderboardLoading(true);
-  await preloadAvatarAssets();
+  showModal(leaderboardModalEl);
+  const preloadPromise = preloadAvatarAssets();
   const cached = loadLeaderboardCache();
-  if (cached?.items?.length) {
-    renderLeaderboard(cached.items, false);
-  } else {
-    renderLeaderboard([], false);
-  }
+  const cachedItems = Array.isArray(cached?.items) ? cached.items : [];
+  const leaderboardRequest = postJsonWithOptions(
+    'leaderboard',
+    { limit: 50 },
+    { timeoutMs: 6500, retries: 2 },
+  );
+
   try {
-    const { leaderboard } = await postJsonWithOptions(
-      'leaderboard',
-      { limit: 50 },
-      { timeoutMs: 6500, retries: 2 },
-    );
+    await preloadPromise;
+
+    if (cachedItems.length) {
+      const cachedFragment = await buildLeaderboardFragment(cachedItems);
+      commitLeaderboardRender(cachedFragment, cachedItems, false);
+    }
+
+    const { leaderboard } = await leaderboardRequest;
     const items = Array.isArray(leaderboard) ? leaderboard : [];
-    renderLeaderboard(items);
+    const fragment = await buildLeaderboardFragment(items);
+    commitLeaderboardRender(fragment, items);
     saveLeaderboardCache(items);
   } catch (error) {
-    setLeaderboardLoading(false);
     const cacheFresh = cached && Date.now() - Number(cached.ts || 0) <= LEADERBOARD_CACHE_TTL_MS;
-    if (cacheFresh && cached.items.length) {
-      renderLeaderboard(cached.items, false);
+    if (cacheFresh && cachedItems.length) {
+      const cachedFragment = await buildLeaderboardFragment(cachedItems);
+      commitLeaderboardRender(cachedFragment, cachedItems, false);
       setLeaderboardStatus('Слабая сеть: показаны сохраненные результаты.');
-    } else if (!cached?.items?.length) {
+    } else if (!cachedItems.length) {
+      clearLeaderboardList();
       setLeaderboardStatus(error.message || 'Load fail');
     }
   } finally {

@@ -1102,6 +1102,12 @@ h1 {
   max-height: calc((34px + 14px + 4px) * 5 + 32px);
   overflow-y: auto;
   padding-right: 4px;
+  opacity: 0;
+  transition: opacity 0.14s ease;
+}
+
+.leaderboard-list.is-ready {
+  opacity: 1;
 }
 
 .leaderboard-row {
