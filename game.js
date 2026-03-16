@@ -70,6 +70,7 @@ let avatarPicked = false;
 let leaderboardBusy = false;
 let giftBadgeTimer = null;
 let touchSessionSent = false;
+let cascadeSession = 0;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const PROFILE_KEY = 'gold_match_profile';
@@ -1516,13 +1517,16 @@ function applyRemoval(
 }
 
 async function resolveCascades(swappedPair = null) {
+  const sessionId = ++cascadeSession;
   let combo = 0;
 
   while (true) {
+    if (sessionId !== cascadeSession) return false;
     const groups = findMatchGroups(board);
     if (groups.length === 0) break;
 
     combo++;
+    locked = true;
     const removals = new Set();
     const specialCreates = new Map();
     const smokeCells = new Set();
@@ -1565,10 +1569,12 @@ async function resolveCascades(swappedPair = null) {
     emitSmokeEffects(smokeCells, 'default');
     const blastCells = applyRemoval(removals, specialCreates);
     drawBoard(removals, blastCells);
-    await delay(420);
+    if (!(await interruptibleDelay(420, sessionId))) return false;
     applyGravity();
     drawBoard();
-    await delay(360);
+    locked = false;
+    if (!(await interruptibleDelay(240, sessionId))) return false;
+    locked = true;
 
     swappedPair = null;
   }
@@ -1577,6 +1583,8 @@ async function resolveCascades(swappedPair = null) {
     score += combo * 20;
     statusEl.textContent = `Каскад x${combo}!`;
   }
+
+  return true;
 }
 
 function canSwapMakeMatch(a, b) {
@@ -1836,6 +1844,7 @@ function handleProfileNameInput() {
 }
 
 async function activateSpecialMove(a, b) {
+  const actionSession = ++cascadeSession;
   locked = true;
   selected = null;
   clearHint();
@@ -1885,11 +1894,17 @@ async function activateSpecialMove(a, b) {
       : applyRemoval(blast, new Map(), { chainSpecials: true, emitTriggeredEffects: true, smokeTone: 'red' });
   drawBoard(new Set(), blastCells);
   await delay(340);
+  if (actionSession !== cascadeSession) return;
   applyGravity();
   drawBoard();
-  await delay(280);
+  locked = false;
+  if (!(await interruptibleDelay(180, actionSession))) return;
+  locked = true;
 
-  await resolveCascades();
+  const cascadesFinished = await resolveCascades();
+  if (cascadesFinished === false) {
+    return;
+  }
 
   if (!hasAnyMove()) {
     shuffleBoard();
@@ -1905,6 +1920,7 @@ async function activateSpecialMove(a, b) {
 
 async function trySwap(a, b) {
   if (locked) return;
+  const actionSession = ++cascadeSession;
 
   const specialMove = hasSpecial(a) || hasSpecial(b);
   if (specialMove) {
@@ -1918,6 +1934,7 @@ async function trySwap(a, b) {
 
   const valid = canSwapMakeMatch(a, b);
   await animateSwap(a, b, valid);
+  if (actionSession !== cascadeSession) return;
 
   if (!valid) {
     statusEl.textContent = 'Нет совпадения. Попробуйте другой ход.';
@@ -1929,7 +1946,10 @@ async function trySwap(a, b) {
   swapIn(board, a, b);
   playSwapSound();
   drawBoard();
-  await resolveCascades([a, b]);
+  const cascadesFinished = await resolveCascades([a, b]);
+  if (cascadesFinished === false) {
+    return;
+  }
 
   if (!hasAnyMove()) {
     shuffleBoard();
@@ -1945,6 +1965,26 @@ async function trySwap(a, b) {
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function interruptibleDelay(ms, sessionId) {
+  return new Promise((resolve) => {
+    const startedAt = performance.now();
+
+    function step() {
+      if (sessionId !== cascadeSession) {
+        resolve(false);
+        return;
+      }
+      if (performance.now() - startedAt >= ms) {
+        resolve(true);
+        return;
+      }
+      requestAnimationFrame(step);
+    }
+
+    step();
+  });
 }
 
 function resetGame() {
