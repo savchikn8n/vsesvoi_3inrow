@@ -93,6 +93,7 @@ const AMBIENT_ICON_SOURCES = [
   { key: 'hookah-2', src: './assets/hookah_2.png' },
 ];
 const AVATAR_ASSET_URLS = ['./assets/gold.png', './assets/hookah1.png', './assets/steam.png', './assets/cole.png'];
+const avatarAssetCache = new Map();
 
 const ambientState = {
   gameplay: {
@@ -715,13 +716,30 @@ function updateProfileEntry() {
   profileEntryNameEl.textContent = profile?.display_name || 'Игрок';
 }
 
-function preloadAvatarAssets() {
-  AVATAR_ASSET_URLS.forEach((src) => {
+function preloadAvatarAsset(src) {
+  if (avatarAssetCache.has(src)) {
+    return avatarAssetCache.get(src);
+  }
+
+  const task = new Promise((resolve) => {
     const img = new Image();
-    img.decoding = 'async';
+    img.decoding = 'sync';
     img.loading = 'eager';
+    img.onload = () => resolve(src);
+    img.onerror = () => resolve(src);
     img.src = src;
+
+    if (typeof img.decode === 'function') {
+      img.decode().then(() => resolve(src)).catch(() => resolve(src));
+    }
   });
+
+  avatarAssetCache.set(src, task);
+  return task;
+}
+
+function preloadAvatarAssets() {
+  return Promise.all(AVATAR_ASSET_URLS.map((src) => preloadAvatarAsset(src)));
 }
 
 function openProfileEditor() {
@@ -859,6 +877,7 @@ async function openLeaderboard() {
   closeAllModals();
   showModal(leaderboardModalEl);
   setLeaderboardLoading(true);
+  await preloadAvatarAssets();
   const cached = loadLeaderboardCache();
   if (cached?.items?.length) {
     renderLeaderboard(cached.items, false);
