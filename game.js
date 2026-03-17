@@ -603,6 +603,11 @@ function saveProfile(next) {
     ...next,
     auth_verified: true,
   };
+  if (Number.isFinite(Number(normalized.best_score))) {
+    bestScore = Math.max(0, Math.floor(Number(normalized.best_score)));
+    normalized.best_score = bestScore;
+    saveBestScore(bestScore);
+  }
   if (Number.isFinite(Number(normalized.clap_balance))) {
     clapBalance = Math.max(clapBalance, Math.floor(Number(normalized.clap_balance)));
     normalized.clap_balance = clapBalance;
