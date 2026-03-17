@@ -1934,6 +1934,10 @@ async function syncProgressIfNeeded() {
   const clapsChanged = localClaps > Number(profile.clap_balance || 0);
   if (!bestChanged && !clapsChanged) return;
 
+  // Optimistically persist progress locally so the UI does not fall back to stale
+  // server values while the network request is still in flight.
+  saveProfile({ ...profile, best_score: localBest, clap_balance: localClaps });
+
   try {
     const initData = telegramInitData();
     if (!initData) return;
@@ -1945,8 +1949,6 @@ async function syncProgressIfNeeded() {
     });
     if (result?.profile) {
       saveProfile(result.profile);
-    } else {
-      saveProfile({ ...profile, best_score: localBest, clap_balance: localClaps });
     }
   } catch (_) {
     // score sync is non-blocking for gameplay
