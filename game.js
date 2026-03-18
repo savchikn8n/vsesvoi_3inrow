@@ -695,6 +695,43 @@ async function trackAnalytics(eventType, payload = {}) {
   }
 }
 
+function trackAnalyticsLifecycle(eventType, payload = {}) {
+  const initData = telegramInitData();
+  if (!initData || !profile?.telegram_id) return false;
+
+  const url = apiUrl('analytics-track');
+  if (!url) return false;
+
+  const body = JSON.stringify({
+    initData,
+    eventType,
+    payload,
+  });
+
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      const blob = new Blob([body], { type: 'application/json' });
+      if (navigator.sendBeacon(url, blob)) {
+        return true;
+      }
+    }
+  } catch (_) {
+    // fall through to keepalive fetch
+  }
+
+  try {
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+    }).catch(() => {});
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function startAnalyticsSession(origin = 'menu') {
   if (activeSessionId) {
     endAnalyticsSession('restart');
@@ -709,27 +746,33 @@ function startAnalyticsSession(origin = 'menu') {
   void trackAnalytics('game_started', { sessionId: activeSessionId, origin });
 }
 
-function endAnalyticsSession(reason = 'menu_exit') {
+function endAnalyticsSession(reason = 'menu_exit', options = {}) {
   if (!activeSessionId) return;
 
   const sessionId = activeSessionId;
   const durationSec = Math.max(0, Math.round((Date.now() - sessionStartedAtMs) / 1000));
   const clapsEarned = Math.max(0, clapBalance - sessionClapsBaseline);
   const movesCount = sessionMovesCount;
-
-  activeSessionId = null;
-  sessionStartedAtMs = 0;
-  sessionMovesCount = 0;
-  sessionClapsBaseline = clapBalance;
-
-  void trackAnalytics('session_end', {
+  const payload = {
     sessionId,
     durationSec,
     endReason: reason,
     bestScore: score,
     clapsEarned,
     movesCount,
-  });
+  };
+
+  activeSessionId = null;
+  sessionStartedAtMs = 0;
+  sessionMovesCount = 0;
+  sessionClapsBaseline = clapBalance;
+
+  if (options?.useLifecycleTransport) {
+    trackAnalyticsLifecycle('session_end', payload);
+    return;
+  }
+
+  void trackAnalytics('session_end', payload);
 }
 
 function isProfileComplete(userProfile) {
@@ -2557,6 +2600,20 @@ window.addEventListener('resize', () => {
   syncEffectsLayer();
   refreshAmbientLayers();
   syncAmbientGameMask();
+});
+
+window.addEventListener('pagehide', () => {
+  endAnalyticsSession('pagehide', { useLifecycleTransport: true });
+});
+
+window.addEventListener('beforeunload', () => {
+  endAnalyticsSession('beforeunload', { useLifecycleTransport: true });
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    endAnalyticsSession('hidden', { useLifecycleTransport: true });
+  }
 });
 
 bestScore = loadBestScore();
