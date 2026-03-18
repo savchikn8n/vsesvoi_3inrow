@@ -38,6 +38,8 @@ const menuNewGameBtn = document.getElementById('menu-new-game');
 const menuExitMenuBtn = document.getElementById('menu-exit-menu');
 const menuSettingsBtn = document.getElementById('menu-settings');
 const soundToggleBtn = document.getElementById('sound-toggle');
+const vsesvoiChannelBtn = document.getElementById('vsesvoi-channel');
+const vsesvoiChatBtn = document.getElementById('vsesvoi-chat');
 const devChannelBtn = document.getElementById('dev-channel');
 const settingsCloseBtn = document.getElementById('settings-close');
 const authModalEl = document.getElementById('auth-modal');
@@ -2013,6 +2015,14 @@ function openBookTable() {
   window.open('https://t.me/+Ew4VcHco7XBjNDU6', '_blank', 'noopener,noreferrer');
 }
 
+function openVsesvoiChannel() {
+  window.open('https://t.me/vsesvoi_kld', '_blank', 'noopener,noreferrer');
+}
+
+function openVsesvoiChat() {
+  window.open('https://t.me/+Ew4VcHco7XBjNDU6', '_blank', 'noopener,noreferrer');
+}
+
 function openDevChannel() {
   window.open('https://t.me/+fW5W6DGXAQxiZTAy', '_blank', 'noopener,noreferrer');
 }
@@ -2328,6 +2338,8 @@ soundToggleBtn.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   updateSoundToggleLabel();
 });
+vsesvoiChannelBtn?.addEventListener('click', openVsesvoiChannel);
+vsesvoiChatBtn?.addEventListener('click', openVsesvoiChat);
 devChannelBtn.addEventListener('click', openDevChannel);
 settingsCloseBtn.addEventListener('click', closeSettings);
 leaderboardCloseBtn?.addEventListener('click', closeLeaderboard);
