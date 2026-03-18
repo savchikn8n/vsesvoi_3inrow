@@ -84,6 +84,10 @@ let cascadeSession = 0;
 let activeComboConstraint = null;
 let bufferedMove = null;
 let giftsFlipTimer = null;
+let activeSessionId = null;
+let sessionStartedAtMs = 0;
+let sessionMovesCount = 0;
+let sessionClapsBaseline = 0;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const CLAPS_BALANCE_KEY = 'gold_match_claps_balance';
@@ -672,6 +676,58 @@ async function touchSession() {
   }
 }
 
+async function trackAnalytics(eventType, payload = {}) {
+  const initData = telegramInitData();
+  if (!initData || !profile?.telegram_id) return;
+
+  try {
+    await postJson('analytics-track', {
+      initData,
+      eventType,
+      payload,
+    });
+  } catch (_) {
+    // analytics is non-blocking
+  }
+}
+
+function startAnalyticsSession(origin = 'menu') {
+  if (activeSessionId) {
+    endAnalyticsSession('restart');
+  }
+
+  activeSessionId = makeSessionId();
+  sessionStartedAtMs = Date.now();
+  sessionMovesCount = 0;
+  sessionClapsBaseline = clapBalance;
+
+  void trackAnalytics('session_start', { sessionId: activeSessionId });
+  void trackAnalytics('game_started', { sessionId: activeSessionId, origin });
+}
+
+function endAnalyticsSession(reason = 'menu_exit') {
+  if (!activeSessionId) return;
+
+  const sessionId = activeSessionId;
+  const durationSec = Math.max(0, Math.round((Date.now() - sessionStartedAtMs) / 1000));
+  const clapsEarned = Math.max(0, clapBalance - sessionClapsBaseline);
+  const movesCount = sessionMovesCount;
+
+  activeSessionId = null;
+  sessionStartedAtMs = 0;
+  sessionMovesCount = 0;
+  sessionClapsBaseline = clapBalance;
+
+  void trackAnalytics('session_end', {
+    sessionId,
+    durationSec,
+    endReason: reason,
+    bestScore: score,
+    clapsEarned,
+    movesCount,
+  });
+}
+
 function isProfileComplete(userProfile) {
   return Boolean(
     userProfile?.auth_verified === true &&
@@ -688,6 +744,13 @@ function apiUrl(path) {
 
 async function postJson(path, payload) {
   return postJsonWithOptions(path, payload, {});
+}
+
+function makeSessionId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `session-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
 }
 
 async function postJsonWithOptions(path, payload, options = {}) {
@@ -851,6 +914,7 @@ function closeProfileEditor() {
 
 function toggleGiftsButtonFlip() {
   if (!startGiftsBtn) return;
+  void trackAnalytics('gifts_opened', { sessionId: activeSessionId });
 
   const willFlip = !startGiftsBtn.classList.contains('is-flipped');
   startGiftsBtn.classList.toggle('is-flipped', willFlip);
@@ -987,6 +1051,7 @@ function commitLeaderboardRender(fragment, items = [], showEmptyMessage = true) 
 
 async function openLeaderboard() {
   if (leaderboardBusy) return;
+  void trackAnalytics('leaderboard_opened', { sessionId: activeSessionId });
   leaderboardBusy = true;
   closeAllModals();
   clearLeaderboardList();
@@ -1035,6 +1100,7 @@ function closeLeaderboard() {
 }
 
 function openTitlesModal() {
+  void trackAnalytics('titles_opened', { sessionId: activeSessionId });
   closeAllModals();
   showModal(titlesModalEl);
 }
@@ -2103,10 +2169,12 @@ function startTurnTimer() {
 }
 
 function registerSuccessfulMove() {
+  sessionMovesCount += 1;
   resetTurnTimer();
 }
 
 function endGameByTimeout() {
+  endAnalyticsSession('timeout');
   stopTurnTimer();
   locked = true;
   selected = null;
@@ -2119,6 +2187,7 @@ function endGameByTimeout() {
 }
 
 function exitToMenu() {
+  endAnalyticsSession('menu_exit');
   syncProgressIfNeeded();
   showStartScreen();
 }
@@ -2140,6 +2209,7 @@ function openDevChannel() {
 }
 
 function openSettingsFromMenu() {
+  void trackAnalytics('settings_opened', { sessionId: activeSessionId });
   showModal(settingsModalEl);
 }
 
@@ -2239,6 +2309,7 @@ async function handleProfileSave() {
     }
 
     saveProfile(savedProfile);
+    void trackAnalytics('profile_completed', { sessionId: activeSessionId });
     hideModal(profileModalEl);
     setProfileStatus('');
     showStartScreen();
@@ -2427,6 +2498,7 @@ function interruptibleDelay(ms, sessionId) {
 }
 
 function resetGame() {
+  startAnalyticsSession(startScreenEl?.classList.contains('hidden') ? 'restart' : 'menu');
   score = 0;
   clapsAwardedThisRun = 0;
   selected = null;

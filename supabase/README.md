@@ -3,19 +3,24 @@
 1. Run SQL from `supabase/sql/001_init_profiles.sql` in Supabase SQL editor.
 2. Run SQL from `supabase/sql/002_inactive_notifications.sql` in Supabase SQL editor.
 3. Run SQL from `supabase/sql/003_telegram_names.sql` in Supabase SQL editor.
-4. Set Edge Functions secrets:
+4. Run SQL from `supabase/sql/004_clap_balance.sql` in Supabase SQL editor.
+5. Run SQL from `supabase/sql/006_analytics.sql` in Supabase SQL editor.
+6. Set Edge Functions secrets:
    - `TELEGRAM_BOT_TOKEN`
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `REMINDER_CRON_SECRET`
-5. Deploy functions:
+   - `DASHBOARD_SECRET`
+7. Deploy functions:
    - `supabase functions deploy telegram-auth`
    - `supabase functions deploy profile-save`
    - `supabase functions deploy leaderboard`
    - `supabase functions deploy score-submit`
    - `supabase functions deploy touch-session`
    - `supabase functions deploy send-inactive-reminders`
-6. In frontend, set global variable before loading `game.js`:
+   - `supabase functions deploy analytics-track`
+   - `supabase functions deploy analytics-summary`
+8. In frontend, set global variable before loading `game.js`:
 
 ```html
 <script>
@@ -23,14 +28,16 @@
 </script>
 ```
 
-7. Endpoints used by frontend:
+9. Endpoints used by frontend:
    - `POST /functions/v1/telegram-auth`
    - `POST /functions/v1/profile-save`
    - `POST /functions/v1/leaderboard`
    - `POST /functions/v1/score-submit`
    - `POST /functions/v1/touch-session`
+   - `POST /functions/v1/analytics-track`
+   - `POST /functions/v1/analytics-summary`
 
-8. To send reminders after 24 hours of inactivity:
+10. To send reminders after 24 hours of inactivity:
    - schedule `POST /functions/v1/send-inactive-reminders` once per hour
    - pass header `x-cron-secret: YOUR_REMINDER_CRON_SECRET`
    - users are selected when:
@@ -38,7 +45,7 @@
      - `last_seen_at <= now() - 24 hours`
      - `last_inactive_reminder_at is null` or older than the user's latest `last_seen_at`
 
-9. Example scheduling in Supabase Cron (official approach: `pg_cron + pg_net + Vault`):
+11. Example scheduling in Supabase Cron (official approach: `pg_cron + pg_net + Vault`):
 
 ```sql
 select vault.create_secret('https://tnngitplssufqeqpxuib.supabase.co', 'project_url')
@@ -69,3 +76,17 @@ select
 Reference:
 - Supabase docs: [Scheduling Edge Functions](https://supabase.com/docs/guides/functions/schedule-functions)
 - Supabase docs: [Cron](https://supabase.com/docs/guides/cron)
+
+12. Dashboard:
+   - Open `/dashboard.html`
+   - Enter `DASHBOARD_SECRET`
+   - The page will load:
+     - total players
+     - active players for 24h
+     - new players for 24h
+     - sessions for 24h
+     - average session duration
+     - average best score
+     - top players
+     - top events
+     - recent sessions
