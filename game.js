@@ -61,6 +61,7 @@ let locked = false;
 
 let turnSecondsLeft = TURN_SECONDS;
 let turnTimerId = null;
+let timeoutPendingAtZero = false;
 let hintShownThisTurn = false;
 let hintMove = null;
 let soundEnabled = true;
@@ -1904,6 +1905,7 @@ function stopTurnTimer() {
 
 function resetTurnTimer() {
   turnSecondsLeft = TURN_SECONDS;
+  timeoutPendingAtZero = false;
   hintShownThisTurn = false;
   clearHint();
   updateHud();
@@ -1965,14 +1967,21 @@ function startTurnTimer() {
       return;
     }
 
+    if (turnSecondsLeft === 0) {
+      if (timeoutPendingAtZero) {
+        handleTurnTimeout();
+        updateHud();
+        return;
+      }
+      timeoutPendingAtZero = true;
+      updateHud();
+      return;
+    }
+
     turnSecondsLeft = Math.max(0, turnSecondsLeft - 1);
 
     if (turnSecondsLeft <= HINT_THRESHOLD_SECONDS && !hintShownThisTurn) {
       showHintMove();
-    }
-
-    if (turnSecondsLeft === 0) {
-      handleTurnTimeout();
     }
 
     updateHud();
