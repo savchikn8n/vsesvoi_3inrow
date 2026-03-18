@@ -31,10 +31,10 @@ Deno.serve(async (req) => {
     });
 
     const body = await req.json().catch(() => ({}));
-    const requestedLimit = Number(body?.limit || 50);
+    const requestedLimit = Number(body?.limit || 100);
     const limit = Number.isFinite(requestedLimit)
       ? Math.max(1, Math.min(100, Math.floor(requestedLimit)))
-      : 50;
+      : 100;
 
     const { data, error } = await admin
       .from('profiles')
