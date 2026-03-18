@@ -88,6 +88,7 @@ let activeSessionId = null;
 let sessionStartedAtMs = 0;
 let sessionMovesCount = 0;
 let sessionClapsBaseline = 0;
+let sessionSnapshotTimerId = null;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const CLAPS_BALANCE_KEY = 'gold_match_claps_balance';
@@ -576,6 +577,7 @@ function maybeUpdateBestScore() {
   bestScore = score;
   saveBestScore(bestScore);
   updateBestScoreUi();
+  scheduleSessionSnapshot();
 }
 
 function maybeAwardClapsFromScore() {
@@ -590,6 +592,7 @@ function maybeAwardClapsFromScore() {
   } else {
     updateBestScoreUi();
   }
+  scheduleSessionSnapshot();
   void syncProgressIfNeeded();
 }
 
@@ -732,9 +735,94 @@ function trackAnalyticsLifecycle(eventType, payload = {}) {
   }
 }
 
+
+function postLifecycleJson(path, payload) {
+  const initData = telegramInitData();
+  const url = apiUrl(path);
+  if (!initData || !url) return false;
+
+  const body = JSON.stringify(payload);
+
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      const blob = new Blob([body], { type: 'application/json' });
+      if (navigator.sendBeacon(url, blob)) {
+        return true;
+      }
+    }
+  } catch (_) {
+    // fall through to keepalive fetch
+  }
+
+  try {
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+    }).catch(() => {});
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function buildSessionAnalyticsPayload(reason = 'progress') {
+  if (!activeSessionId) return null;
+  return {
+    sessionId: activeSessionId,
+    durationSec: Math.max(0, Math.round((Date.now() - sessionStartedAtMs) / 1000)),
+    endReason: reason,
+    bestScore: score,
+    clapsEarned: Math.max(0, clapBalance - sessionClapsBaseline),
+    movesCount: sessionMovesCount,
+  };
+}
+
+function flushSessionSnapshot(options = {}) {
+  const payload = buildSessionAnalyticsPayload(options.reason || 'progress');
+  if (!payload) return false;
+
+  if (options.useLifecycleTransport) {
+    return trackAnalyticsLifecycle('session_progress', payload);
+  }
+
+  void trackAnalytics('session_progress', payload);
+  return true;
+}
+
+function scheduleSessionSnapshot() {
+  if (!activeSessionId) return;
+  if (sessionSnapshotTimerId) clearTimeout(sessionSnapshotTimerId);
+  sessionSnapshotTimerId = window.setTimeout(() => {
+    sessionSnapshotTimerId = null;
+    flushSessionSnapshot({ reason: 'progress' });
+  }, 700);
+}
+
+function flushProgressLifecycleIfNeeded() {
+  if (!profile?.telegram_id) return false;
+  const localBest = Math.max(Number(profile.best_score || 0), score);
+  const localClaps = Math.max(Number(profile.clap_balance || 0), clapBalance);
+  const bestChanged = localBest > Number(profile.best_score || 0);
+  const clapsChanged = localClaps > Number(profile.clap_balance || 0);
+  if (!bestChanged && !clapsChanged) return false;
+
+  saveProfile({ ...profile, best_score: localBest, clap_balance: localClaps });
+  return postLifecycleJson('score-submit', {
+    initData: telegramInitData(),
+    bestScore: localBest,
+    clapBalance: localClaps,
+  });
+}
+
 function startAnalyticsSession(origin = 'menu') {
   if (activeSessionId) {
     endAnalyticsSession('restart');
+  }
+  if (sessionSnapshotTimerId) {
+    clearTimeout(sessionSnapshotTimerId);
+    sessionSnapshotTimerId = null;
   }
 
   activeSessionId = makeSessionId();
@@ -748,19 +836,13 @@ function startAnalyticsSession(origin = 'menu') {
 
 function endAnalyticsSession(reason = 'menu_exit', options = {}) {
   if (!activeSessionId) return;
+  if (sessionSnapshotTimerId) {
+    clearTimeout(sessionSnapshotTimerId);
+    sessionSnapshotTimerId = null;
+  }
 
-  const sessionId = activeSessionId;
-  const durationSec = Math.max(0, Math.round((Date.now() - sessionStartedAtMs) / 1000));
-  const clapsEarned = Math.max(0, clapBalance - sessionClapsBaseline);
-  const movesCount = sessionMovesCount;
-  const payload = {
-    sessionId,
-    durationSec,
-    endReason: reason,
-    bestScore: score,
-    clapsEarned,
-    movesCount,
-  };
+  const payload = buildSessionAnalyticsPayload(reason);
+  if (!payload) return;
 
   activeSessionId = null;
   sessionStartedAtMs = 0;
@@ -2217,6 +2299,7 @@ function startTurnTimer() {
 
 function registerSuccessfulMove() {
   sessionMovesCount += 1;
+  scheduleSessionSnapshot();
   resetTurnTimer();
 }
 
@@ -2603,15 +2686,21 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('pagehide', () => {
+  flushProgressLifecycleIfNeeded();
+  flushSessionSnapshot({ reason: 'pagehide', useLifecycleTransport: true });
   endAnalyticsSession('pagehide', { useLifecycleTransport: true });
 });
 
 window.addEventListener('beforeunload', () => {
+  flushProgressLifecycleIfNeeded();
+  flushSessionSnapshot({ reason: 'beforeunload', useLifecycleTransport: true });
   endAnalyticsSession('beforeunload', { useLifecycleTransport: true });
 });
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
+    flushProgressLifecycleIfNeeded();
+    flushSessionSnapshot({ reason: 'hidden', useLifecycleTransport: true });
     endAnalyticsSession('hidden', { useLifecycleTransport: true });
   }
 });
