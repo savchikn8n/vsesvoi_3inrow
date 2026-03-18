@@ -1084,6 +1084,13 @@ function playMatchSound() {
   playTone(520, 0.12, 'sine', 0.028);
 }
 
+function playGigaBombSound() {
+  if (!soundEnabled) return;
+  playTone(140, 0.22, 'sawtooth', 0.04);
+  setTimeout(() => playTone(92, 0.28, 'triangle', 0.05), 70);
+  setTimeout(() => playTone(220, 0.18, 'sine', 0.028), 120);
+}
+
 function updateSoundToggleLabel() {
   soundToggleBtn.textContent = soundEnabled ? 'Включен' : 'Выключен';
 }
@@ -1291,6 +1298,70 @@ function spawnBombEffect(index) {
   effectsLayerEl.appendChild(wave);
   spawnFlashEffect(cx, cy);
   setTimeout(() => wave.remove(), 460);
+}
+
+function getTileCenter(index) {
+  const tile = getTile(index);
+  if (!tile || !boardEl) return null;
+  const boardRect = boardEl.getBoundingClientRect();
+  const tileRect = tile.getBoundingClientRect();
+  return {
+    x: tileRect.left - boardRect.left + tileRect.width / 2,
+    y: tileRect.top - boardRect.top + tileRect.height / 2,
+    size: tileRect.width,
+  };
+}
+
+function triggerBoardShake() {
+  if (!boardWrapEl) return;
+  boardWrapEl.classList.remove('shake-mega');
+  void boardWrapEl.offsetWidth;
+  boardWrapEl.classList.add('shake-mega');
+  setTimeout(() => boardWrapEl?.classList.remove('shake-mega'), 220);
+}
+
+function spawnGigaBombCharge(index) {
+  if (!effectsLayerEl) return;
+  const center = getTileCenter(index);
+  if (!center) return;
+
+  const charge = document.createElement('div');
+  charge.className = 'effect-giga-charge';
+  charge.style.left = `${center.x}px`;
+  charge.style.top = `${center.y}px`;
+  charge.style.width = `${center.size * 1.65}px`;
+  charge.style.height = `${center.size * 1.65}px`;
+  effectsLayerEl.appendChild(charge);
+  setTimeout(() => charge.remove(), 240);
+}
+
+function spawnBoardFlashEffect() {
+  if (!effectsLayerEl || !boardEl) return;
+  const boardRect = boardEl.getBoundingClientRect();
+
+  const flash = document.createElement('div');
+  flash.className = 'effect-board-flash';
+  flash.style.left = '0px';
+  flash.style.top = '0px';
+  flash.style.width = `${boardRect.width}px`;
+  flash.style.height = `${boardRect.height}px`;
+  effectsLayerEl.appendChild(flash);
+  setTimeout(() => flash.remove(), 320);
+}
+
+function emitMegaBombComboEffect(indices) {
+  if (!indices || indices.length === 0) return;
+  syncEffectsLayer();
+  indices.forEach((idx) => {
+    spawnGigaBombCharge(idx);
+    const center = getTileCenter(idx);
+    if (center) {
+      spawnFlashEffect(center.x, center.y);
+    }
+  });
+  spawnBoardFlashEffect();
+  triggerBoardShake();
+  playGigaBombSound();
 }
 
 function emitSpecialEffects(specials) {
@@ -2191,6 +2262,7 @@ async function activateSpecialMove(a, b) {
 
   let blast = new Set();
   if (a !== b && activations.length === 2 && bombCount === 2) {
+    emitMegaBombComboEffect(activations.map((item) => item.idx));
     for (let idx = 0; idx < SIZE * SIZE; idx++) {
       blast.add(idx);
     }
@@ -2215,7 +2287,7 @@ async function activateSpecialMove(a, b) {
         })
       : applyRemoval(blast, new Map(), { chainSpecials: true, emitTriggeredEffects: true, smokeTone: 'red' });
   drawBoard(new Set(), blastCells);
-  await delay(340);
+  await delay(a !== b && activations.length === 2 && bombCount === 2 ? 430 : 340);
   if (actionSession !== cascadeSession) return;
   applyGravity();
   drawBoard();
