@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
       );
 
       if (error) throw new Error(error.message);
-    } else if (eventType === 'session_end') {
+    } else if (eventType === 'session_progress' || eventType === 'session_end') {
       const sessionId = normalizeSessionId(payload.sessionId);
       const durationSec = Math.max(0, Math.floor(Number(payload.durationSec || 0)));
       const bestScore = Math.max(0, Math.floor(Number(payload.bestScore || 0)));
@@ -129,19 +129,22 @@ Deno.serve(async (req) => {
       const endReason =
         typeof payload.endReason === 'string' && payload.endReason.trim() ? payload.endReason.trim().slice(0, 32) : null;
 
-      const { error } = await admin.from('analytics_sessions').upsert(
-        {
-          session_id: sessionId,
-          telegram_id: user.id,
-          session_ended_at: new Date().toISOString(),
-          duration_sec: durationSec,
-          end_reason: endReason,
-          best_score: bestScore,
-          claps_earned: clapsEarned,
-          moves_count: movesCount,
-        },
-        { onConflict: 'session_id' },
-      );
+      const sessionRow = {
+        session_id: sessionId,
+        telegram_id: user.id,
+        session_started_at: new Date(Date.now() - durationSec * 1000).toISOString(),
+        duration_sec: durationSec,
+        best_score: bestScore,
+        claps_earned: clapsEarned,
+        moves_count: movesCount,
+      };
+
+      if (eventType === 'session_end') {
+        sessionRow.session_ended_at = new Date().toISOString();
+        sessionRow.end_reason = endReason;
+      }
+
+      const { error } = await admin.from('analytics_sessions').upsert(sessionRow, { onConflict: 'session_id' });
 
       if (error) throw new Error(error.message);
     } else {
