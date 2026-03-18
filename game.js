@@ -531,24 +531,28 @@ function saveClapBalance(value) {
 }
 
 function scoreLevel(value) {
-  if (value >= 200000) return 8;
-  if (value >= 170000) return 7;
-  if (value >= 140000) return 6;
-  if (value >= 110000) return 5;
-  if (value >= 80000) return 4;
-  if (value >= 40000) return 3;
-  if (value >= 10000) return 2;
+  if (value >= 1000000) return 10;
+  if (value >= 750000) return 9;
+  if (value >= 425000) return 8;
+  if (value >= 325000) return 7;
+  if (value >= 225000) return 6;
+  if (value >= 175000) return 5;
+  if (value >= 125000) return 4;
+  if (value >= 75000) return 3;
+  if (value >= 25000) return 2;
   return 1;
 }
 
 function scoreTitle(value) {
-  if (value >= 200000) return 'СВОЯК';
-  if (value >= 170000 && value < 200000) return 'Своеобразный';
-  if (value >= 140000 && value < 170000) return 'Во всём виноваты Свои';
-  if (value >= 110000 && value < 140000) return 'ИнтерСвой';
-  if (value >= 80000 && value < 110000) return 'Свой против Хищника';
-  if (value >= 40000 && value < 80000) return 'Свой среди Своих';
-  if (value >= 10000 && value < 40000) return 'В доску Свой';
+  if (value >= 1000000) return 'Лика';
+  if (value >= 750000) return 'Свой: Ромул';
+  if (value >= 425000) return 'Своеобразный';
+  if (value >= 325000) return 'СВОЯК';
+  if (value >= 225000) return 'Во всём виноваты Свои';
+  if (value >= 175000) return 'ИнтерСвой';
+  if (value >= 125000) return 'Свой против Хищника';
+  if (value >= 75000) return 'Свой среди Своих';
+  if (value >= 25000) return 'В доску Свой';
   return 'Тупо Свой';
 }
 
