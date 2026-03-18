@@ -338,6 +338,10 @@ h1 {
   z-index: 2;
 }
 
+.board-wrap.shake-mega {
+  animation: board-shake-mega 180ms ease-out;
+}
+
 .board {
   position: relative;
   display: grid;
@@ -420,6 +424,26 @@ h1 {
   background: radial-gradient(circle, #ffd8cfcc 0%, #ff8c7aaa 44%, transparent 78%);
 }
 
+.effect-giga-charge {
+  position: absolute;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(255, 242, 192, 0.92) 0%, rgba(255, 194, 92, 0.68) 28%, rgba(255, 92, 74, 0.34) 52%, transparent 76%);
+  transform: translate(-50%, -50%);
+  animation: giga-charge 240ms ease-out forwards;
+  pointer-events: none;
+}
+
+.effect-board-flash {
+  position: absolute;
+  border-radius: var(--ui-radius);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 221, 155, 0.42) 0%, rgba(255, 120, 94, 0.2) 42%, rgba(255, 70, 48, 0.08) 66%, transparent 82%),
+    linear-gradient(180deg, rgba(255, 228, 160, 0.18), rgba(255, 98, 76, 0.2));
+  animation: board-flash-mega 300ms ease-out forwards;
+  pointer-events: none;
+}
+
 @keyframes rocket-h {
   0% {
     transform: scaleX(0.2);
@@ -491,6 +515,48 @@ h1 {
     transform: translate(-50%, -95%) scale(1.45);
     opacity: 0;
   }
+}
+
+@keyframes giga-charge {
+  0% {
+    transform: translate(-50%, -50%) scale(0.55);
+    opacity: 0.18;
+    filter: blur(0.4px);
+  }
+  55% {
+    transform: translate(-50%, -50%) scale(1.08);
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.28);
+    opacity: 0;
+    filter: blur(0.8px);
+  }
+}
+
+@keyframes board-flash-mega {
+  0% {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  24% {
+    opacity: 0.96;
+    transform: scale(1.01);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes board-shake-mega {
+  0% { transform: translate3d(0, 0, 0); }
+  18% { transform: translate3d(-4px, 1px, 0); }
+  34% { transform: translate3d(4px, -1px, 0); }
+  52% { transform: translate3d(-3px, 1px, 0); }
+  70% { transform: translate3d(3px, -1px, 0); }
+  100% { transform: translate3d(0, 0, 0); }
 }
 
 .tile {
