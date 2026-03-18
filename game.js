@@ -2187,9 +2187,14 @@ async function activateSpecialMove(a, b) {
   const rocketCount = activations.filter(
     (x) => x.special === 'rocket-h' || x.special === 'rocket-v',
   ).length;
+  const bombCount = activations.filter((x) => x.special === 'bomb').length;
 
   let blast = new Set();
-  if (a !== b && activations.length === 2 && rocketCount === 2) {
+  if (a !== b && activations.length === 2 && bombCount === 2) {
+    for (let idx = 0; idx < SIZE * SIZE; idx++) {
+      blast.add(idx);
+    }
+  } else if (a !== b && activations.length === 2 && rocketCount === 2) {
     const center = b;
     blast = getRocketRocketComboArea(center);
   } else if (a !== b && activations.length === 2 && hasBomb && hasRocket) {
