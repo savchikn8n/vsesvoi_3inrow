@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Все Свои: Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Manrope:wght@500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./dashboard.css" />
+  </head>
+  <body>
+    <main class="dashboard-shell">
+      <section class="dashboard-frame">
+        <header class="dashboard-header">
+          <div>
+            <p class="eyebrow">Analytics</p>
+            <h1>Все Свои: 3 в ряд</h1>
+            <p class="subhead">Игроки, сессии, среднее время, активность и топ по рекордам.</p>
+          </div>
+          <div class="header-actions">
+            <button id="refresh-dashboard" type="button">Обновить</button>
+          </div>
+        </header>
+
+        <section class="auth-panel">
+          <label for="dashboard-secret">Dashboard secret</label>
+          <div class="auth-row">
+            <input id="dashboard-secret" type="password" placeholder="Введите DASHBOARD_SECRET" />
+            <button id="connect-dashboard" type="button">Подключить</button>
+          </div>
+          <p id="dashboard-status" class="dashboard-status" aria-live="polite"></p>
+        </section>
+
+        <section class="metrics-grid">
+          <article class="metric-card">
+            <span class="metric-label">Всего игроков</span>
+            <strong id="metric-total-players" class="metric-value">-</strong>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Активные 24ч</span>
+            <strong id="metric-active-players" class="metric-value">-</strong>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Новые 24ч</span>
+            <strong id="metric-new-players" class="metric-value">-</strong>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Сессии 24ч</span>
+            <strong id="metric-sessions" class="metric-value">-</strong>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Средняя сессия</span>
+            <strong id="metric-avg-duration" class="metric-value">-</strong>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Средний счёт</span>
+            <strong id="metric-avg-score" class="metric-value">-</strong>
+          </article>
+        </section>
+
+        <section class="dashboard-grid">
+          <article class="panel-card">
+            <div class="panel-head">
+              <h2>Топ игроков</h2>
+              <span class="panel-note">По текущему рекорду</span>
+            </div>
+            <div class="table-wrap">
+              <table class="dashboard-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Игрок</th>
+                    <th>Рекорд</th>
+                    <th>Ладошки</th>
+                  </tr>
+                </thead>
+                <tbody id="top-players-body"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel-card">
+            <div class="panel-head">
+              <h2>События 24ч</h2>
+              <span class="panel-note">Самые частые действия</span>
+            </div>
+            <div id="top-events-list" class="event-list"></div>
+          </article>
+
+          <article class="panel-card panel-card-wide">
+            <div class="panel-head">
+              <h2>Последние сессии</h2>
+              <span id="dashboard-updated-at" class="panel-note">-</span>
+            </div>
+            <div class="table-wrap">
+              <table class="dashboard-table">
+                <thead>
+                  <tr>
+                    <th>Игрок ID</th>
+                    <th>Начало</th>
+                    <th>Длительность</th>
+                    <th>Счёт</th>
+                    <th>Ходы</th>
+                    <th>Финиш</th>
+                  </tr>
+                </thead>
+                <tbody id="recent-sessions-body"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      window.__SUPABASE_URL__ = 'https://tnngitplssufqeqpxuib.supabase.co';
+    </script>
+    <script src="./dashboard.js"></script>
+  </body>
+</html>
