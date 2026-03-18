@@ -434,6 +434,28 @@ h1 {
   pointer-events: none;
 }
 
+.effect-giga-link {
+  position: absolute;
+  height: 10px;
+  border-radius: 999px;
+  transform-origin: 0 50%;
+  background:
+    linear-gradient(90deg, rgba(255, 214, 119, 0) 0%, rgba(255, 214, 119, 0.85) 18%, rgba(255, 241, 189, 1) 50%, rgba(255, 214, 119, 0.85) 82%, rgba(255, 214, 119, 0) 100%);
+  box-shadow: 0 0 10px rgba(255, 196, 92, 0.75), 0 0 26px rgba(255, 122, 88, 0.34);
+  animation: giga-link 250ms ease-out forwards;
+  pointer-events: none;
+}
+
+.effect-board-dim {
+  position: absolute;
+  border-radius: var(--ui-radius);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 122, 88, 0.08) 0%, rgba(0, 0, 0, 0.22) 52%, rgba(0, 0, 0, 0.5) 100%),
+    rgba(0, 0, 0, 0.22);
+  animation: board-dim-mega 280ms ease-out forwards;
+  pointer-events: none;
+}
+
 .effect-board-flash {
   position: absolute;
   border-radius: var(--ui-radius);
@@ -532,6 +554,36 @@ h1 {
     transform: translate(-50%, -50%) scale(1.28);
     opacity: 0;
     filter: blur(0.8px);
+  }
+}
+
+@keyframes giga-link {
+  0% {
+    opacity: 0;
+    filter: blur(1.2px);
+    transform: translateY(-50%) rotate(var(--giga-link-rotate, 0deg)) scaleX(0.45);
+  }
+  45% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(-50%) rotate(var(--giga-link-rotate, 0deg)) scaleX(1.02);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(1.4px);
+    transform: translateY(-50%) rotate(var(--giga-link-rotate, 0deg)) scaleX(1.06);
+  }
+}
+
+@keyframes board-dim-mega {
+  0% {
+    opacity: 0;
+  }
+  36% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
   }
 }
 
