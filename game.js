@@ -1349,9 +1349,48 @@ function spawnBoardFlashEffect() {
   setTimeout(() => flash.remove(), 320);
 }
 
+function spawnBoardDimEffect() {
+  if (!effectsLayerEl || !boardEl) return;
+  const boardRect = boardEl.getBoundingClientRect();
+
+  const dim = document.createElement('div');
+  dim.className = 'effect-board-dim';
+  dim.style.left = '0px';
+  dim.style.top = '0px';
+  dim.style.width = `${boardRect.width}px`;
+  dim.style.height = `${boardRect.height}px`;
+  effectsLayerEl.appendChild(dim);
+  setTimeout(() => dim.remove(), 280);
+}
+
+function spawnGigaLinkEffect(fromIndex, toIndex) {
+  if (!effectsLayerEl) return;
+  const from = getTileCenter(fromIndex);
+  const to = getTileCenter(toIndex);
+  if (!from || !to) return;
+
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const distance = Math.hypot(dx, dy);
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+  const link = document.createElement('div');
+  link.className = 'effect-giga-link';
+  link.style.left = `${from.x}px`;
+  link.style.top = `${from.y}px`;
+  link.style.width = `${distance}px`;
+  link.style.setProperty('--giga-link-rotate', `${angle}deg`);
+  effectsLayerEl.appendChild(link);
+  setTimeout(() => link.remove(), 260);
+}
+
 function emitMegaBombComboEffect(indices) {
   if (!indices || indices.length === 0) return;
   syncEffectsLayer();
+  spawnBoardDimEffect();
+  if (indices.length >= 2) {
+    spawnGigaLinkEffect(indices[0], indices[1]);
+  }
   indices.forEach((idx) => {
     spawnGigaBombCharge(idx);
     const center = getTileCenter(idx);
@@ -1359,9 +1398,11 @@ function emitMegaBombComboEffect(indices) {
       spawnFlashEffect(center.x, center.y);
     }
   });
-  spawnBoardFlashEffect();
-  triggerBoardShake();
-  playGigaBombSound();
+  setTimeout(() => {
+    spawnBoardFlashEffect();
+    triggerBoardShake();
+    playGigaBombSound();
+  }, 110);
 }
 
 function emitSpecialEffects(specials) {
