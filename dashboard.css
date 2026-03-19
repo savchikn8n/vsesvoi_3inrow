@@ -333,13 +333,15 @@ input {
 
 .promos-panel {
   min-height: 0;
+  overflow: hidden;
 }
 
 .promo-grid {
   min-height: 0;
+  height: 100%;
   display: grid;
-  grid-template-columns: minmax(380px, 0.95fr) minmax(320px, 0.65fr);
-  grid-template-rows: minmax(0, 1fr) minmax(220px, 0.9fr);
+  grid-template-columns: minmax(360px, 0.82fr) minmax(460px, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -349,10 +351,26 @@ input {
   min-height: 0;
 }
 
+.promo-editor-card {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.promo-list-card {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.promo-preview-card {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
 .promo-editor-scroll {
   min-height: 0;
   overflow: auto;
   margin-top: 12px;
+  padding-right: 4px;
   display: grid;
   gap: 14px;
 }
@@ -406,11 +424,14 @@ input {
   flex: 1;
   min-height: 0;
   display: grid;
-  place-items: center;
+  align-items: start;
+  justify-items: center;
+  overflow: auto;
+  padding: 6px 4px 0;
 }
 
 .promo-preview {
-  width: min(100%, 320px);
+  width: min(100%, 420px);
   display: grid;
   gap: 14px;
 }
@@ -482,6 +503,7 @@ input {
   min-height: 0;
   overflow: auto;
   margin-top: 12px;
+  padding-right: 4px;
   display: grid;
   gap: 12px;
 }
@@ -570,7 +592,19 @@ input {
 @media (max-width: 1180px) {
   .promo-grid {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto minmax(240px, 1fr);
+    grid-template-rows: auto auto minmax(280px, 1fr);
+    height: auto;
+  }
+
+  .promo-editor-card,
+  .promo-list-card,
+  .promo-preview-card {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .promo-preview {
+    width: min(100%, 360px);
   }
 }
 
