@@ -139,8 +139,12 @@
                     <textarea id="promo-body-input" rows="4" maxlength="280" placeholder="Короткий анонс события или предложения."></textarea>
                   </label>
                   <label class="promo-field">
-                    <span>Изображение (URL)</span>
-                    <input id="promo-image-input" type="url" placeholder="https://..." />
+                    <span>Изображение</span>
+                    <input id="promo-image-file-input" type="file" accept="image/png,image/jpeg,image/webp" />
+                  </label>
+                  <label class="promo-field">
+                    <span>Загруженный URL</span>
+                    <input id="promo-image-input" type="url" placeholder="URL появится после upload" readonly />
                   </label>
                   <div class="promo-field-row">
                     <label class="promo-field">
