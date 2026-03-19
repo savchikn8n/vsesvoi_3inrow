@@ -1644,7 +1644,24 @@ h1 {
   max-height: min(80vh, 680px);
   overflow-y: auto;
   display: grid;
-  gap: 14px;
+  gap: 12px;
+}
+
+.promo-card h2,
+.promo-card p,
+.promo-visual,
+.promo-actions {
+  margin: 0;
+}
+
+.promo-card h2 {
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
+  line-height: 1.04;
+  color: #f3b315;
+}
+
+.promo-card p {
+  line-height: 1.45;
 }
 
 .promo-visual {
@@ -1676,8 +1693,3 @@ h1 {
   border: 2px solid #f3b315;
 }
 
-@media (max-width: 620px) {
-  .promo-actions {
-    grid-template-columns: 1fr;
-  }
-}
