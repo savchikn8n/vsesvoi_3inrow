@@ -1638,3 +1638,44 @@ h1 {
     gap: 8px;
   }
 }
+
+.promo-card {
+  width: min(92vw, 420px);
+  display: grid;
+  gap: 14px;
+}
+
+.promo-visual {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border: 2px solid #f3b315;
+  border-radius: var(--ui-radius);
+  background: #080808;
+  overflow: hidden;
+}
+
+.promo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.promo-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.promo-secondary {
+  background: #000;
+  color: #f3b315;
+  border: 2px solid #f3b315;
+}
+
+@media (max-width: 620px) {
+  .promo-actions {
+    grid-template-columns: 1fr;
+  }
+}
