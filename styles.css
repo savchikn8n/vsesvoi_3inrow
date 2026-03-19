@@ -1641,6 +1641,8 @@ h1 {
 
 .promo-card {
   width: min(92vw, 420px);
+  max-height: min(80vh, 680px);
+  overflow-y: auto;
   display: grid;
   gap: 14px;
 }
