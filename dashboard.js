@@ -1,6 +1,7 @@
 const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUMMARY_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/analytics-summary` : '';
 const PROMO_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/promo-admin` : '';
+const PROMO_UPLOAD_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/promo-upload` : '';
 const DASHBOARD_SECRET_KEY = 'gold_match_dashboard_secret';
 
 const secretInputEl = document.getElementById('dashboard-secret');
@@ -29,6 +30,7 @@ const recentSessionsBodyEl = document.getElementById('recent-sessions-body');
 const promoEditorNoteEl = document.getElementById('promo-editor-note');
 const promoTitleInputEl = document.getElementById('promo-title-input');
 const promoBodyInputEl = document.getElementById('promo-body-input');
+const promoImageFileInputEl = document.getElementById('promo-image-file-input');
 const promoImageInputEl = document.getElementById('promo-image-input');
 const promoSecondaryLabelInputEl = document.getElementById('promo-secondary-label-input');
 const promoPrimaryLabelInputEl = document.getElementById('promo-primary-label-input');
@@ -48,6 +50,8 @@ let refreshTimerId = null;
 let currentDashboardTab = 'analytics';
 let editingPromoId = null;
 let lastPromoRows = [];
+let selectedPromoImageFile = null;
+let promoPreviewObjectUrl = '';
 
 function loadDashboardSecret() {
   return sessionStorage.getItem(DASHBOARD_SECRET_KEY) || '';
@@ -80,6 +84,54 @@ function formatDateTime(iso) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(iso));
+}
+
+
+function revokePromoPreviewObjectUrl() {
+  if (!promoPreviewObjectUrl) return;
+  URL.revokeObjectURL(promoPreviewObjectUrl);
+  promoPreviewObjectUrl = '';
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      const base64 = result.includes(',') ? result.split(',').pop() : result;
+      if (!base64) {
+        reject(new Error('Не удалось прочитать файл.'));
+        return;
+      }
+      resolve(base64);
+    };
+    reader.onerror = () => reject(new Error('Не удалось прочитать файл.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadPromoImageIfNeeded() {
+  if (!selectedPromoImageFile) {
+    return promoImageInputEl?.value.trim() || '';
+  }
+  if (!PROMO_UPLOAD_URL) throw new Error('Не задан SUPABASE_URL.');
+  if (selectedPromoImageFile.size > 5 * 1024 * 1024) {
+    throw new Error('Изображение должно быть не больше 5 МБ.');
+  }
+
+  const base64 = await fileToBase64(selectedPromoImageFile);
+  const data = await postDashboardJson(PROMO_UPLOAD_URL, {
+    fileName: selectedPromoImageFile.name,
+    contentType: selectedPromoImageFile.type || 'image/png',
+    dataBase64: base64,
+  });
+
+  const imageUrl = data?.imageUrl || '';
+  if (!imageUrl) throw new Error('Upload не вернул URL изображения.');
+  if (promoImageInputEl) promoImageInputEl.value = imageUrl;
+  if (promoImageFileInputEl) promoImageFileInputEl.value = '';
+  selectedPromoImageFile = null;
+  return imageUrl;
 }
 
 async function postDashboardJson(url, payload) {
@@ -199,10 +251,13 @@ function promoFormValue() {
 
 function resetPromoEditor() {
   editingPromoId = null;
+  selectedPromoImageFile = null;
+  revokePromoPreviewObjectUrl();
   if (promoEditorNoteEl) promoEditorNoteEl.textContent = 'Новый попап';
   if (promoTitleInputEl) promoTitleInputEl.value = '';
   if (promoBodyInputEl) promoBodyInputEl.value = '';
   if (promoImageInputEl) promoImageInputEl.value = '';
+  if (promoImageFileInputEl) promoImageFileInputEl.value = '';
   if (promoSecondaryLabelInputEl) promoSecondaryLabelInputEl.value = 'Уже';
   if (promoPrimaryLabelInputEl) promoPrimaryLabelInputEl.value = 'Перейти';
   if (promoPrimaryUrlInputEl) promoPrimaryUrlInputEl.value = '';
@@ -211,10 +266,13 @@ function resetPromoEditor() {
 
 function fillPromoEditor(popup) {
   editingPromoId = popup?.id || null;
+  selectedPromoImageFile = null;
+  revokePromoPreviewObjectUrl();
   if (promoEditorNoteEl) promoEditorNoteEl.textContent = popup?.is_active ? 'Редактирование активного попапа' : 'Редактирование попапа';
   if (promoTitleInputEl) promoTitleInputEl.value = popup?.title || '';
   if (promoBodyInputEl) promoBodyInputEl.value = popup?.body || '';
   if (promoImageInputEl) promoImageInputEl.value = popup?.image_url || '';
+  if (promoImageFileInputEl) promoImageFileInputEl.value = '';
   if (promoSecondaryLabelInputEl) promoSecondaryLabelInputEl.value = popup?.secondary_label || 'Уже';
   if (promoPrimaryLabelInputEl) promoPrimaryLabelInputEl.value = popup?.primary_label || 'Перейти';
   if (promoPrimaryUrlInputEl) promoPrimaryUrlInputEl.value = popup?.primary_url || '';
@@ -228,12 +286,19 @@ function updatePromoPreview() {
   if (promoPreviewBodyEl) promoPreviewBodyEl.textContent = data.body || 'Описание появится здесь после заполнения формы.';
   if (promoPreviewSecondaryEl) promoPreviewSecondaryEl.textContent = data.secondary_label || 'Уже';
   if (promoPreviewPrimaryEl) promoPreviewPrimaryEl.textContent = data.primary_label || 'Перейти';
+  const imageSrc = selectedPromoImageFile
+    ? (() => {
+        revokePromoPreviewObjectUrl();
+        promoPreviewObjectUrl = URL.createObjectURL(selectedPromoImageFile);
+        return promoPreviewObjectUrl;
+      })()
+    : data.image_url || '';
   if (promoPreviewImageEl) {
-    promoPreviewImageEl.src = data.image_url || '';
-    promoPreviewImageEl.style.display = data.image_url ? 'block' : 'none';
+    promoPreviewImageEl.src = imageSrc;
+    promoPreviewImageEl.style.display = imageSrc ? 'block' : 'none';
   }
   if (promoPreviewPlaceholderEl) {
-    promoPreviewPlaceholderEl.style.display = data.image_url ? 'none' : 'grid';
+    promoPreviewPlaceholderEl.style.display = imageSrc ? 'none' : 'grid';
   }
 }
 
@@ -302,7 +367,8 @@ async function fetchAllDashboardData() {
 }
 
 async function savePromo(isActive) {
-  const payload = promoFormValue();
+  const uploadedImageUrl = await uploadPromoImageIfNeeded();
+  const payload = { ...promoFormValue(), image_url: uploadedImageUrl };
   if (!payload.title || !payload.body || !payload.image_url || !payload.primary_url) {
     throw new Error('Заполните заголовок, описание, изображение и ссылку.');
   }
@@ -363,6 +429,10 @@ promoListEl?.addEventListener('click', (event) => {
 });
 [promoTitleInputEl, promoBodyInputEl, promoImageInputEl, promoSecondaryLabelInputEl, promoPrimaryLabelInputEl, promoPrimaryUrlInputEl].forEach((el) => {
   el?.addEventListener('input', updatePromoPreview);
+});
+promoImageFileInputEl?.addEventListener('change', () => {
+  selectedPromoImageFile = promoImageFileInputEl.files?.[0] || null;
+  updatePromoPreview();
 });
 
 const savedSecret = loadDashboardSecret();

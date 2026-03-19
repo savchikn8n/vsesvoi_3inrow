@@ -39,3 +39,14 @@ drop trigger if exists set_promo_popups_updated_at on public.promo_popups;
 create trigger set_promo_popups_updated_at
 before update on public.promo_popups
 for each row execute function public.set_promo_updated_at();
+
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'promo-assets',
+  'promo-assets',
+  true,
+  5242880,
+  array['image/png', 'image/jpeg', 'image/webp']::text[]
+)
+on conflict (id) do nothing;
