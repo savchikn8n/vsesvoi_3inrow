@@ -55,6 +55,12 @@ const profileEntryAvatarEl = document.getElementById('profile-entry-avatar');
 const profileEntryNameEl = document.getElementById('profile-entry-name');
 const profileCloseBtn = document.getElementById('profile-close');
 const clapsCountEl = document.getElementById('claps-count');
+const promoModalEl = document.getElementById('promo-modal');
+const promoImageEl = document.getElementById('promo-image');
+const promoTitleEl = document.getElementById('promo-title');
+const promoBodyEl = document.getElementById('promo-body');
+const promoSecondaryBtn = document.getElementById('promo-secondary');
+const promoPrimaryBtn = document.getElementById('promo-primary');
 
 let board = [];
 let score = 0;
@@ -89,12 +95,15 @@ let sessionStartedAtMs = 0;
 let sessionMovesCount = 0;
 let sessionClapsBaseline = 0;
 let sessionSnapshotTimerId = null;
+let activePromoPopup = null;
+let promoFetchPromise = null;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const CLAPS_BALANCE_KEY = 'gold_match_claps_balance';
 const PROFILE_KEY = 'gold_match_profile';
 const LEADERBOARD_CACHE_KEY = 'gold_match_leaderboard_cache_v1';
 const LEADERBOARD_CACHE_TTL_MS = 60 * 1000;
+const SEEN_PROMO_IDS_KEY = 'gold_match_seen_promo_ids_v1';
 const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUPABASE_FUNCTIONS_BASE = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '';
 const AMBIENT_ICON_SOURCES = [
@@ -947,6 +956,27 @@ function saveLeaderboardCache(items) {
   localStorage.setItem(LEADERBOARD_CACHE_KEY, JSON.stringify(payload));
 }
 
+
+function loadSeenPromoIds() {
+  try {
+    const raw = localStorage.getItem(SEEN_PROMO_IDS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function hasSeenPromo(popupId) {
+  return loadSeenPromoIds().includes(String(popupId));
+}
+
+function markPromoSeen(popupId) {
+  const next = new Set(loadSeenPromoIds());
+  next.add(String(popupId));
+  localStorage.setItem(SEEN_PROMO_IDS_KEY, JSON.stringify([...next]));
+}
+
 function showAuthModal() {
   hideStartScreen();
   closeAllModals();
@@ -1088,6 +1118,9 @@ function showStartScreen() {
   updateProfileEntry();
   refreshAmbientLayers();
   syncAmbientGameMask();
+  window.setTimeout(() => {
+    void maybeShowPromoPopup();
+  }, 120);
 }
 
 function hideStartScreen() {
@@ -1307,6 +1340,70 @@ function closeAllModals() {
   hideModal(titlesModalEl);
   hideModal(authModalEl);
   hideModal(profileModalEl);
+  hideModal(promoModalEl);
+}
+
+async function fetchActivePromoPopup() {
+  if (promoFetchPromise) return promoFetchPromise;
+  const initData = telegramInitData();
+  if (!initData || !profile?.telegram_id) return null;
+
+  promoFetchPromise = postJson('promo-current', { initData })
+    .then((result) => {
+      activePromoPopup = result?.popup || null;
+      return activePromoPopup;
+    })
+    .catch(() => activePromoPopup)
+    .finally(() => {
+      promoFetchPromise = null;
+    });
+
+  return promoFetchPromise;
+}
+
+async function trackPromoAction(popupId, action) {
+  const initData = telegramInitData();
+  if (!initData || !popupId) return;
+  try {
+    await postJson('promo-action', { initData, popupId, action });
+  } catch (_) {
+    // promo analytics is non-blocking
+  }
+}
+
+function renderPromoPopup(popup) {
+  if (!popup || !promoModalEl || !promoImageEl || !promoTitleEl || !promoBodyEl || !promoSecondaryBtn || !promoPrimaryBtn) return;
+  promoImageEl.src = popup.image_url || '';
+  promoTitleEl.textContent = popup.title || 'Анонс';
+  promoBodyEl.textContent = popup.body || '';
+  promoSecondaryBtn.textContent = popup.secondary_label || 'Уже';
+  promoPrimaryBtn.textContent = popup.primary_label || 'Перейти';
+}
+
+async function maybeShowPromoPopup() {
+  if (startScreenEl?.classList.contains('hidden')) return;
+  const popup = await fetchActivePromoPopup();
+  if (!popup?.id || hasSeenPromo(popup.id)) return;
+  renderPromoPopup(popup);
+  showModal(promoModalEl);
+  markPromoSeen(popup.id);
+  void trackPromoAction(popup.id, 'view');
+}
+
+function dismissPromoPopup() {
+  const popupId = activePromoPopup?.id;
+  hideModal(promoModalEl);
+  if (popupId) {
+    void trackPromoAction(popupId, 'dismiss');
+  }
+}
+
+function openPromoPrimaryAction() {
+  const popup = activePromoPopup;
+  if (!popup?.primary_url) return;
+  hideModal(promoModalEl);
+  void trackPromoAction(popup.id, 'open');
+  window.open(popup.primary_url, '_blank', 'noopener,noreferrer');
 }
 
 function clearHint() {
@@ -2669,6 +2766,8 @@ authLoginBtn.addEventListener('click', handleTelegramAuth);
 profileSaveBtn.addEventListener('click', handleProfileSave);
 profileEntryBtn?.addEventListener('click', openProfileEditor);
 profileCloseBtn?.addEventListener('click', closeProfileEditor);
+promoSecondaryBtn?.addEventListener('click', dismissPromoPopup);
+promoPrimaryBtn?.addEventListener('click', openPromoPrimaryAction);
 profileNameEl?.addEventListener('input', handleProfileNameInput);
 startGiftsBtn?.addEventListener('click', toggleGiftsButtonFlip);
 avatarPickerEl?.addEventListener('click', (e) => {
