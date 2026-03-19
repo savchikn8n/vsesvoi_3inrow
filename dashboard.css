@@ -331,6 +331,11 @@ input {
   display: grid;
 }
 
+#analytics-panel {
+  gap: 12px;
+  align-content: start;
+}
+
 .promos-panel {
   min-height: 0;
   overflow: hidden;
