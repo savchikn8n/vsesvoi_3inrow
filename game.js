@@ -2294,10 +2294,16 @@ function applyGravity() {
 function applyRemoval(
   removals,
   specialCreates = new Map(),
-  options = { chainSpecials: true, emitTriggeredEffects: true, smokeTone: null },
+  options = { chainSpecials: true, emitTriggeredEffects: true, smokeTone: null, scoreMultiplier: 1 },
 ) {
-  const { chainSpecials = true, emitTriggeredEffects = true, smokeTone = null } = options;
+  const {
+    chainSpecials = true,
+    emitTriggeredEffects = true,
+    smokeTone = null,
+    scoreMultiplier = 1,
+  } = options;
   const blastSet = new Set(removals);
+  let preservedMatchedCells = 0;
 
   if (chainSpecials) {
     removals.forEach((idx) => {
@@ -2306,6 +2312,7 @@ function applyRemoval(
   }
 
   specialCreates.forEach((_, idx) => {
+    if (removals.has(idx)) preservedMatchedCells++;
     blastSet.delete(idx);
   });
 
@@ -2338,7 +2345,8 @@ function applyRemoval(
     }
   });
 
-  score += blastSet.size * 10;
+  const scoredCells = blastSet.size + preservedMatchedCells;
+  score += Math.round(scoredCells * 10 * Math.max(0, Number(scoreMultiplier) || 1));
   if (blastSet.size > 0) playMatchSound();
   return blastSet;
 }
@@ -2754,7 +2762,12 @@ async function activateSpecialMove(a, b) {
           emitTriggeredEffects: false,
           smokeTone: 'red',
         })
-      : applyRemoval(blast, new Map(), { chainSpecials: true, emitTriggeredEffects: true, smokeTone: 'red' });
+      : applyRemoval(blast, new Map(), {
+          chainSpecials: true,
+          emitTriggeredEffects: true,
+          smokeTone: 'red',
+          scoreMultiplier: a !== b && activations.length === 2 && bombCount === 2 ? 1.5 : 1,
+        });
   drawBoard(new Set(), blastCells);
   await delay(a !== b && activations.length === 2 && bombCount === 2 ? 430 : 340);
   if (actionSession !== cascadeSession) return;
