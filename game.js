@@ -590,6 +590,8 @@ function updateBestScoreUi() {
 function handleStartRecordTrigger() {
   if (bestScore <= 0) return;
   setShareRecordState({ enabled: true, score: bestScore });
+  const willShow = !startShareRecordBtn?.classList.contains('is-visible');
+  setStartShareRecordVisible(willShow);
 }
 
 function maybeUpdateBestScore() {
@@ -1126,7 +1128,10 @@ function showStartScreen() {
   }
   startScreenEl?.classList.remove('hidden');
   if (menuShareRecordBtn) menuShareRecordBtn.classList.add('ui-hidden');
-  if (startShareRecordBtn) startShareRecordBtn.classList.add('ui-hidden');
+  if (startShareRecordBtn) {
+    startShareRecordBtn.classList.remove('ui-hidden');
+    setStartShareRecordVisible(false);
+  }
   updateBestScoreUi();
   updateProfileEntry();
   refreshAmbientLayers();
@@ -1336,13 +1341,19 @@ function updateSoundToggleLabel() {
   soundToggleBtn.textContent = soundEnabled ? 'Включен' : 'Выключен';
 }
 
+function setStartShareRecordVisible(visible) {
+  if (!startShareRecordBtn) return;
+  startShareRecordBtn.classList.toggle('is-visible', Boolean(visible));
+  startShareRecordBtn.classList.toggle('ui-hidden', false);
+}
+
 function setShareRecordState(state) {
   shareRecordState = state || null;
   if (menuShareRecordBtn) {
     menuShareRecordBtn.classList.toggle('ui-hidden', !shareRecordState?.enabled);
   }
-  if (startShareRecordBtn) {
-    startShareRecordBtn.classList.toggle('ui-hidden', !shareRecordState?.enabled);
+  if (!shareRecordState?.enabled) {
+    setStartShareRecordVisible(false);
   }
 }
 
@@ -1410,7 +1421,8 @@ async function generateRecordBannerBlob(recordScore) {
 async function shareTopRecord() {
   if (!shareRecordState?.enabled) return;
   const scoreValue = Math.max(0, Number(shareRecordState.score || bestScore || 0));
-  const shareText = `${SHARE_RECORD_TEXT} ${SHARE_GAME_URL}`;
+  const shareText = `Заходи и побей мой рекорд во «Все свои: 3 в ряд»
+${SHARE_GAME_URL}`;
 
   try {
     const blob = await generateRecordBannerBlob(scoreValue);
@@ -1418,7 +1430,6 @@ async function shareTopRecord() {
 
     if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
       await navigator.share({
-        title: 'Все Свои: 3 в ряд',
         text: shareText,
         files: [file],
       });
@@ -1428,7 +1439,7 @@ async function shareTopRecord() {
     // fall through to Telegram link share
   }
 
-  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(SHARE_GAME_URL)}&text=${encodeURIComponent(SHARE_RECORD_TEXT)}`;
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(SHARE_GAME_URL)}&text=${encodeURIComponent('Заходи и побей мой рекорд во «Все свои: 3 в ряд»')}`;
   if (window.Telegram?.WebApp?.openTelegramLink) {
     window.Telegram.WebApp.openTelegramLink(shareUrl);
   } else {
