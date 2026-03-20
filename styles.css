@@ -1068,7 +1068,18 @@ h1 {
 }
 
 .start-share-record {
+  align-self: center;
+  justify-self: center;
   width: min(100%, 420px);
+  border: 2px solid #f3b315;
+  background: #f3b315;
+  color: #000000;
+  font-weight: 700;
+  font-family: "Cinzel", serif;
+  letter-spacing: 0.03em;
+  padding: 12px 14px;
+  cursor: pointer;
+  border-radius: var(--ui-radius);
   margin-top: 8px;
   animation: record-share-pulse 1.6s ease-in-out infinite;
 }
