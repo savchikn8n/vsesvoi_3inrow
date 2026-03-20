@@ -197,13 +197,14 @@ function renderRecentSessions(items = []) {
   recentSessionsBodyEl.replaceChildren();
   if (!items.length) {
     const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="6" class="empty-state">Пока нет сессий.</td>';
+    row.innerHTML = '<td colspan="7" class="empty-state">Пока нет сессий.</td>';
     recentSessionsBodyEl.appendChild(row);
     return;
   }
   items.forEach((item) => {
     const row = document.createElement('tr');
     row.innerHTML = `
+      <td>${item.display_name || 'Игрок'}</td>
       <td>${item.telegram_id}</td>
       <td>${formatDateTime(item.session_started_at)}</td>
       <td>${formatDuration(item.duration_sec)}</td>
