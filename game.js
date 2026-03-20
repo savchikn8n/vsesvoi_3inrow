@@ -18,6 +18,8 @@ const statusEl = document.getElementById('status');
 const tileTpl = document.getElementById('tile-template');
 const startScreenEl = document.getElementById('start-screen');
 const bestScoreEl = document.getElementById('best-score');
+const startRecordTriggerEl = document.getElementById('start-record-trigger');
+const startShareRecordBtn = document.getElementById('start-share-record');
 const scoreTitleEl = document.getElementById('score-title');
 const scoreTitleTriggerEl = document.getElementById('score-title-trigger');
 const scoreTitleLevelEl = document.getElementById('score-title-level');
@@ -109,7 +111,7 @@ const SEEN_PROMO_IDS_KEY = 'gold_match_seen_promo_ids_v1';
 const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUPABASE_FUNCTIONS_BASE = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '';
 const SHARE_GAME_URL = 'https://t.me/vsesvoi3inrow_bot';
-const SHARE_RECORD_TEXT = 'Заходи и побей мой рекорд во «Все Свои: 3 в ряд»';
+const SHARE_RECORD_TEXT = 'Заходи и побей мой рекорд во «Все свои: 3 в ряд»';
 const AMBIENT_ICON_SOURCES = [
   { key: 'dualsence', src: './assets/dualsence.png' },
   { key: 'satyr', src: './assets/satyr.png' },
@@ -583,6 +585,11 @@ function updateBestScoreUi() {
   if (scoreTitleLevelEl) {
     scoreTitleLevelEl.textContent = String(scoreLevel(bestScore));
   }
+}
+
+function handleStartRecordTrigger() {
+  if (bestScore <= 0) return;
+  setShareRecordState({ enabled: true, score: bestScore });
 }
 
 function maybeUpdateBestScore() {
@@ -1108,7 +1115,6 @@ async function ensureAuthFlow() {
 }
 
 function showStartScreen() {
-  setShareRecordState(null);
   stopTurnTimer();
   locked = true;
   selected = null;
@@ -1119,6 +1125,8 @@ function showStartScreen() {
     return;
   }
   startScreenEl?.classList.remove('hidden');
+  if (menuShareRecordBtn) menuShareRecordBtn.classList.add('ui-hidden');
+  if (startShareRecordBtn) startShareRecordBtn.classList.add('ui-hidden');
   updateBestScoreUi();
   updateProfileEntry();
   refreshAmbientLayers();
@@ -1330,8 +1338,12 @@ function updateSoundToggleLabel() {
 
 function setShareRecordState(state) {
   shareRecordState = state || null;
-  if (!menuShareRecordBtn) return;
-  menuShareRecordBtn.classList.toggle('ui-hidden', !shareRecordState?.enabled);
+  if (menuShareRecordBtn) {
+    menuShareRecordBtn.classList.toggle('ui-hidden', !shareRecordState?.enabled);
+  }
+  if (startShareRecordBtn) {
+    startShareRecordBtn.classList.toggle('ui-hidden', !shareRecordState?.enabled);
+  }
 }
 
 function formatScoreForBanner(value) {
@@ -1398,7 +1410,7 @@ async function generateRecordBannerBlob(recordScore) {
 async function shareTopRecord() {
   if (!shareRecordState?.enabled) return;
   const scoreValue = Math.max(0, Number(shareRecordState.score || bestScore || 0));
-  const shareText = `${SHARE_RECORD_TEXT}: ${SHARE_GAME_URL}`;
+  const shareText = `${SHARE_RECORD_TEXT} ${SHARE_GAME_URL}`;
 
   try {
     const blob = await generateRecordBannerBlob(scoreValue);
@@ -2854,6 +2866,8 @@ function resetGame() {
 restartBtn.addEventListener('click', resetGame);
 exitToMenuBtn.addEventListener('click', exitToMenu);
 menuShareRecordBtn?.addEventListener('click', () => { void shareTopRecord(); });
+startShareRecordBtn?.addEventListener('click', () => { void shareTopRecord(); });
+startRecordTriggerEl?.addEventListener('click', handleStartRecordTrigger);
 menuNewGameBtn.addEventListener('click', resetGame);
 menuExitMenuBtn.addEventListener('click', exitToMenu);
 menuSettingsBtn.addEventListener('click', openSettingsFromMenu);
