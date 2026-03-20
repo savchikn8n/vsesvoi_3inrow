@@ -86,8 +86,22 @@
         </div>
         <button id="start-share-record" class="start-share-record ui-hidden" type="button">Поделиться рекордом</button>
 
-        <div class="menu-hero" aria-hidden="true">
-          <img src="./assets/ingamelogo.svg" alt="Все Свои 3 в ряд" />
+        <div id="menu-hero" class="menu-hero" aria-label="Карусель игр">
+          <div id="menu-hero-track" class="menu-hero-track">
+            <div class="menu-hero-slide is-active" data-slide="0" aria-hidden="false">
+              <img src="./assets/ingamelogo.svg" alt="Все Свои 3 в ряд" />
+            </div>
+            <div class="menu-hero-slide menu-hero-slide-upcoming" data-slide="1" aria-hidden="true">
+              <img src="./assets/coultower.png" alt="Все Свои: Угольная башня" />
+              <div class="menu-hero-soon">
+                Скоро<span class="loading-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>
+              </div>
+            </div>
+          </div>
+          <div class="menu-hero-dots" role="tablist" aria-label="Слайды игр">
+            <button class="menu-hero-dot is-active" type="button" data-slide="0" aria-label="Первая игра"></button>
+            <button class="menu-hero-dot" type="button" data-slide="1" aria-label="Следующая игра"></button>
+          </div>
         </div>
 
         <div class="start-actions">

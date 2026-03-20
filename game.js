@@ -27,6 +27,9 @@ const startNewGameBtn = document.getElementById('start-new-game');
 const startLeaderboardBtn = document.getElementById('start-leaderboard');
 const startGiftsBtn = document.getElementById('start-gifts');
 const startSettingsBtn = document.getElementById('start-settings');
+const menuHeroEl = document.getElementById('menu-hero');
+const menuHeroTrackEl = document.getElementById('menu-hero-track');
+const menuHeroDots = Array.from(document.querySelectorAll('.menu-hero-dot'));
 const gameOverModalEl = document.getElementById('game-over-modal');
 const settingsModalEl = document.getElementById('settings-modal');
 const leaderboardModalEl = document.getElementById('leaderboard-modal');
@@ -101,6 +104,8 @@ let sessionSnapshotTimerId = null;
 let activePromoPopup = null;
 let promoFetchPromise = null;
 let shareRecordState = null;
+let menuHeroSlide = 0;
+let menuHeroGesture = null;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const CLAPS_BALANCE_KEY = 'gold_match_claps_balance';
@@ -592,6 +597,62 @@ function handleStartRecordTrigger() {
   setShareRecordState({ enabled: true, score: bestScore });
   const willShow = !startShareRecordBtn?.classList.contains('is-visible');
   setStartShareRecordVisible(willShow);
+}
+
+function setMenuHeroSlide(nextSlide) {
+  const slide = Math.max(0, Math.min(1, Number(nextSlide) || 0));
+  menuHeroSlide = slide;
+  if (menuHeroTrackEl) {
+    menuHeroTrackEl.style.transform = `translateX(-${slide * 100}%)`;
+  }
+  menuHeroDots.forEach((dot, index) => {
+    dot.classList.toggle('is-active', index === slide);
+    dot.setAttribute('aria-pressed', index === slide ? 'true' : 'false');
+  });
+  document.querySelectorAll('.menu-hero-slide').forEach((panel, index) => {
+    panel.classList.toggle('is-active', index === slide);
+    panel.setAttribute('aria-hidden', index === slide ? 'false' : 'true');
+  });
+}
+
+function setupMenuHeroCarousel() {
+  if (!menuHeroEl || !menuHeroTrackEl || menuHeroEl.dataset.ready === 'true') return;
+  menuHeroEl.dataset.ready = 'true';
+  setMenuHeroSlide(0);
+
+  menuHeroDots.forEach((dot) => {
+    dot.addEventListener('click', () => {
+      setMenuHeroSlide(Number(dot.dataset.slide || 0));
+    });
+  });
+
+  menuHeroEl.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    menuHeroGesture = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      active: true,
+    };
+    try {
+      menuHeroEl.setPointerCapture(e.pointerId);
+    } catch (_) {
+      // no-op
+    }
+  });
+
+  menuHeroEl.addEventListener('pointerup', (e) => {
+    if (!menuHeroGesture || menuHeroGesture.pointerId !== e.pointerId || !menuHeroGesture.active) return;
+    const dx = e.clientX - menuHeroGesture.startX;
+    const dy = e.clientY - menuHeroGesture.startY;
+    menuHeroGesture = null;
+    if (Math.abs(dx) < 30 || Math.abs(dx) < Math.abs(dy)) return;
+    setMenuHeroSlide(dx < 0 ? 1 : 0);
+  });
+
+  menuHeroEl.addEventListener('pointercancel', () => {
+    menuHeroGesture = null;
+  });
 }
 
 function maybeUpdateBestScore() {
@@ -1132,6 +1193,7 @@ function showStartScreen() {
     startShareRecordBtn.classList.remove('ui-hidden');
     setStartShareRecordVisible(false);
   }
+  setMenuHeroSlide(0);
   updateBestScoreUi();
   updateProfileEntry();
   refreshAmbientLayers();
@@ -2960,6 +3022,7 @@ updateProfileEntry();
 updateSoundToggleLabel();
 setupTelegramWebApp();
 setupTouchGuards();
+setupMenuHeroCarousel();
 setupAmbientLayers();
 createBoard();
 drawBoard();
