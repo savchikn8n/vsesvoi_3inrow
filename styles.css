@@ -1081,7 +1081,34 @@ h1 {
   cursor: pointer;
   border-radius: var(--ui-radius);
   margin-top: 8px;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateY(-8px);
+  transition:
+    opacity 0.24s ease,
+    transform 0.24s ease,
+    max-height 0.24s ease,
+    margin-top 0.24s ease,
+    padding-top 0.24s ease,
+    padding-bottom 0.24s ease,
+    border-width 0.24s ease;
+}
+
+.start-share-record.is-visible {
+  opacity: 1;
+  max-height: 64px;
+  pointer-events: auto;
+  transform: translateY(0);
   animation: record-share-pulse 1.6s ease-in-out infinite;
+}
+
+.start-share-record:not(.is-visible) {
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-width: 0;
 }
 
 .record-share-btn {
