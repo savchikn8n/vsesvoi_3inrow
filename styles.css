@@ -1284,6 +1284,10 @@ h1 {
   display: none;
 }
 
+.ui-hidden {
+  display: none !important;
+}
+
 .modal-card {
   width: min(92vw, 460px);
   border: 2px solid #f3b315;

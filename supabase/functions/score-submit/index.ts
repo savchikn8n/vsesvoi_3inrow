@@ -116,7 +116,8 @@ Deno.serve(async (req) => {
       throw new Error(readError.message);
     }
 
-    const nextBest = Math.max(Number(existing?.best_score || 0), Math.floor(incoming));
+    const previousBest = Math.max(0, Number(existing?.best_score || 0));
+    const nextBest = Math.max(previousBest, Math.floor(incoming));
     const nextClaps = Math.max(Number(existing?.clap_balance || 0), Math.floor(incomingClaps));
 
     const { data, error } = await admin
@@ -140,7 +141,33 @@ Deno.serve(async (req) => {
       throw new Error(error.message);
     }
 
-    return new Response(JSON.stringify({ profile: data }), {
+    const { data: leader, error: leaderError } = await admin
+      .from('profiles')
+      .select('telegram_id, best_score')
+      .order('best_score', { ascending: false })
+      .order('updated_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (leaderError) {
+      throw new Error(leaderError.message);
+    }
+
+    const improvedThisRun = Math.floor(incoming) > previousBest;
+    const shareRecordAvailable = Boolean(
+      improvedThisRun &&
+      Math.floor(incoming) > 0 &&
+      leader?.telegram_id === user.id &&
+      Number(data?.best_score || 0) === Math.floor(incoming),
+    );
+
+    return new Response(JSON.stringify({
+      profile: data,
+      is_global_top: leader?.telegram_id === user.id,
+      global_top_score: Number(leader?.best_score || 0),
+      share_record_available: shareRecordAvailable,
+      share_record_score: shareRecordAvailable ? Math.floor(incoming) : null,
+    }), {
       status: 200,
       headers: corsHeaders,
     });
