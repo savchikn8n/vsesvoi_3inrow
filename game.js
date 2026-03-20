@@ -34,6 +34,7 @@ const leaderboardCloseBtn = document.getElementById('leaderboard-close');
 const titlesModalEl = document.getElementById('titles-modal');
 const titlesCloseBtn = document.getElementById('titles-close');
 const finalScoreEl = document.getElementById('final-score');
+const menuShareRecordBtn = document.getElementById('menu-share-record');
 const menuNewGameBtn = document.getElementById('menu-new-game');
 const menuExitMenuBtn = document.getElementById('menu-exit-menu');
 const menuSettingsBtn = document.getElementById('menu-settings');
@@ -97,6 +98,7 @@ let sessionClapsBaseline = 0;
 let sessionSnapshotTimerId = null;
 let activePromoPopup = null;
 let promoFetchPromise = null;
+let shareRecordState = null;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const CLAPS_BALANCE_KEY = 'gold_match_claps_balance';
@@ -106,6 +108,8 @@ const LEADERBOARD_CACHE_TTL_MS = 60 * 1000;
 const SEEN_PROMO_IDS_KEY = 'gold_match_seen_promo_ids_v1';
 const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUPABASE_FUNCTIONS_BASE = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '';
+const SHARE_GAME_URL = 'https://t.me/vsesvoi3inrow_bot';
+const SHARE_RECORD_TEXT = 'Заходи и побей мой рекорд во «Все Свои: 3 в ряд»';
 const AMBIENT_ICON_SOURCES = [
   { key: 'dualsence', src: './assets/dualsence.png' },
   { key: 'satyr', src: './assets/satyr.png' },
@@ -1104,6 +1108,7 @@ async function ensureAuthFlow() {
 }
 
 function showStartScreen() {
+  setShareRecordState(null);
   stopTurnTimer();
   locked = true;
   selected = null;
@@ -1321,6 +1326,102 @@ function playGigaBombSound() {
 
 function updateSoundToggleLabel() {
   soundToggleBtn.textContent = soundEnabled ? 'Включен' : 'Выключен';
+}
+
+function setShareRecordState(state) {
+  shareRecordState = state || null;
+  if (!menuShareRecordBtn) return;
+  menuShareRecordBtn.classList.toggle('ui-hidden', !shareRecordState?.enabled);
+}
+
+function formatScoreForBanner(value) {
+  return new Intl.NumberFormat('ru-RU').format(Math.max(0, Number(value || 0))).replace(/,/g, ' ');
+}
+
+async function ensureBannerFontsLoaded() {
+  if (!document.fonts?.load) return;
+  try {
+    await Promise.all([
+      document.fonts.load('900 34px MuseoCyrlTitle'),
+      document.fonts.load('900 120px Manrope'),
+    ]);
+  } catch (_) {
+    // font loading is best effort for banner generation
+  }
+}
+
+function roundedRect(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + width, y, x + width, y + height, r);
+  ctx.arcTo(x + width, y + height, x, y + height, r);
+  ctx.arcTo(x, y + height, x, y, r);
+  ctx.arcTo(x, y, x + width, y, r);
+  ctx.closePath();
+}
+
+async function generateRecordBannerBlob(recordScore) {
+  await ensureBannerFontsLoaded();
+  const canvas = document.createElement('canvas');
+  canvas.width = 960;
+  canvas.height = 540;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Не удалось подготовить баннер');
+
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = '#F3B315';
+  ctx.lineWidth = 8;
+  roundedRect(ctx, 18, 18, canvas.width - 36, canvas.height - 36, 30);
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#F3B315';
+  ctx.font = '900 52px MuseoCyrlTitle, Manrope, sans-serif';
+  ctx.fillText('У меня новый рекорд!', canvas.width / 2, 110);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '900 132px Manrope, Arial, sans-serif';
+  ctx.fillText(formatScoreForBanner(recordScore), canvas.width / 2, 290);
+
+  ctx.fillStyle = '#F3B315';
+  ctx.font = '900 34px MuseoCyrlTitle, Manrope, sans-serif';
+  ctx.fillText('Попробуй побить😉', canvas.width / 2, 450);
+
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png', 1));
+  if (!blob) throw new Error('Не удалось собрать баннер');
+  return blob;
+}
+
+async function shareTopRecord() {
+  if (!shareRecordState?.enabled) return;
+  const scoreValue = Math.max(0, Number(shareRecordState.score || bestScore || 0));
+  const shareText = `${SHARE_RECORD_TEXT}: ${SHARE_GAME_URL}`;
+
+  try {
+    const blob = await generateRecordBannerBlob(scoreValue);
+    const file = new File([blob], `vsesvoi-record-${scoreValue}.png`, { type: 'image/png' });
+
+    if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
+      await navigator.share({
+        title: 'Все Свои: 3 в ряд',
+        text: shareText,
+        files: [file],
+      });
+      return;
+    }
+  } catch (_) {
+    // fall through to Telegram link share
+  }
+
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(SHARE_GAME_URL)}&text=${encodeURIComponent(SHARE_RECORD_TEXT)}`;
+  if (window.Telegram?.WebApp?.openTelegramLink) {
+    window.Telegram.WebApp.openTelegramLink(shareUrl);
+  } else {
+    window.open(shareUrl, '_blank', 'noopener,noreferrer');
+  }
 }
 
 function showModal(el) {
@@ -2335,12 +2436,12 @@ function handleTurnTimeout() {
 }
 
 async function syncProgressIfNeeded() {
-  if (!profile?.telegram_id) return;
+  if (!profile?.telegram_id) return null;
   const localBest = Math.max(Number(profile.best_score || 0), score);
   const localClaps = Math.max(Number(profile.clap_balance || 0), clapBalance);
   const bestChanged = localBest > Number(profile.best_score || 0);
   const clapsChanged = localClaps > Number(profile.clap_balance || 0);
-  if (!bestChanged && !clapsChanged) return;
+  if (!bestChanged && !clapsChanged) return null;
 
   // Optimistically persist progress locally so the UI does not fall back to stale
   // server values while the network request is still in flight.
@@ -2348,7 +2449,7 @@ async function syncProgressIfNeeded() {
 
   try {
     const initData = telegramInitData();
-    if (!initData) return;
+    if (!initData) return null;
 
     const result = await postJson('score-submit', {
       initData,
@@ -2358,8 +2459,9 @@ async function syncProgressIfNeeded() {
     if (result?.profile) {
       saveProfile(result.profile);
     }
+    return result || null;
   } catch (_) {
-    // score sync is non-blocking for gameplay
+    return null;
   }
 }
 
@@ -2406,11 +2508,16 @@ function endGameByTimeout() {
   locked = true;
   selected = null;
   clearHint();
+  setShareRecordState(null);
   statusEl.textContent = 'Время вышло. Игра окончена.';
   finalScoreEl.textContent = `Ваш счёт: ${score}`;
   drawBoard();
   showModal(gameOverModalEl);
-  syncProgressIfNeeded();
+  void syncProgressIfNeeded().then((result) => {
+    if (result?.share_record_available) {
+      setShareRecordState({ enabled: true, score: result.share_record_score || score });
+    }
+  });
 }
 
 function exitToMenu() {
@@ -2725,6 +2832,7 @@ function interruptibleDelay(ms, sessionId) {
 }
 
 function resetGame() {
+  setShareRecordState(null);
   startAnalyticsSession(startScreenEl?.classList.contains('hidden') ? 'restart' : 'menu');
   score = 0;
   clapsAwardedThisRun = 0;
@@ -2745,6 +2853,7 @@ function resetGame() {
 
 restartBtn.addEventListener('click', resetGame);
 exitToMenuBtn.addEventListener('click', exitToMenu);
+menuShareRecordBtn?.addEventListener('click', () => { void shareTopRecord(); });
 menuNewGameBtn.addEventListener('click', resetGame);
 menuExitMenuBtn.addEventListener('click', exitToMenu);
 menuSettingsBtn.addEventListener('click', openSettingsFromMenu);
