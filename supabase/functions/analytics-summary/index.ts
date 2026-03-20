@@ -87,6 +87,29 @@ Deno.serve(async (req) => {
     const sessions = sessionsRes.data || [];
     const events = eventsRes.data || [];
 
+    const recentSessionTelegramIds = [
+      ...new Set(
+        sessions
+          .slice(0, 12)
+          .map((item) => item.telegram_id)
+          .filter((value) => value !== null && value !== undefined),
+      ),
+    ];
+
+    let recentSessionProfiles: Array<{ telegram_id: number; display_name: string | null }> = [];
+    if (recentSessionTelegramIds.length) {
+      const recentProfilesRes = await admin
+        .from('profiles')
+        .select('telegram_id, display_name')
+        .in('telegram_id', recentSessionTelegramIds);
+      if (recentProfilesRes.error) throw new Error(recentProfilesRes.error.message);
+      recentSessionProfiles = recentProfilesRes.data || [];
+    }
+
+    const recentSessionNameMap = new Map(
+      recentSessionProfiles.map((item) => [String(item.telegram_id), item.display_name || 'Игрок']),
+    );
+
     const sessions24h = sessions.filter((item) => item.session_started_at >= since24h);
     const endedSessions24h = sessions24h.filter((item) => item.session_ended_at);
     const scores24h = sessions24h.map((item) => Number(item.best_score || 0));
@@ -120,6 +143,7 @@ Deno.serve(async (req) => {
       .map(([event_name, count]) => ({ event_name, count }));
 
     const recentSessions = sessions.slice(0, 12).map((item) => ({
+      display_name: recentSessionNameMap.get(String(item.telegram_id)) || 'Игрок',
       telegram_id: item.telegram_id,
       session_started_at: item.session_started_at,
       duration_sec: Number(item.duration_sec || 0),
