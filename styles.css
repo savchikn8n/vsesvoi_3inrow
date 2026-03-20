@@ -1049,6 +1049,9 @@ h1 {
   justify-items: center;
   align-content: center;
   padding: 4px 8px;
+  border: 2px solid #f3b315;
+  background: #000000;
+  cursor: pointer;
 }
 
 .start-record-label {
@@ -1062,6 +1065,29 @@ h1 {
   font-size: 1.2rem;
   font-weight: 700;
   color: #ffffff;
+}
+
+.start-share-record {
+  width: min(100%, 420px);
+  margin-top: 8px;
+  animation: record-share-pulse 1.6s ease-in-out infinite;
+}
+
+.record-share-btn {
+  margin-top: 2px;
+  animation: record-share-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes record-share-pulse {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  35% {
+    transform: translateY(-1px) scale(1.02);
+  }
+  70% {
+    transform: translateY(1px) scale(0.995);
+  }
 }
 
 .profile-entry {

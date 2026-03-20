@@ -67,10 +67,10 @@
           </button>
         </div>
         <div class="start-top">
-          <div class="start-record panel">
+          <button id="start-record-trigger" class="start-record panel" type="button" aria-label="Мой рекорд">
             <span class="start-record-label">Мой рекорд</span>
             <span id="best-score" class="start-record-value">0</span>
-          </div>
+          </button>
           <button id="gift-entry" class="gift-entry panel" type="button" aria-label="Ладошки">
             <span class="gift-currency" aria-hidden="true">
               <img src="./assets/claps.svg" alt="" />
@@ -84,6 +84,7 @@
             <span id="profile-entry-name" class="profile-entry-name">Игрок</span>
           </button>
         </div>
+        <button id="start-share-record" class="start-share-record ui-hidden" type="button">Поделиться рекордом</button>
 
         <div class="menu-hero" aria-hidden="true">
           <img src="./assets/ingamelogo.svg" alt="Все Свои 3 в ряд" />
@@ -109,10 +110,10 @@
         <h2>Время вышло</h2>
         <p id="final-score">Ваш счёт: 0</p>
         <div class="modal-actions">
-          <button id="menu-share-record" type="button" class="ui-hidden">Поделиться рекордом</button>
           <button id="menu-new-game" type="button">Новая игра</button>
           <button id="menu-exit-menu" type="button">Выйти в меню</button>
           <button id="menu-settings" type="button">Настройки</button>
+          <button id="menu-share-record" type="button" class="record-share-btn ui-hidden">Поделиться рекордом</button>
         </div>
       </div>
     </div>
