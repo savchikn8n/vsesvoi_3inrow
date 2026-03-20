@@ -157,7 +157,6 @@ Deno.serve(async (req) => {
     const shareRecordAvailable = Boolean(
       improvedThisRun &&
       Math.floor(incoming) > 0 &&
-      leader?.telegram_id === user.id &&
       Number(data?.best_score || 0) === Math.floor(incoming),
     );
 
