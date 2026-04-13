@@ -70,10 +70,10 @@ const promoTitleEl = document.getElementById('promo-title');
 const promoBodyEl = document.getElementById('promo-body');
 const promoSecondaryBtn = document.getElementById('promo-secondary');
 const promoPrimaryBtn = document.getElementById('promo-primary');
-const starsModalEl = document.getElementById('stars-modal');
-const starsCloseBtn = document.getElementById('stars-close');
-const starsStatusEl = document.getElementById('stars-status');
-const starsOptionEls = Array.from(document.querySelectorAll('.stars-option'));
+const launcherLinksModalEl = document.getElementById('launcher-links-modal');
+const launcherLinksCloseBtn = document.getElementById('launcher-links-close');
+const launcherLinkSavchikBtn = document.getElementById('launcher-link-savchik');
+const launcherLinkVsesvoiBtn = document.getElementById('launcher-link-vsesvoi');
 
 let board = [];
 let score = 0;
@@ -1376,22 +1376,18 @@ function closeTitlesModal() {
   hideModal(titlesModalEl);
 }
 
-function openStarsModal() {
+function openLauncherLinksModal() {
   closeAllModals();
-  if (starsStatusEl) {
-    starsStatusEl.textContent = '';
-  }
-  showModal(starsModalEl);
+  showModal(launcherLinksModalEl);
 }
 
-function closeStarsModal() {
-  hideModal(starsModalEl);
+function closeLauncherLinksModal() {
+  hideModal(launcherLinksModalEl);
 }
 
-function handleStarsOptionClick(amount) {
-  if (starsStatusEl) {
-    starsStatusEl.textContent = `Номинал ${amount} ✦ выбран. Реальный приём Telegram Stars подключим следующим этапом через bot invoice.`;
-  }
+function openLauncherLink(url) {
+  closeLauncherLinksModal();
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 function startNewGameFromHome() {
@@ -1577,7 +1573,7 @@ function closeAllModals() {
   hideModal(authModalEl);
   hideModal(profileModalEl);
   hideModal(promoModalEl);
-  hideModal(starsModalEl);
+  hideModal(launcherLinksModalEl);
 }
 
 async function fetchActivePromoPopup() {
@@ -3054,7 +3050,7 @@ menuSettingsBtn.addEventListener('click', openSettingsFromMenu);
 startNewGameBtn.addEventListener('click', startNewGameFromHome);
 startLeaderboardBtn.addEventListener('click', openLeaderboard);
 startSettingsBtn.addEventListener('click', openSettingsFromMenu);
-startBoostExitBtn?.addEventListener('click', openStarsModal);
+startBoostExitBtn?.addEventListener('click', openLauncherLinksModal);
 soundToggleBtn.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   updateSoundToggleLabel();
@@ -3072,10 +3068,9 @@ profileEntryBtn?.addEventListener('click', openProfileEditor);
 profileCloseBtn?.addEventListener('click', closeProfileEditor);
 promoSecondaryBtn?.addEventListener('click', dismissPromoPopup);
 promoPrimaryBtn?.addEventListener('click', openPromoPrimaryAction);
-starsCloseBtn?.addEventListener('click', closeStarsModal);
-starsOptionEls.forEach((btn) => {
-  btn.addEventListener('click', () => handleStarsOptionClick(btn.dataset.stars || '0'));
-});
+launcherLinksCloseBtn?.addEventListener('click', closeLauncherLinksModal);
+launcherLinkSavchikBtn?.addEventListener('click', () => openLauncherLink('https://t.me/savchiksasha'));
+launcherLinkVsesvoiBtn?.addEventListener('click', () => openLauncherLink('https://t.me/vsesvoi_kld'));
 profileNameEl?.addEventListener('input', handleProfileNameInput);
 startGiftsBtn?.addEventListener('click', toggleGiftsButtonFlip);
 avatarPickerEl?.addEventListener('click', (e) => {
