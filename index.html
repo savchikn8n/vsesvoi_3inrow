@@ -121,9 +121,8 @@
             </div>
             <div class="start-actions-slide start-actions-slide-upcoming" data-slide="1" aria-hidden="true">
               <div class="start-actions start-actions-upcoming">
-                <button id="start-boost-exit" type="button" class="telegram-stars-btn" aria-label="Ускорить выход за Telegram Stars">
+                <button id="start-boost-exit" type="button" class="launcher-action-btn" aria-label="Ускорить выход">
                   <span>Ускорить выход</span>
-                  <span class="telegram-star" aria-hidden="true">✦</span>
                 </button>
               </div>
             </div>
@@ -258,31 +257,22 @@
       </div>
     </div>
 
-    <div id="stars-modal" class="modal hidden" aria-hidden="true">
+    <div id="launcher-links-modal" class="modal hidden" aria-hidden="true">
       <div class="modal-card stars-card">
         <h2>Ускорить выход</h2>
-        <p>Выберите номинал Telegram Stars для доната на баланс.</p>
+        <p>Выберите действие.</p>
         <div class="stars-options">
-          <button class="stars-option" type="button" data-stars="50">
-            <span class="stars-option-value">50 <span class="telegram-star" aria-hidden="true">✦</span></span>
-            <span class="stars-option-note">Быстрый донат</span>
+          <button id="launcher-link-savchik" class="stars-option" type="button">
+            <span class="stars-option-value">Подписка на канал Савчика</span>
+            <span class="stars-option-note">t.me/savchiksasha</span>
           </button>
-          <button class="stars-option" type="button" data-stars="100">
-            <span class="stars-option-value">100 <span class="telegram-star" aria-hidden="true">✦</span></span>
-            <span class="stars-option-note">Поддержать сильнее</span>
-          </button>
-          <button class="stars-option" type="button" data-stars="250">
-            <span class="stars-option-value">250 <span class="telegram-star" aria-hidden="true">✦</span></span>
-            <span class="stars-option-note">Нормально ускорить</span>
-          </button>
-          <button class="stars-option" type="button" data-stars="500">
-            <span class="stars-option-value">500 <span class="telegram-star" aria-hidden="true">✦</span></span>
-            <span class="stars-option-note">Максимальный буст</span>
+          <button id="launcher-link-vsesvoi" class="stars-option" type="button">
+            <span class="stars-option-value">Поставить реакцию на последний пост "Своих"</span>
+            <span class="stars-option-note">t.me/vsesvoi_kld</span>
           </button>
         </div>
-        <p id="stars-status" class="auth-status" aria-live="polite"></p>
         <div class="modal-actions">
-          <button id="stars-close" type="button">Закрыть</button>
+          <button id="launcher-links-close" type="button">Закрыть</button>
         </div>
       </div>
     </div>
