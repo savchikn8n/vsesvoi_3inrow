@@ -101,6 +101,7 @@ let activeSessionId = null;
 let sessionStartedAtMs = 0;
 let sessionMovesCount = 0;
 let sessionClapsBaseline = 0;
+let sessionClapsSpent = 0;
 let sessionSnapshotTimerId = null;
 let activePromoPopup = null;
 let promoFetchPromise = null;
@@ -866,6 +867,7 @@ function buildSessionAnalyticsPayload(reason = 'progress') {
     endReason: reason,
     bestScore: score,
     clapsEarned: Math.max(0, clapBalance - sessionClapsBaseline),
+    clapsSpent: sessionClapsSpent,
     movesCount: sessionMovesCount,
   };
 }
@@ -920,6 +922,7 @@ function startAnalyticsSession(origin = 'menu') {
   sessionStartedAtMs = Date.now();
   sessionMovesCount = 0;
   sessionClapsBaseline = clapBalance;
+  sessionClapsSpent = 0;
 
   void trackAnalytics('session_start', { sessionId: activeSessionId });
   void trackAnalytics('game_started', { sessionId: activeSessionId, origin });
@@ -939,6 +942,7 @@ function endAnalyticsSession(reason = 'menu_exit', options = {}) {
   sessionStartedAtMs = 0;
   sessionMovesCount = 0;
   sessionClapsBaseline = clapBalance;
+  sessionClapsSpent = 0;
 
   if (options?.useLifecycleTransport) {
     trackAnalyticsLifecycle('session_end', payload);
@@ -1420,7 +1424,6 @@ function setStartShareRecordVisible(visible) {
 function updateContinueRunButton() {
   if (!menuContinueClapsBtn) return;
   const canContinue = Boolean(profile?.telegram_id) && clapBalance >= CONTINUE_RUN_CLAPS_COST;
-  menuContinueClapsBtn.textContent = `Продолжить за ${CONTINUE_RUN_CLAPS_COST} ладошек`;
   menuContinueClapsBtn.classList.toggle('ui-hidden', !canContinue);
   menuContinueClapsBtn.disabled = continueRunBusy || !canContinue;
 }
@@ -2652,6 +2655,8 @@ async function continueRunWithClaps() {
     }
 
     saveProfile(result.profile, { forceClapBalance: true });
+    sessionClapsSpent += CONTINUE_RUN_CLAPS_COST;
+    flushSessionSnapshot({ reason: 'continue_spend' });
     hideModal(gameOverModalEl);
     timeoutPendingAtZero = false;
     locked = false;

@@ -125,17 +125,19 @@ Deno.serve(async (req) => {
       const durationSec = Math.max(0, Math.floor(Number(payload.durationSec || 0)));
       const bestScore = Math.max(0, Math.floor(Number(payload.bestScore || 0)));
       const clapsEarned = Math.max(0, Math.floor(Number(payload.clapsEarned || 0)));
+      const clapsSpent = Math.max(0, Math.floor(Number(payload.clapsSpent || 0)));
       const movesCount = Math.max(0, Math.floor(Number(payload.movesCount || 0)));
       const endReason =
         typeof payload.endReason === 'string' && payload.endReason.trim() ? payload.endReason.trim().slice(0, 32) : null;
 
-      const sessionRow = {
+      const sessionRow: Record<string, unknown> = {
         session_id: sessionId,
         telegram_id: user.id,
         session_started_at: new Date(Date.now() - durationSec * 1000).toISOString(),
         duration_sec: durationSec,
         best_score: bestScore,
         claps_earned: clapsEarned,
+        claps_spent: clapsSpent,
         moves_count: movesCount,
       };
 

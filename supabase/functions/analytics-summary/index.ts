@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       admin
         .from('analytics_sessions')
         .select(
-          'session_id, telegram_id, session_started_at, session_ended_at, duration_sec, end_reason, best_score, claps_earned, moves_count',
+          'session_id, telegram_id, session_started_at, session_ended_at, duration_sec, end_reason, best_score, claps_earned, claps_spent, moves_count',
         )
         .gte('session_started_at', since7d)
         .order('session_started_at', { ascending: false })
@@ -113,6 +113,7 @@ Deno.serve(async (req) => {
     const sessions24h = sessions.filter((item) => item.session_started_at >= since24h);
     const endedSessions24h = sessions24h.filter((item) => item.session_ended_at);
     const scores24h = sessions24h.map((item) => Number(item.best_score || 0));
+    const clapsSpent24h = sessions24h.map((item) => Number(item.claps_spent || 0));
     const durations24h = endedSessions24h.map((item) => Number(item.duration_sec || 0)).filter((value) => value > 0);
 
     const active24hUsers = new Set(
@@ -148,6 +149,7 @@ Deno.serve(async (req) => {
       session_started_at: item.session_started_at,
       duration_sec: Number(item.duration_sec || 0),
       best_score: Number(item.best_score || 0),
+      claps_spent: Number(item.claps_spent || 0),
       end_reason: item.end_reason || 'active',
       moves_count: Number(item.moves_count || 0),
     }));
@@ -160,6 +162,7 @@ Deno.serve(async (req) => {
           active_players_24h: active24hUsers.size,
           new_players_24h: newPlayers24h,
           sessions_24h: sessions24h.length,
+          claps_spent_24h: clapsSpent24h.reduce((sum, value) => sum + value, 0),
           avg_session_duration_sec_24h: Math.round(avg(durations24h)),
           avg_best_score_24h: Math.round(avg(scores24h)),
           median_best_score_24h: Math.round(median(scores24h)),
