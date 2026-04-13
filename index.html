@@ -104,16 +104,30 @@
           </div>
         </div>
 
-        <div class="start-actions">
-          <button id="start-new-game" type="button">Новая игра</button>
-          <button id="start-leaderboard" type="button">Таблица лидеров</button>
-          <button id="start-gifts" class="start-gifts-btn" type="button" aria-label="Подарки">
-            <span class="start-gifts-card">
-              <span class="start-gifts-face start-gifts-front">Подарки</span>
-              <span class="start-gifts-face start-gifts-back">Скоро</span>
-            </span>
-          </button>
-          <button id="start-settings" type="button">Настройка</button>
+        <div class="start-actions-shell">
+          <div id="start-actions-track" class="start-actions-track">
+            <div class="start-actions-slide is-active" data-slide="0" aria-hidden="false">
+              <div class="start-actions">
+                <button id="start-new-game" type="button">Новая игра</button>
+                <button id="start-leaderboard" type="button">Таблица лидеров</button>
+                <button id="start-gifts" class="start-gifts-btn" type="button" aria-label="Подарки">
+                  <span class="start-gifts-card">
+                    <span class="start-gifts-face start-gifts-front">Подарки</span>
+                    <span class="start-gifts-face start-gifts-back">Скоро</span>
+                  </span>
+                </button>
+                <button id="start-settings" type="button">Настройка</button>
+              </div>
+            </div>
+            <div class="start-actions-slide start-actions-slide-upcoming" data-slide="1" aria-hidden="true">
+              <div class="start-actions start-actions-upcoming">
+                <button id="start-boost-exit" type="button" class="telegram-stars-btn" aria-label="Ускорить выход за Telegram Stars">
+                  <span>Ускорить выход</span>
+                  <span class="telegram-star" aria-hidden="true">✦</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         </div>
       </section>
@@ -240,6 +254,23 @@
         <div class="modal-actions promo-actions">
           <button id="promo-secondary" type="button" class="promo-secondary">Уже</button>
           <button id="promo-primary" type="button">Перейти</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="stars-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card stars-card">
+        <h2>Ускорить выход</h2>
+        <p>Выберите номинал Telegram Stars для доната на баланс.</p>
+        <div class="stars-options">
+          <button class="stars-option" type="button" data-stars="50"><span>50</span><span class="telegram-star" aria-hidden="true">✦</span></button>
+          <button class="stars-option" type="button" data-stars="100"><span>100</span><span class="telegram-star" aria-hidden="true">✦</span></button>
+          <button class="stars-option" type="button" data-stars="250"><span>250</span><span class="telegram-star" aria-hidden="true">✦</span></button>
+          <button class="stars-option" type="button" data-stars="500"><span>500</span><span class="telegram-star" aria-hidden="true">✦</span></button>
+        </div>
+        <p id="stars-status" class="auth-status" aria-live="polite"></p>
+        <div class="modal-actions">
+          <button id="stars-close" type="button">Закрыть</button>
         </div>
       </div>
     </div>
