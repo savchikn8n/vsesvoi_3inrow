@@ -21,6 +21,7 @@ const metricEls = {
   sessions: document.getElementById('metric-sessions'),
   avgDuration: document.getElementById('metric-avg-duration'),
   avgScore: document.getElementById('metric-avg-score'),
+  clapsSpent: document.getElementById('metric-claps-spent'),
 };
 
 const topPlayersBodyEl = document.getElementById('top-players-body');
@@ -197,7 +198,7 @@ function renderRecentSessions(items = []) {
   recentSessionsBodyEl.replaceChildren();
   if (!items.length) {
     const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="7" class="empty-state">Пока нет сессий.</td>';
+    row.innerHTML = '<td colspan="8" class="empty-state">Пока нет сессий.</td>';
     recentSessionsBodyEl.appendChild(row);
     return;
   }
@@ -209,6 +210,7 @@ function renderRecentSessions(items = []) {
       <td>${formatDateTime(item.session_started_at)}</td>
       <td>${formatDuration(item.duration_sec)}</td>
       <td>${formatNumber(item.best_score)}</td>
+      <td>${formatNumber(item.claps_spent)}</td>
       <td>${formatNumber(item.moves_count)}</td>
       <td>${item.end_reason || 'active'}</td>
     `;
@@ -224,6 +226,7 @@ function renderSummary(summary) {
   metricEls.sessions.textContent = formatNumber(overview.sessions_24h);
   metricEls.avgDuration.textContent = formatDuration(overview.avg_session_duration_sec_24h);
   metricEls.avgScore.textContent = formatNumber(overview.avg_best_score_24h);
+  metricEls.clapsSpent.textContent = formatNumber(overview.claps_spent_24h);
   renderTopPlayers(summary?.top_players || []);
   renderTopEvents(summary?.top_events_24h || []);
   renderRecentSessions(summary?.recent_sessions || []);

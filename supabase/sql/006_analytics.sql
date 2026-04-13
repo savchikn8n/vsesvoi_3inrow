@@ -7,9 +7,13 @@ create table if not exists public.analytics_sessions (
   end_reason text,
   best_score integer not null default 0,
   claps_earned integer not null default 0,
+  claps_spent integer not null default 0,
   moves_count integer not null default 0,
   created_at timestamptz not null default now()
 );
+
+alter table public.analytics_sessions
+  add column if not exists claps_spent integer not null default 0;
 
 create table if not exists public.analytics_events (
   id bigint generated always as identity primary key,

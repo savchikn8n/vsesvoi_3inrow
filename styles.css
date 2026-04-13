@@ -1116,6 +1116,29 @@ h1 {
   animation: record-share-pulse 1.6s ease-in-out infinite;
 }
 
+.continue-claps-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #000000 !important;
+  animation: continue-claps-shake 1.8s ease-in-out infinite;
+}
+
+.continue-claps-btn img {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.continue-claps-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  animation: none;
+}
+
 @keyframes record-share-pulse {
   0%, 100% {
     transform: translateY(0) scale(1);
@@ -1603,6 +1626,27 @@ h1 {
   }
   40% {
     opacity: 1;
+  }
+}
+
+@keyframes continue-claps-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  8% {
+    transform: translateX(-1px) rotate(-1deg);
+  }
+  16% {
+    transform: translateX(1px) rotate(1deg);
+  }
+  24% {
+    transform: translateX(-1px) rotate(-0.8deg);
+  }
+  32% {
+    transform: translateX(1px) rotate(0.8deg);
+  }
+  40% {
+    transform: translateX(0);
   }
 }
 
