@@ -27,6 +27,8 @@ const startNewGameBtn = document.getElementById('start-new-game');
 const startLeaderboardBtn = document.getElementById('start-leaderboard');
 const startGiftsBtn = document.getElementById('start-gifts');
 const startSettingsBtn = document.getElementById('start-settings');
+const startActionsTrackEl = document.getElementById('start-actions-track');
+const startBoostExitBtn = document.getElementById('start-boost-exit');
 const menuHeroEl = document.getElementById('menu-hero');
 const menuHeroTrackEl = document.getElementById('menu-hero-track');
 const menuHeroDots = Array.from(document.querySelectorAll('.menu-hero-dot'));
@@ -68,6 +70,10 @@ const promoTitleEl = document.getElementById('promo-title');
 const promoBodyEl = document.getElementById('promo-body');
 const promoSecondaryBtn = document.getElementById('promo-secondary');
 const promoPrimaryBtn = document.getElementById('promo-primary');
+const starsModalEl = document.getElementById('stars-modal');
+const starsCloseBtn = document.getElementById('stars-close');
+const starsStatusEl = document.getElementById('stars-status');
+const starsOptionEls = Array.from(document.querySelectorAll('.stars-option'));
 
 let board = [];
 let score = 0;
@@ -610,11 +616,18 @@ function setMenuHeroSlide(nextSlide) {
   if (menuHeroTrackEl) {
     menuHeroTrackEl.style.transform = `translateX(-${slide * 100}%)`;
   }
+  if (startActionsTrackEl) {
+    startActionsTrackEl.style.transform = `translateX(-${slide * 100}%)`;
+  }
   menuHeroDots.forEach((dot, index) => {
     dot.classList.toggle('is-active', index === slide);
     dot.setAttribute('aria-pressed', index === slide ? 'true' : 'false');
   });
   document.querySelectorAll('.menu-hero-slide').forEach((panel, index) => {
+    panel.classList.toggle('is-active', index === slide);
+    panel.setAttribute('aria-hidden', index === slide ? 'false' : 'true');
+  });
+  document.querySelectorAll('.start-actions-slide').forEach((panel, index) => {
     panel.classList.toggle('is-active', index === slide);
     panel.setAttribute('aria-hidden', index === slide ? 'false' : 'true');
   });
@@ -1363,6 +1376,24 @@ function closeTitlesModal() {
   hideModal(titlesModalEl);
 }
 
+function openStarsModal() {
+  closeAllModals();
+  if (starsStatusEl) {
+    starsStatusEl.textContent = '';
+  }
+  showModal(starsModalEl);
+}
+
+function closeStarsModal() {
+  hideModal(starsModalEl);
+}
+
+function handleStarsOptionClick(amount) {
+  if (starsStatusEl) {
+    starsStatusEl.textContent = `Номинал ${amount} ✦ выбран. Реальный приём Telegram Stars подключим следующим этапом через bot invoice.`;
+  }
+}
+
 function startNewGameFromHome() {
   hideStartScreen();
   resetGame();
@@ -1546,6 +1577,7 @@ function closeAllModals() {
   hideModal(authModalEl);
   hideModal(profileModalEl);
   hideModal(promoModalEl);
+  hideModal(starsModalEl);
 }
 
 async function fetchActivePromoPopup() {
@@ -3022,6 +3054,7 @@ menuSettingsBtn.addEventListener('click', openSettingsFromMenu);
 startNewGameBtn.addEventListener('click', startNewGameFromHome);
 startLeaderboardBtn.addEventListener('click', openLeaderboard);
 startSettingsBtn.addEventListener('click', openSettingsFromMenu);
+startBoostExitBtn?.addEventListener('click', openStarsModal);
 soundToggleBtn.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   updateSoundToggleLabel();
@@ -3039,6 +3072,10 @@ profileEntryBtn?.addEventListener('click', openProfileEditor);
 profileCloseBtn?.addEventListener('click', closeProfileEditor);
 promoSecondaryBtn?.addEventListener('click', dismissPromoPopup);
 promoPrimaryBtn?.addEventListener('click', openPromoPrimaryAction);
+starsCloseBtn?.addEventListener('click', closeStarsModal);
+starsOptionEls.forEach((btn) => {
+  btn.addEventListener('click', () => handleStarsOptionClick(btn.dataset.stars || '0'));
+});
 profileNameEl?.addEventListener('input', handleProfileNameInput);
 startGiftsBtn?.addEventListener('click', toggleGiftsButtonFlip);
 avatarPickerEl?.addEventListener('click', (e) => {
