@@ -2655,8 +2655,6 @@ async function continueRunWithClaps() {
     }
 
     saveProfile(result.profile, { forceClapBalance: true });
-    sessionClapsSpent += CONTINUE_RUN_CLAPS_COST;
-    flushSessionSnapshot({ reason: 'continue_spend' });
     hideModal(gameOverModalEl);
     timeoutPendingAtZero = false;
     locked = false;
@@ -2664,6 +2662,8 @@ async function continueRunWithClaps() {
     clearHint();
     statusEl.textContent = 'Игра продолжена.';
     startAnalyticsSession('continue');
+    sessionClapsSpent += CONTINUE_RUN_CLAPS_COST;
+    flushSessionSnapshot({ reason: 'continue_spend' });
     startTurnTimer();
     drawBoard();
   } catch (error) {
