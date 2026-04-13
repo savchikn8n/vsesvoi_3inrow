@@ -41,6 +41,7 @@ const titlesCloseBtn = document.getElementById('titles-close');
 const finalScoreEl = document.getElementById('final-score');
 const menuShareRecordBtn = document.getElementById('menu-share-record');
 const menuNewGameBtn = document.getElementById('menu-new-game');
+const menuContinueClapsBtn = document.getElementById('menu-continue-claps');
 const menuExitMenuBtn = document.getElementById('menu-exit-menu');
 const menuSettingsBtn = document.getElementById('menu-settings');
 const soundToggleBtn = document.getElementById('sound-toggle');
@@ -106,6 +107,7 @@ let promoFetchPromise = null;
 let shareRecordState = null;
 let menuHeroSlide = 0;
 let menuHeroGesture = null;
+let continueRunBusy = false;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const CLAPS_BALANCE_KEY = 'gold_match_claps_balance';
@@ -117,6 +119,7 @@ const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUPABASE_FUNCTIONS_BASE = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '';
 const SHARE_GAME_URL = 'https://t.me/vsesvoi3inrow_bot';
 const SHARE_RECORD_TEXT = 'Заходи и побей мой рекорд во «Все свои: 3 в ряд»';
+const CONTINUE_RUN_CLAPS_COST = 5;
 const AMBIENT_ICON_SOURCES = [
   { key: 'dualsence', src: './assets/dualsence.png' },
   { key: 'satyr', src: './assets/satyr.png' },
@@ -531,6 +534,7 @@ function updateHud() {
   timerEl.classList.toggle('warning', turnSecondsLeft <= HINT_THRESHOLD_SECONDS);
   maybeUpdateBestScore();
   maybeAwardClapsFromScore();
+  updateContinueRunButton();
 }
 
 function loadBestScore() {
@@ -695,7 +699,8 @@ function loadProfile() {
   }
 }
 
-function saveProfile(next) {
+function saveProfile(next, options = {}) {
+  const forceClapBalance = Boolean(options.forceClapBalance);
   const normalized = {
     ...next,
     auth_verified: true,
@@ -706,7 +711,9 @@ function saveProfile(next) {
     saveBestScore(bestScore);
   }
   if (Number.isFinite(Number(normalized.clap_balance))) {
-    clapBalance = Math.max(clapBalance, Math.floor(Number(normalized.clap_balance)));
+    clapBalance = forceClapBalance
+      ? Math.max(0, Math.floor(Number(normalized.clap_balance)))
+      : Math.max(clapBalance, Math.floor(Number(normalized.clap_balance)));
     normalized.clap_balance = clapBalance;
     saveClapBalance(clapBalance);
   }
@@ -715,6 +722,7 @@ function saveProfile(next) {
   updateProfileEntry();
   updateBestScoreUi();
   updateHud();
+  updateContinueRunButton();
 }
 
 function setAuthStatus(message) {
@@ -1407,6 +1415,14 @@ function setStartShareRecordVisible(visible) {
   if (!startShareRecordBtn) return;
   startShareRecordBtn.classList.toggle('is-visible', Boolean(visible));
   startShareRecordBtn.classList.toggle('ui-hidden', false);
+}
+
+function updateContinueRunButton() {
+  if (!menuContinueClapsBtn) return;
+  const canContinue = Boolean(profile?.telegram_id) && clapBalance >= CONTINUE_RUN_CLAPS_COST;
+  menuContinueClapsBtn.textContent = `Продолжить за ${CONTINUE_RUN_CLAPS_COST} ладошек`;
+  menuContinueClapsBtn.classList.toggle('ui-hidden', !canContinue);
+  menuContinueClapsBtn.disabled = continueRunBusy || !canContinue;
 }
 
 function setShareRecordState(state) {
@@ -2604,6 +2620,7 @@ function endGameByTimeout() {
   setShareRecordState(null);
   statusEl.textContent = 'Время вышло. Игра окончена.';
   finalScoreEl.textContent = `Ваш счёт: ${score}`;
+  updateContinueRunButton();
   drawBoard();
   showModal(gameOverModalEl);
   void syncProgressIfNeeded().then((result) => {
@@ -2611,6 +2628,45 @@ function endGameByTimeout() {
       setShareRecordState({ enabled: true, score: result.share_record_score || score });
     }
   });
+}
+
+async function continueRunWithClaps() {
+  if (continueRunBusy || clapBalance < CONTINUE_RUN_CLAPS_COST || !profile?.telegram_id) return;
+  continueRunBusy = true;
+  updateContinueRunButton();
+
+  try {
+    const initData = telegramInitData();
+    if (!initData) {
+      throw new Error('Нет Telegram-сессии для списания ладошек.');
+    }
+
+    const result = await postJson('spend-claps', {
+      initData,
+      amount: CONTINUE_RUN_CLAPS_COST,
+      reason: 'continue_run',
+    });
+
+    if (!result?.profile) {
+      throw new Error('Сервер не вернул обновлённый профиль.');
+    }
+
+    saveProfile(result.profile, { forceClapBalance: true });
+    hideModal(gameOverModalEl);
+    timeoutPendingAtZero = false;
+    locked = false;
+    selected = null;
+    clearHint();
+    statusEl.textContent = 'Игра продолжена.';
+    startAnalyticsSession('continue');
+    startTurnTimer();
+    drawBoard();
+  } catch (error) {
+    finalScoreEl.textContent = error.message || 'Не удалось продолжить игру.';
+  } finally {
+    continueRunBusy = false;
+    updateContinueRunButton();
+  }
 }
 
 function exitToMenu() {
@@ -2954,6 +3010,7 @@ exitToMenuBtn.addEventListener('click', exitToMenu);
 menuShareRecordBtn?.addEventListener('click', () => { void shareTopRecord(); });
 startShareRecordBtn?.addEventListener('click', () => { void shareTopRecord(); });
 startRecordTriggerEl?.addEventListener('click', handleStartRecordTrigger);
+menuContinueClapsBtn?.addEventListener('click', () => { void continueRunWithClaps(); });
 menuNewGameBtn.addEventListener('click', resetGame);
 menuExitMenuBtn.addEventListener('click', exitToMenu);
 menuSettingsBtn.addEventListener('click', openSettingsFromMenu);
