@@ -46,7 +46,7 @@ body {
   display: grid;
   place-items: center;
   color: #ffffff;
-  font-family: "Manrope", sans-serif;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
   background: #000000;
   touch-action: none;
   position: relative;
@@ -199,7 +199,7 @@ body::after {
 
 h1 {
   margin: 0;
-  font-family: "Cinzel", serif;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
   letter-spacing: 0.06em;
   font-size: clamp(1.3rem, 2vw + 0.6rem, 2rem);
   text-transform: uppercase;
@@ -366,7 +366,7 @@ h1 {
   background: #f3b315;
   color: #000000;
   font-weight: 700;
-  font-family: "Cinzel", serif;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
   letter-spacing: 0.03em;
   padding: 10px 12px;
   border-radius: var(--ui-radius);
@@ -879,7 +879,7 @@ h1 {
   background: #f3b315;
   color: #000000;
   font-weight: 700;
-  font-family: "Cinzel", serif;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
   letter-spacing: 0.04em;
   padding: 8px 16px;
   cursor: pointer;
@@ -1075,7 +1075,7 @@ h1 {
   background: #f3b315;
   color: #000000;
   font-weight: 700;
-  font-family: "Cinzel", serif;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
   letter-spacing: 0.03em;
   padding: 12px 14px;
   cursor: pointer;
@@ -1299,7 +1299,7 @@ h1 {
   border: 2px solid #f3b315;
   border-radius: var(--ui-radius);
   font-weight: 700;
-  font-family: "Cinzel", serif;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
   letter-spacing: 0.03em;
 }
 
@@ -1433,7 +1433,8 @@ h1 {
   background: #f3b315;
   color: #000000;
   font-weight: 700;
-  font-family: "Cinzel", serif;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
+  font-size: 1.08rem;
   letter-spacing: 0.03em;
   padding: 12px 14px;
   cursor: pointer;
@@ -1480,14 +1481,14 @@ h1 {
 }
 
 .stars-card {
-  width: min(92vw, 380px);
+  width: min(92vw, 340px);
 }
 
 .stars-options {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 10px;
-  margin: 8px 0 12px;
+  gap: 8px;
+  margin: 6px 0 10px;
 }
 
 .stars-option {
@@ -1499,20 +1500,20 @@ h1 {
   background: #f3b315 !important;
   border-color: #f3b315 !important;
   color: #000000 !important;
-  min-height: 82px;
-  padding: 12px 14px !important;
+  min-height: 64px;
+  padding: 10px 12px !important;
   text-align: center;
 }
 
 .stars-option-value {
-  font-size: 1.2rem;
+  font-size: 0.96rem;
   font-weight: 900;
-  line-height: 1;
+  line-height: 1.2;
 }
 
 .modal-card h2 {
   margin: 0 0 10px 0;
-  font-family: "Cinzel", serif;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
   color: #f3b315;
 }
 
@@ -1532,7 +1533,7 @@ h1 {
   background: #f3b315;
   color: #000000;
   font-weight: 700;
-  font-family: "Cinzel", serif;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
   letter-spacing: 0.03em;
   padding: 9px 12px;
   cursor: pointer;
