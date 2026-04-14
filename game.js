@@ -1329,7 +1329,7 @@ async function openLeaderboard() {
   const cachedItems = Array.isArray(cached?.items) ? cached.items : [];
   const leaderboardRequest = postJsonWithOptions(
     'leaderboard',
-    { limit: 100 },
+    { limit: 50 },
     { timeoutMs: 6500, retries: 2 },
   );
 
