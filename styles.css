@@ -115,9 +115,9 @@ body::after {
 
 .ambient-game-mask {
   position: absolute;
-  background: rgba(0, 0, 0, 0.9);
-  backdrop-filter: blur(18px) saturate(120%);
-  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(18px) saturate(125%);
+  -webkit-backdrop-filter: blur(18px) saturate(125%);
   z-index: 1;
   pointer-events: none;
   border-radius: var(--ui-radius);
@@ -334,9 +334,9 @@ h1 {
   justify-self: center;
   padding: 6px;
   border: 3px solid #000000;
-  background: rgba(0, 0, 0, 0.9);
-  backdrop-filter: blur(16px) saturate(115%);
-  -webkit-backdrop-filter: blur(16px) saturate(115%);
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
   overflow: hidden;
   touch-action: none;
   border-radius: var(--ui-radius);
