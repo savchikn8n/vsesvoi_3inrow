@@ -1038,7 +1038,7 @@ h1 {
 
 .shop-list {
   display: grid;
-  gap: 0;
+  gap: 10px;
   align-content: start;
   overflow: auto;
   padding-right: 4px;
@@ -1050,25 +1050,11 @@ h1 {
   gap: 12px;
   align-items: start;
   padding: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--ui-radius);
   background: rgba(0, 0, 0, 0.46);
   backdrop-filter: blur(12px) saturate(120%);
   -webkit-backdrop-filter: blur(12px) saturate(120%);
-}
-
-.shop-item:first-child {
-  border-top-left-radius: var(--ui-radius);
-  border-top-right-radius: var(--ui-radius);
-}
-
-.shop-item:last-child {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom-left-radius: var(--ui-radius);
-  border-bottom-right-radius: var(--ui-radius);
 }
 
 .shop-item-visual {
@@ -1098,8 +1084,9 @@ h1 {
   margin: 0;
   color: #f3b315;
   font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
-  font-size: clamp(0.8rem, 2vw, 0.96rem);
-  line-height: 1.08;
+  font-size: clamp(0.98rem, 2.35vw, 1.18rem);
+  line-height: 1.04;
+  white-space: nowrap;
 }
 
 .shop-item-meta {
@@ -1113,9 +1100,13 @@ h1 {
   margin: 0;
   color: rgba(255, 255, 255, 0.72);
   font-family: "Manrope", sans-serif;
-  font-size: 0.86rem;
+  font-size: 0.74rem;
   font-weight: 700;
-  line-height: 1.28;
+  line-height: 1.18;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .shop-buy-btn {
@@ -2154,11 +2145,15 @@ h1 {
   }
 
   .shop-item-details h3 {
-    font-size: 0.94rem;
+    font-size: 1.08rem;
   }
 
   .shop-item-meta {
     gap: 10px;
+  }
+
+  .shop-item-meta p {
+    font-size: 0.72rem;
   }
 
   .shop-buy-btn {

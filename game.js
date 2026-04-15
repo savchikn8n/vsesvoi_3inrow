@@ -163,7 +163,7 @@ const SHOP_ITEMS = [
   },
   {
     id: 'mundshtuk',
-    title: 'Фирменный персональный мундштук',
+    title: 'Фирменный мундштук',
     description: 'Фирменный персональный мундштук.',
     price: 75,
   },
@@ -1247,13 +1247,16 @@ function openShopScreen() {
   startScreenEl?.classList.add('hidden');
   shopScreenEl?.classList.remove('hidden');
   updateBestScoreUi();
-  refreshAmbientLayers();
   syncAmbientGameMask();
 }
 
 function closeShopScreen() {
+  closeAllModals();
   shopScreenEl?.classList.add('hidden');
-  showStartScreen();
+  startScreenEl?.classList.remove('hidden');
+  updateBestScoreUi();
+  updateProfileEntry();
+  syncAmbientGameMask();
 }
 
 function openShopAlert(title, body) {
