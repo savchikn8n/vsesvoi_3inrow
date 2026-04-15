@@ -42,21 +42,28 @@
         </nav>
 
         <section id="analytics-panel" class="dashboard-panel is-active">
+          <div class="analytics-toolbar">
+            <div class="period-switch" role="tablist" aria-label="Период аналитики">
+              <button class="period-btn is-active" type="button" data-period="24h">24ч</button>
+              <button class="period-btn" type="button" data-period="7d">7д</button>
+              <button class="period-btn" type="button" data-period="30d">30д</button>
+            </div>
+          </div>
           <section class="metrics-grid">
             <article class="metric-card">
               <span class="metric-label">Всего игроков</span>
               <strong id="metric-total-players" class="metric-value">-</strong>
             </article>
             <article class="metric-card">
-              <span class="metric-label">Активные 24ч</span>
+              <span class="metric-label">Активные</span>
               <strong id="metric-active-players" class="metric-value">-</strong>
             </article>
             <article class="metric-card">
-              <span class="metric-label">Новые 24ч</span>
+              <span class="metric-label">Новые</span>
               <strong id="metric-new-players" class="metric-value">-</strong>
             </article>
             <article class="metric-card">
-              <span class="metric-label">Сессии 24ч</span>
+              <span class="metric-label">Сессии</span>
               <strong id="metric-sessions" class="metric-value">-</strong>
             </article>
             <article class="metric-card">
@@ -68,8 +75,24 @@
               <strong id="metric-avg-score" class="metric-value">-</strong>
             </article>
             <article class="metric-card">
-              <span class="metric-label">Ладошки</span>
+              <span class="metric-label">Потрачено</span>
               <strong id="metric-claps-spent" class="metric-value">-</strong>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Заработано</span>
+              <strong id="metric-claps-earned" class="metric-value">-</strong>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Подарков</span>
+              <strong id="metric-gifts-purchased" class="metric-value">-</strong>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Средняя трата</span>
+              <strong id="metric-avg-spend" class="metric-value">-</strong>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Вернувшиеся</span>
+              <strong id="metric-returning-players" class="metric-value">-</strong>
             </article>
           </section>
 
@@ -96,8 +119,8 @@
 
             <article class="panel-card">
               <div class="panel-head">
-                <h2>События 24ч</h2>
-                <span class="panel-note">Самые частые действия</span>
+                <h2>События</h2>
+                <span class="panel-note">Самые частые действия за период</span>
               </div>
               <div id="top-events-list" class="event-list"></div>
             </article>
@@ -135,6 +158,21 @@
                 <h2>Покупки подарков</h2>
                 <span class="panel-note">Коды для выдачи и кто их купил</span>
               </div>
+              <div class="gifts-toolbar">
+                <input id="gift-search" type="search" placeholder="Поиск по игроку или коду" />
+                <select id="gift-filter-item">
+                  <option value="">Все подарки</option>
+                  <option value="hookah">hookah</option>
+                  <option value="tea">tea</option>
+                  <option value="mundshtuk">mundshtuk</option>
+                  <option value="tshirt">tshirt</option>
+                </select>
+                <select id="gift-filter-status">
+                  <option value="">Все статусы</option>
+                  <option value="pending">Не выдан</option>
+                  <option value="issued">Выдан</option>
+                </select>
+              </div>
               <div class="table-wrap">
                 <table class="dashboard-table">
                   <thead>
@@ -142,6 +180,8 @@
                       <th>Игрок</th>
                       <th>Подарок</th>
                       <th>Код</th>
+                      <th>Статус</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody id="gift-purchases-body"></tbody>
@@ -152,6 +192,10 @@
         </section>
 
         <section id="promos-panel" class="dashboard-panel promos-panel">
+          <div class="promo-subtabs">
+            <button id="promo-subtab-editor" class="promo-subtab is-active" type="button">Редактор</button>
+            <button id="promo-subtab-archive" class="promo-subtab" type="button">Архив и аналитика</button>
+          </div>
           <section class="promo-grid">
             <article class="panel-card promo-editor-card">
               <div class="panel-head">

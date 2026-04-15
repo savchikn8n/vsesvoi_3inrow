@@ -120,7 +120,8 @@ h2 {
 }
 
 button,
-input {
+input,
+select {
   border-radius: 10px;
   border: 2px solid var(--gold);
   font: inherit;
@@ -134,15 +135,39 @@ button {
   cursor: pointer;
 }
 
-input {
+input,
+select {
   background: #000;
   color: #fff;
   padding: 10px 12px;
 }
 
+.analytics-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.period-switch,
+.promo-subtabs {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.period-btn,
+.promo-subtab {
+  background: transparent;
+  color: var(--gold);
+}
+
+.period-btn.is-active,
+.promo-subtab.is-active {
+  background: var(--gold);
+  color: #000;
+}
+
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(11, minmax(0, 1fr));
   gap: 12px;
   min-height: 0;
 }
@@ -175,6 +200,41 @@ input {
   gap: 12px;
 }
 
+.gifts-grid {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+.gifts-toolbar {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 180px 160px;
+  gap: 10px;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.status-pill.pending {
+  border: 1px solid rgba(243, 179, 21, 0.5);
+  color: var(--gold);
+  background: rgba(243, 179, 21, 0.08);
+}
+
+.status-pill.issued {
+  border: 1px solid rgba(110, 225, 160, 0.45);
+  color: #6ee1a0;
+  background: rgba(110, 225, 160, 0.1);
+}
+
 .panel-card {
   padding: 14px 16px;
   min-height: 0;
@@ -185,6 +245,10 @@ input {
 
 .panel-card-wide {
   grid-column: 1 / -1;
+}
+
+.panel-card.is-hidden {
+  display: none;
 }
 
 .table-wrap {
@@ -251,7 +315,7 @@ input {
   }
 
   .metrics-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .dashboard-grid {
@@ -261,6 +325,10 @@ input {
 
   .panel-card-wide {
     grid-column: auto;
+  }
+
+  .gifts-toolbar {
+    grid-template-columns: 1fr 160px 150px;
   }
 }
 
@@ -303,6 +371,25 @@ input {
   .event-list {
     overflow: visible;
   }
+
+  .analytics-toolbar,
+  .promo-subtabs {
+    width: 100%;
+  }
+
+  .period-switch,
+  .promo-subtabs {
+    width: 100%;
+  }
+
+  .period-btn,
+  .promo-subtab {
+    flex: 1;
+  }
+
+  .gifts-toolbar {
+    grid-template-columns: 1fr;
+  }
 }
 
 .dashboard-tabs {
@@ -339,15 +426,22 @@ input {
 .promos-panel {
   min-height: 0;
   overflow: hidden;
+  gap: 12px;
+  align-content: start;
 }
 
 .promo-grid {
   min-height: 0;
   height: 100%;
   display: grid;
-  grid-template-columns: minmax(360px, 0.82fr) minmax(460px, 1fr);
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(520px, 1.35fr) minmax(240px, 0.65fr);
+  grid-template-rows: 1fr;
   gap: 12px;
+}
+
+.promo-grid.is-archive {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
 }
 
 .promo-editor-card,
@@ -362,13 +456,13 @@ input {
 }
 
 .promo-list-card {
-  grid-column: 1;
-  grid-row: 2;
+  grid-column: 1 / -1;
+  grid-row: 1;
 }
 
 .promo-preview-card {
   grid-column: 2;
-  grid-row: 1 / span 2;
+  grid-row: 1;
 }
 
 .promo-editor-scroll {
@@ -436,7 +530,7 @@ input {
 }
 
 .promo-preview {
-  width: min(100%, 420px);
+  width: min(100%, 210px);
   display: grid;
   gap: 14px;
 }
@@ -597,13 +691,17 @@ input {
 @media (max-width: 1180px) {
   .promo-grid {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto minmax(280px, 1fr);
+    grid-template-rows: auto auto;
     height: auto;
   }
 
   .promo-editor-card,
-  .promo-list-card,
   .promo-preview-card {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .promo-list-card {
     grid-column: auto;
     grid-row: auto;
   }
