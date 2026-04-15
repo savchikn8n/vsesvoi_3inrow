@@ -39,8 +39,8 @@ body {
 }
 
 body {
-  padding-top: calc(env(safe-area-inset-top) + var(--tg-ui-offset));
-  padding-bottom: calc(env(safe-area-inset-bottom) + var(--app-outer-gap));
+  padding-top: 0;
+  padding-bottom: 0;
   padding-left: 0;
   padding-right: 0;
   display: grid;
@@ -94,10 +94,13 @@ body::after {
 
 .frame {
   width: 100vw;
-  height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--tg-ui-offset));
-  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--tg-ui-offset));
+  height: 100dvh;
+  max-height: 100dvh;
   border: none;
-  padding: clamp(14px, 2vw, 22px);
+  padding-top: max(clamp(14px, 2vw, 22px), calc(env(safe-area-inset-top) + var(--tg-ui-offset) + 14px));
+  padding-right: clamp(14px, 2vw, 22px);
+  padding-bottom: max(clamp(14px, 2vw, 22px), calc(env(safe-area-inset-bottom) + var(--app-outer-gap)));
+  padding-left: clamp(14px, 2vw, 22px);
   background:
     linear-gradient(
       180deg,
