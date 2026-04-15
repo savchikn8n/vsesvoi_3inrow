@@ -978,6 +978,7 @@ h1 {
   gap: 14px;
   position: relative;
   z-index: 1;
+  padding-top: calc(env(safe-area-inset-top) + var(--tg-ui-offset) + 54px);
 }
 
 .shop-header-row {
@@ -995,10 +996,11 @@ h1 {
   font-weight: 700;
   padding: 10px 14px;
   border-radius: var(--ui-radius);
+  min-width: 112px;
 }
 
 .shop-balance {
-  min-width: 110px;
+  min-width: 128px;
   justify-self: end;
   display: inline-grid;
   grid-template-columns: auto auto;
@@ -1016,7 +1018,7 @@ h1 {
   margin: 0;
   color: #f3b315;
   font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
-  font-size: clamp(1.24rem, 2.2vw, 1.7rem);
+  font-size: clamp(1.08rem, 1.9vw, 1.4rem);
 }
 
 .shop-copy p {
@@ -1035,8 +1037,8 @@ h1 {
 
 .shop-item {
   display: grid;
-  grid-template-columns: 86px minmax(0, 1fr) auto;
-  gap: 14px;
+  grid-template-columns: 78px minmax(0, 1fr) auto;
+  gap: 12px;
   align-items: center;
   padding: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1047,8 +1049,8 @@ h1 {
 }
 
 .shop-item-visual {
-  width: 86px;
-  height: 108px;
+  width: 78px;
+  height: 100px;
   border-radius: var(--ui-radius);
   background: rgba(255, 255, 255, 0.02);
   display: grid;
@@ -1070,38 +1072,45 @@ h1 {
 
 .shop-item-copy h3 {
   margin: 0;
-  color: #ffffff;
+  color: #f3b315;
   font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
-  font-size: 1rem;
-  line-height: 1.12;
+  font-size: clamp(0.8rem, 2vw, 0.96rem);
+  line-height: 1.08;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .shop-item-copy p {
   margin: 0;
   color: rgba(255, 255, 255, 0.72);
-  font-size: 0.88rem;
-  line-height: 1.32;
+  font-family: "Manrope", sans-serif;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.28;
 }
 
 .shop-buy-btn {
-  min-width: 108px;
+  min-width: 94px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   border: 2px solid #f3b315;
   background: #f3b315;
   color: #000000;
   font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
   font-weight: 700;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-radius: var(--ui-radius);
+  font-size: 0.94rem;
 }
 
 .shop-buy-btn img {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   display: block;
+  filter: brightness(0) saturate(100%);
 }
 
 .shop-buy-btn:disabled {
