@@ -37,6 +37,7 @@
 
         <nav class="dashboard-tabs" aria-label="Вкладки дэшборда">
           <button id="tab-analytics" class="dashboard-tab is-active" type="button">Аналитика</button>
+          <button id="tab-gifts" class="dashboard-tab" type="button">Подарки</button>
           <button id="tab-promos" class="dashboard-tab" type="button">Попапы</button>
         </nav>
 
@@ -121,6 +122,29 @@
                     </tr>
                   </thead>
                   <tbody id="recent-sessions-body"></tbody>
+                </table>
+              </div>
+            </article>
+          </section>
+        </section>
+
+        <section id="gifts-panel" class="dashboard-panel gifts-panel">
+          <section class="dashboard-grid gifts-grid">
+            <article class="panel-card panel-card-wide">
+              <div class="panel-head">
+                <h2>Покупки подарков</h2>
+                <span class="panel-note">Коды для выдачи и кто их купил</span>
+              </div>
+              <div class="table-wrap">
+                <table class="dashboard-table">
+                  <thead>
+                    <tr>
+                      <th>Игрок</th>
+                      <th>Подарок</th>
+                      <th>Код</th>
+                    </tr>
+                  </thead>
+                  <tbody id="gift-purchases-body"></tbody>
                 </table>
               </div>
             </article>

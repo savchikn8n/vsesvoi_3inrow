@@ -1,5 +1,6 @@
 const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUMMARY_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/analytics-summary` : '';
+const GIFT_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/gift-admin` : '';
 const PROMO_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/promo-admin` : '';
 const PROMO_UPLOAD_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/promo-upload` : '';
 const DASHBOARD_SECRET_KEY = 'gold_match_dashboard_secret';
@@ -10,8 +11,10 @@ const refreshBtnEl = document.getElementById('refresh-dashboard');
 const statusEl = document.getElementById('dashboard-status');
 const updatedAtEl = document.getElementById('dashboard-updated-at');
 const analyticsTabEl = document.getElementById('tab-analytics');
+const giftsTabEl = document.getElementById('tab-gifts');
 const promosTabEl = document.getElementById('tab-promos');
 const analyticsPanelEl = document.getElementById('analytics-panel');
+const giftsPanelEl = document.getElementById('gifts-panel');
 const promosPanelEl = document.getElementById('promos-panel');
 
 const metricEls = {
@@ -27,6 +30,7 @@ const metricEls = {
 const topPlayersBodyEl = document.getElementById('top-players-body');
 const topEventsListEl = document.getElementById('top-events-list');
 const recentSessionsBodyEl = document.getElementById('recent-sessions-body');
+const giftPurchasesBodyEl = document.getElementById('gift-purchases-body');
 
 const promoEditorNoteEl = document.getElementById('promo-editor-note');
 const promoTitleInputEl = document.getElementById('promo-title-input');
@@ -218,6 +222,26 @@ function renderRecentSessions(items = []) {
   });
 }
 
+function renderGiftPurchases(items = []) {
+  if (!giftPurchasesBodyEl) return;
+  giftPurchasesBodyEl.replaceChildren();
+  if (!items.length) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="3" class="empty-state">Пока нет покупок.</td>';
+    giftPurchasesBodyEl.appendChild(row);
+    return;
+  }
+  items.forEach((item) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${item.player_label || 'Игрок'}</td>
+      <td>${item.gift_id}</td>
+      <td>${item.code}</td>
+    `;
+    giftPurchasesBodyEl.appendChild(row);
+  });
+}
+
 function renderSummary(summary) {
   const overview = summary?.overview || {};
   metricEls.totalPlayers.textContent = formatNumber(overview.total_players);
@@ -236,8 +260,10 @@ function renderSummary(summary) {
 function setActiveTab(tab) {
   currentDashboardTab = tab;
   analyticsTabEl?.classList.toggle('is-active', tab === 'analytics');
+  giftsTabEl?.classList.toggle('is-active', tab === 'gifts');
   promosTabEl?.classList.toggle('is-active', tab === 'promos');
   analyticsPanelEl?.classList.toggle('is-active', tab === 'analytics');
+  giftsPanelEl?.classList.toggle('is-active', tab === 'gifts');
   promosPanelEl?.classList.toggle('is-active', tab === 'promos');
 }
 
@@ -359,6 +385,12 @@ async function fetchPromos() {
   renderPromoList(data?.popups || []);
 }
 
+async function fetchGiftPurchases() {
+  if (!GIFT_ADMIN_URL) throw new Error('Не задан SUPABASE_URL.');
+  const data = await postDashboardJson(GIFT_ADMIN_URL, { action: 'list' });
+  renderGiftPurchases(data?.purchases || []);
+}
+
 async function fetchAllDashboardData() {
   const secret = loadDashboardSecret();
   if (!secret) {
@@ -366,7 +398,7 @@ async function fetchAllDashboardData() {
     return;
   }
   setStatus('Загружаем dashboard...');
-  await Promise.all([fetchSummary(), fetchPromos()]);
+  await Promise.all([fetchSummary(), fetchGiftPurchases(), fetchPromos()]);
   setStatus('');
 }
 
@@ -412,6 +444,7 @@ function startAutoRefresh() {
 }
 
 analyticsTabEl?.addEventListener('click', () => setActiveTab('analytics'));
+giftsTabEl?.addEventListener('click', () => setActiveTab('gifts'));
 promosTabEl?.addEventListener('click', () => setActiveTab('promos'));
 connectBtnEl?.addEventListener('click', connectDashboard);
 refreshBtnEl?.addEventListener('click', () => void fetchAllDashboardData().catch((error) => setStatus(error.message || 'Ошибка обновления')));

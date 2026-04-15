@@ -955,6 +955,185 @@ h1 {
   display: none;
 }
 
+.shop-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 135;
+  display: grid;
+  place-items: stretch;
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.84);
+  overflow: hidden;
+}
+
+.shop-screen.hidden {
+  display: none;
+}
+
+.shop-shell {
+  width: 100%;
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+.shop-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.shop-back-btn {
+  border: 2px solid #f3b315;
+  background: #000000;
+  color: #f3b315;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
+  font-weight: 700;
+  padding: 10px 14px;
+  border-radius: var(--ui-radius);
+}
+
+.shop-balance {
+  min-width: 110px;
+  justify-self: end;
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.shop-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.shop-copy h2 {
+  margin: 0;
+  color: #f3b315;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
+  font-size: clamp(1.24rem, 2.2vw, 1.7rem);
+}
+
+.shop-copy p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.92rem;
+}
+
+.shop-list {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.shop-item {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--ui-radius);
+  background: rgba(0, 0, 0, 0.46);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+}
+
+.shop-item-visual {
+  width: 86px;
+  height: 108px;
+  border-radius: var(--ui-radius);
+  background: rgba(255, 255, 255, 0.02);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.shop-item-visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.shop-item-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.shop-item-copy h3 {
+  margin: 0;
+  color: #ffffff;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
+  font-size: 1rem;
+  line-height: 1.12;
+}
+
+.shop-item-copy p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.88rem;
+  line-height: 1.32;
+}
+
+.shop-buy-btn {
+  min-width: 108px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px solid #f3b315;
+  background: #f3b315;
+  color: #000000;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
+  font-weight: 700;
+  padding: 12px 14px;
+  border-radius: var(--ui-radius);
+}
+
+.shop-buy-btn img {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.shop-buy-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.shop-buy-btn.is-unaffordable:not(:disabled) {
+  opacity: 0.72;
+}
+
+.shop-feedback-card {
+  width: min(92vw, 360px);
+  text-align: center;
+}
+
+.shop-confirm-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.shop-code-value {
+  margin: 12px 0 2px;
+  padding: 14px 16px;
+  border: 1px solid rgba(243, 179, 21, 0.3);
+  border-radius: var(--ui-radius);
+  background: rgba(0, 0, 0, 0.86);
+  color: #f3b315;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
+  font-size: clamp(1rem, 2vw, 1.24rem);
+  letter-spacing: 0.08em;
+}
+
 .start-card {
   width: 100%;
   min-height: 100%;
@@ -1240,7 +1419,7 @@ h1 {
   border: 2px solid #f3b315;
   background: #000000;
   color: #ffffff;
-  cursor: default;
+  cursor: pointer;
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: center;
