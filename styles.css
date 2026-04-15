@@ -59,7 +59,14 @@ body::before {
   inset: 0;
   z-index: -2;
   background:
-    linear-gradient(rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.42)),
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.9) 0%,
+      rgba(0, 0, 0, 0.78) 14%,
+      rgba(0, 0, 0, 0.58) 30%,
+      rgba(0, 0, 0, 0.42) 48%,
+      rgba(0, 0, 0, 0.42) 100%
+    ),
     url("./assets/app-bg.jpg") center / cover no-repeat;
   transform: scale(1.08);
 }
@@ -72,6 +79,13 @@ body::after {
   backdrop-filter: blur(22px) saturate(145%);
   -webkit-backdrop-filter: blur(22px) saturate(145%);
   background:
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.58) 0%,
+      rgba(0, 0, 0, 0.34) 14%,
+      rgba(0, 0, 0, 0.16) 26%,
+      rgba(0, 0, 0, 0) 40%
+    ),
     radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.18), transparent 36%),
     radial-gradient(circle at 82% 78%, rgba(243, 179, 21, 0.16), transparent 40%),
     linear-gradient(rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.18));
