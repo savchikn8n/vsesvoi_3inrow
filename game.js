@@ -1244,7 +1244,6 @@ function closeProfileEditor() {
 function openShopScreen() {
   void trackAnalytics('gifts_opened', { sessionId: activeSessionId });
   closeAllModals();
-  startScreenEl?.classList.add('hidden');
   shopScreenEl?.classList.remove('hidden');
   updateBestScoreUi();
   syncAmbientGameMask();
@@ -1253,7 +1252,6 @@ function openShopScreen() {
 function closeShopScreen() {
   closeAllModals();
   shopScreenEl?.classList.add('hidden');
-  startScreenEl?.classList.remove('hidden');
   updateBestScoreUi();
   updateProfileEntry();
   syncAmbientGameMask();
