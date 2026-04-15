@@ -9,6 +9,7 @@ const effectsLayerEl = document.getElementById('effects-layer');
 const ambientLayerEl = document.getElementById('ambient-layer');
 const ambientGameMaskEl = document.getElementById('ambient-game-mask');
 const startAmbientLayerEl = document.getElementById('start-ambient-layer');
+const shopAmbientLayerEl = document.getElementById('shop-ambient-layer');
 const scoreEl = document.getElementById('score');
 const hudClapsEl = document.getElementById('hud-claps');
 const timerEl = document.getElementById('timer');
@@ -17,6 +18,7 @@ const exitToMenuBtn = document.getElementById('exit-to-menu');
 const statusEl = document.getElementById('status');
 const tileTpl = document.getElementById('tile-template');
 const startScreenEl = document.getElementById('start-screen');
+const shopScreenEl = document.getElementById('shop-screen');
 const bestScoreEl = document.getElementById('best-score');
 const startRecordTriggerEl = document.getElementById('start-record-trigger');
 const startShareRecordBtn = document.getElementById('start-share-record');
@@ -26,6 +28,7 @@ const scoreTitleLevelEl = document.getElementById('score-title-level');
 const startNewGameBtn = document.getElementById('start-new-game');
 const startLeaderboardBtn = document.getElementById('start-leaderboard');
 const startGiftsBtn = document.getElementById('start-gifts');
+const giftEntryBtn = document.getElementById('gift-entry');
 const startSettingsBtn = document.getElementById('start-settings');
 const startActionsTrackEl = document.getElementById('start-actions-track');
 const startBoostExitBtn = document.getElementById('start-boost-exit');
@@ -74,6 +77,22 @@ const launcherLinksModalEl = document.getElementById('launcher-links-modal');
 const launcherLinksCloseBtn = document.getElementById('launcher-links-close');
 const launcherLinkSavchikBtn = document.getElementById('launcher-link-savchik');
 const launcherLinkVsesvoiBtn = document.getElementById('launcher-link-vsesvoi');
+const shopBackBtn = document.getElementById('shop-back');
+const shopClapsEl = document.getElementById('shop-claps');
+const shopListEl = document.querySelector('.shop-list');
+const shopAlertModalEl = document.getElementById('shop-alert-modal');
+const shopAlertTitleEl = document.getElementById('shop-alert-title');
+const shopAlertBodyEl = document.getElementById('shop-alert-body');
+const shopAlertCloseBtn = document.getElementById('shop-alert-close');
+const shopConfirmModalEl = document.getElementById('shop-confirm-modal');
+const shopConfirmTitleEl = document.getElementById('shop-confirm-title');
+const shopConfirmBodyEl = document.getElementById('shop-confirm-body');
+const shopConfirmCancelBtn = document.getElementById('shop-confirm-cancel');
+const shopConfirmAcceptBtn = document.getElementById('shop-confirm-accept');
+const shopCodeModalEl = document.getElementById('shop-code-modal');
+const shopCodeBodyEl = document.getElementById('shop-code-body');
+const shopCodeValueEl = document.getElementById('shop-code-value');
+const shopCodeCloseBtn = document.getElementById('shop-code-close');
 
 let board = [];
 let score = 0;
@@ -115,6 +134,8 @@ let shareRecordState = null;
 let menuHeroSlide = 0;
 let menuHeroGesture = null;
 let continueRunBusy = false;
+let shopPurchaseBusy = false;
+let pendingShopItemId = null;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const CLAPS_BALANCE_KEY = 'gold_match_claps_balance';
@@ -127,6 +148,33 @@ const SUPABASE_FUNCTIONS_BASE = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : 
 const SHARE_GAME_URL = 'https://t.me/vsesvoi3inrow_bot';
 const SHARE_RECORD_TEXT = 'Заходи и побей мой рекорд во «Все свои: 3 в ряд»';
 const CONTINUE_RUN_CLAPS_COST = 5;
+const SHOP_ITEMS = [
+  {
+    id: 'hookah',
+    title: 'Бесплатный покур кальяна',
+    description: 'Да-да, прям вот приходите и курите бесплатный кальян.',
+    price: 350,
+  },
+  {
+    id: 'tea',
+    title: 'Чайник китайского чая',
+    description: 'Любого на ваш выбор.',
+    price: 200,
+  },
+  {
+    id: 'mundshtuk',
+    title: 'Фирменный персональный мундштук',
+    description: 'Фирменный персональный мундштук.',
+    price: 75,
+  },
+  {
+    id: 'tshirt',
+    title: 'Эксклюзивная футболка',
+    description: 'Такая будет буквально только у двух людей. Я серьёзно.',
+    price: 500,
+  },
+];
+const SHOP_ITEM_MAP = new Map(SHOP_ITEMS.map((item) => [item.id, item]));
 const AMBIENT_ICON_SOURCES = [
   { key: 'dualsence', src: './assets/dualsence.png' },
   { key: 'satyr', src: './assets/satyr.png' },
@@ -149,6 +197,15 @@ const ambientState = {
   },
   start: {
     layer: startAmbientLayerEl,
+    items: new Set(),
+    timerId: null,
+    targetCount: 999,
+    mode: 'start',
+    lastIconKey: null,
+    laneReadyAt: new Map(),
+  },
+  shop: {
+    layer: shopAmbientLayerEl,
     items: new Set(),
     timerId: null,
     targetCount: 999,
@@ -419,7 +476,7 @@ function refreshAmbientLayers() {
 
 function syncAmbientGameMask() {
   if (!ambientGameMaskEl) return;
-  if (!startScreenEl?.classList.contains('hidden')) {
+  if (!startScreenEl?.classList.contains('hidden') || !shopScreenEl?.classList.contains('hidden')) {
     ambientGameMaskEl.classList.add('hidden');
     return;
   }
@@ -596,12 +653,25 @@ function updateBestScoreUi() {
   if (clapsCountEl) {
     clapsCountEl.textContent = String(clapBalance);
   }
+  if (shopClapsEl) {
+    shopClapsEl.textContent = String(clapBalance);
+  }
   if (scoreTitleEl) {
     scoreTitleEl.textContent = scoreTitle(bestScore);
   }
   if (scoreTitleLevelEl) {
     scoreTitleLevelEl.textContent = String(scoreLevel(bestScore));
   }
+  updateShopButtons();
+}
+
+function updateShopButtons() {
+  if (!shopListEl) return;
+  shopListEl.querySelectorAll('.shop-buy-btn').forEach((button) => {
+    const price = Math.max(0, Number(button.dataset.giftPrice || 0));
+    button.disabled = shopPurchaseBusy;
+    button.classList.toggle('is-unaffordable', clapBalance < price);
+  });
 }
 
 function handleStartRecordTrigger() {
@@ -1171,24 +1241,115 @@ function closeProfileEditor() {
   showStartScreen();
 }
 
-function toggleGiftsButtonFlip() {
-  if (!startGiftsBtn) return;
+function openShopScreen() {
   void trackAnalytics('gifts_opened', { sessionId: activeSessionId });
+  closeAllModals();
+  startScreenEl?.classList.add('hidden');
+  shopScreenEl?.classList.remove('hidden');
+  updateBestScoreUi();
+  refreshAmbientLayers();
+  syncAmbientGameMask();
+}
 
-  const willFlip = !startGiftsBtn.classList.contains('is-flipped');
-  startGiftsBtn.classList.toggle('is-flipped', willFlip);
+function closeShopScreen() {
+  shopScreenEl?.classList.add('hidden');
+  showStartScreen();
+}
 
-  if (giftsFlipTimer) {
-    clearTimeout(giftsFlipTimer);
-    giftsFlipTimer = null;
+function openShopAlert(title, body) {
+  if (shopAlertTitleEl) shopAlertTitleEl.textContent = title;
+  if (shopAlertBodyEl) shopAlertBodyEl.textContent = body;
+  closeAllModals();
+  showModal(shopAlertModalEl);
+}
+
+function closeShopAlert() {
+  hideModal(shopAlertModalEl);
+}
+
+function openShopConfirm(item) {
+  pendingShopItemId = item?.id || null;
+  if (shopConfirmTitleEl) shopConfirmTitleEl.textContent = 'Покупаем?';
+  if (shopConfirmBodyEl) {
+    shopConfirmBodyEl.textContent = `${item.title} за ${item.price} ладошек. Спишем баланс и сразу покажем уникальный код.`;
+  }
+  closeAllModals();
+  showModal(shopConfirmModalEl);
+}
+
+function closeShopConfirm() {
+  pendingShopItemId = null;
+  hideModal(shopConfirmModalEl);
+}
+
+function openShopCodeModal(item, code) {
+  if (shopCodeBodyEl) {
+    shopCodeBodyEl.textContent = `Покажите этот код в «Своих», чтобы забрать подарок «${item.title}».`;
+  }
+  if (shopCodeValueEl) {
+    shopCodeValueEl.textContent = code || 'VS-000000';
+  }
+  closeAllModals();
+  showModal(shopCodeModalEl);
+}
+
+function closeShopCodeModal() {
+  hideModal(shopCodeModalEl);
+}
+
+async function buyShopItem(itemId) {
+  const item = SHOP_ITEM_MAP.get(itemId);
+  if (!item || shopPurchaseBusy) return;
+
+  const initData = telegramInitData();
+  if (!initData || !profile?.telegram_id) {
+    openShopAlert('Нужен вход', 'Сначала авторизуйтесь через Telegram, чтобы покупать подарки.');
+    return;
   }
 
-  if (willFlip) {
-    giftsFlipTimer = setTimeout(() => {
-      startGiftsBtn.classList.remove('is-flipped');
-      giftsFlipTimer = null;
-    }, 2000);
+  shopPurchaseBusy = true;
+  updateShopButtons();
+  shopConfirmAcceptBtn && (shopConfirmAcceptBtn.disabled = true);
+
+  try {
+    const result = await postJson('purchase-gift', {
+      initData,
+      giftId: item.id,
+    });
+
+    if (result?.profile?.telegram_id) {
+      saveProfile({ ...profile, ...result.profile }, { forceClapBalance: true });
+    }
+
+    void trackAnalytics('gift_purchased', {
+      sessionId: activeSessionId,
+      giftId: item.id,
+      clapsSpent: item.price,
+      purchaseCode: result?.purchase?.code || '',
+    });
+
+    openShopCodeModal(item, result?.purchase?.code || '');
+  } catch (error) {
+    openShopAlert('Покупка не прошла', error.message || 'Не удалось оформить подарок.');
+  } finally {
+    shopPurchaseBusy = false;
+    pendingShopItemId = null;
+    updateShopButtons();
+    if (shopConfirmAcceptBtn) shopConfirmAcceptBtn.disabled = false;
+    hideModal(shopConfirmModalEl);
   }
+}
+
+function handleShopBuyRequest(itemId) {
+  const item = SHOP_ITEM_MAP.get(itemId);
+  if (!item) return;
+
+  if (clapBalance < item.price) {
+    openShopAlert('Надо ещё чуть-чуть поиграть😉', 'На этот подарок ладошек пока не хватает.');
+    return;
+  }
+
+  openShopConfirm(item);
 }
 
 async function ensureAuthFlow() {
@@ -1213,6 +1374,7 @@ function showStartScreen() {
     showAuthModal();
     return;
   }
+  shopScreenEl?.classList.add('hidden');
   startScreenEl?.classList.remove('hidden');
   if (menuShareRecordBtn) menuShareRecordBtn.classList.add('ui-hidden');
   if (startShareRecordBtn) {
@@ -1231,6 +1393,7 @@ function showStartScreen() {
 
 function hideStartScreen() {
   startScreenEl?.classList.add('hidden');
+  shopScreenEl?.classList.add('hidden');
   refreshAmbientLayers();
   syncAmbientGameMask();
 }
@@ -1575,6 +1738,9 @@ function closeAllModals() {
   hideModal(profileModalEl);
   hideModal(promoModalEl);
   hideModal(launcherLinksModalEl);
+  hideModal(shopAlertModalEl);
+  hideModal(shopConfirmModalEl);
+  hideModal(shopCodeModalEl);
 }
 
 async function fetchActivePromoPopup() {
@@ -3073,7 +3239,20 @@ launcherLinksCloseBtn?.addEventListener('click', closeLauncherLinksModal);
 launcherLinkSavchikBtn?.addEventListener('click', () => openLauncherLink('https://t.me/savchiksasha'));
 launcherLinkVsesvoiBtn?.addEventListener('click', () => openLauncherLink('https://t.me/vsesvoi_kld'));
 profileNameEl?.addEventListener('input', handleProfileNameInput);
-startGiftsBtn?.addEventListener('click', toggleGiftsButtonFlip);
+startGiftsBtn?.addEventListener('click', openShopScreen);
+giftEntryBtn?.addEventListener('click', openShopScreen);
+shopBackBtn?.addEventListener('click', closeShopScreen);
+shopAlertCloseBtn?.addEventListener('click', closeShopAlert);
+shopConfirmCancelBtn?.addEventListener('click', closeShopConfirm);
+shopConfirmAcceptBtn?.addEventListener('click', () => {
+  if (pendingShopItemId) void buyShopItem(pendingShopItemId);
+});
+shopCodeCloseBtn?.addEventListener('click', closeShopCodeModal);
+shopListEl?.addEventListener('click', (e) => {
+  const button = e.target.closest('.shop-buy-btn');
+  if (!button) return;
+  handleShopBuyRequest(button.dataset.giftId || '');
+});
 avatarPickerEl?.addEventListener('click', (e) => {
   const btn = e.target.closest('.avatar-option');
   if (!btn) return;
