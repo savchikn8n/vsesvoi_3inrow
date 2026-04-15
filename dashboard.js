@@ -16,6 +16,10 @@ const promosTabEl = document.getElementById('tab-promos');
 const analyticsPanelEl = document.getElementById('analytics-panel');
 const giftsPanelEl = document.getElementById('gifts-panel');
 const promosPanelEl = document.getElementById('promos-panel');
+const periodSwitchEl = document.querySelector('.period-switch');
+const promoEditorSubtabEl = document.getElementById('promo-subtab-editor');
+const promoArchiveSubtabEl = document.getElementById('promo-subtab-archive');
+const promoGridEl = document.querySelector('.promo-grid');
 
 const metricEls = {
   totalPlayers: document.getElementById('metric-total-players'),
@@ -25,12 +29,19 @@ const metricEls = {
   avgDuration: document.getElementById('metric-avg-duration'),
   avgScore: document.getElementById('metric-avg-score'),
   clapsSpent: document.getElementById('metric-claps-spent'),
+  clapsEarned: document.getElementById('metric-claps-earned'),
+  giftsPurchased: document.getElementById('metric-gifts-purchased'),
+  avgSpend: document.getElementById('metric-avg-spend'),
+  returningPlayers: document.getElementById('metric-returning-players'),
 };
 
 const topPlayersBodyEl = document.getElementById('top-players-body');
 const topEventsListEl = document.getElementById('top-events-list');
 const recentSessionsBodyEl = document.getElementById('recent-sessions-body');
 const giftPurchasesBodyEl = document.getElementById('gift-purchases-body');
+const giftSearchEl = document.getElementById('gift-search');
+const giftFilterItemEl = document.getElementById('gift-filter-item');
+const giftFilterStatusEl = document.getElementById('gift-filter-status');
 
 const promoEditorNoteEl = document.getElementById('promo-editor-note');
 const promoTitleInputEl = document.getElementById('promo-title-input');
@@ -53,8 +64,11 @@ const promoListEl = document.getElementById('promo-list');
 
 let refreshTimerId = null;
 let currentDashboardTab = 'analytics';
+let currentAnalyticsPeriod = '24h';
+let currentPromoSubtab = 'editor';
 let editingPromoId = null;
 let lastPromoRows = [];
+let lastGiftPurchases = [];
 let selectedPromoImageFile = null;
 let promoPreviewObjectUrl = '';
 
@@ -225,18 +239,30 @@ function renderRecentSessions(items = []) {
 function renderGiftPurchases(items = []) {
   if (!giftPurchasesBodyEl) return;
   giftPurchasesBodyEl.replaceChildren();
-  if (!items.length) {
+  const search = giftSearchEl?.value.trim().toLowerCase() || '';
+  const giftFilter = giftFilterItemEl?.value || '';
+  const statusFilter = giftFilterStatusEl?.value || '';
+  const filteredItems = items.filter((item) => {
+    const haystack = `${item.player_label || ''} ${item.code || ''}`.toLowerCase();
+    if (search && !haystack.includes(search)) return false;
+    if (giftFilter && item.gift_id !== giftFilter) return false;
+    if (statusFilter && item.status !== statusFilter) return false;
+    return true;
+  });
+  if (!filteredItems.length) {
     const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="3" class="empty-state">Пока нет покупок.</td>';
+    row.innerHTML = '<td colspan="5" class="empty-state">Пока нет покупок.</td>';
     giftPurchasesBodyEl.appendChild(row);
     return;
   }
-  items.forEach((item) => {
+  filteredItems.forEach((item) => {
     const row = document.createElement('tr');
     row.innerHTML = `
       <td>${item.player_label || 'Игрок'}</td>
       <td>${item.gift_id}</td>
       <td>${item.code}</td>
+      <td><span class="status-pill ${item.status}">${item.status === 'issued' ? 'Выдан' : 'Не выдан'}</span></td>
+      <td><button type="button" class="dashboard-ghost-btn" data-gift-action="toggle-issued" data-code="${item.code}">${item.status === 'issued' ? 'Снять' : 'Выдать'}</button></td>
     `;
     giftPurchasesBodyEl.appendChild(row);
   });
@@ -251,6 +277,10 @@ function renderSummary(summary) {
   metricEls.avgDuration.textContent = formatDuration(overview.avg_session_duration_sec_24h);
   metricEls.avgScore.textContent = formatNumber(overview.avg_best_score_24h);
   metricEls.clapsSpent.textContent = formatNumber(overview.claps_spent_24h);
+  metricEls.clapsEarned.textContent = formatNumber(overview.claps_earned_24h);
+  metricEls.giftsPurchased.textContent = formatNumber(overview.gifts_purchased_24h);
+  metricEls.avgSpend.textContent = formatNumber(overview.avg_claps_spent_per_buyer_24h);
+  metricEls.returningPlayers.textContent = formatNumber(overview.returning_players_24h);
   renderTopPlayers(summary?.top_players || []);
   renderTopEvents(summary?.top_events_24h || []);
   renderRecentSessions(summary?.recent_sessions || []);
@@ -265,6 +295,16 @@ function setActiveTab(tab) {
   analyticsPanelEl?.classList.toggle('is-active', tab === 'analytics');
   giftsPanelEl?.classList.toggle('is-active', tab === 'gifts');
   promosPanelEl?.classList.toggle('is-active', tab === 'promos');
+}
+
+function setPromoSubtab(tab) {
+  currentPromoSubtab = tab;
+  promoEditorSubtabEl?.classList.toggle('is-active', tab === 'editor');
+  promoArchiveSubtabEl?.classList.toggle('is-active', tab === 'archive');
+  promoGridEl?.classList.toggle('is-archive', tab === 'archive');
+  promoListEl?.closest('.promo-list-card')?.classList.toggle('is-hidden', tab === 'editor');
+  promoEditorNoteEl?.closest('.promo-editor-card')?.classList.toggle('is-hidden', tab !== 'editor');
+  promoPreviewImageEl?.closest('.promo-preview-card')?.classList.toggle('is-hidden', tab !== 'editor');
 }
 
 function promoFormValue() {
@@ -375,7 +415,7 @@ function renderPromoList(items = []) {
 
 async function fetchSummary() {
   if (!SUMMARY_URL) throw new Error('Не задан SUPABASE_URL.');
-  const data = await postDashboardJson(SUMMARY_URL, {});
+  const data = await postDashboardJson(SUMMARY_URL, { period: currentAnalyticsPeriod });
   renderSummary(data);
 }
 
@@ -388,7 +428,13 @@ async function fetchPromos() {
 async function fetchGiftPurchases() {
   if (!GIFT_ADMIN_URL) throw new Error('Не задан SUPABASE_URL.');
   const data = await postDashboardJson(GIFT_ADMIN_URL, { action: 'list' });
-  renderGiftPurchases(data?.purchases || []);
+  lastGiftPurchases = data?.purchases || [];
+  renderGiftPurchases(lastGiftPurchases);
+}
+
+async function runGiftAction(action, code) {
+  await postDashboardJson(GIFT_ADMIN_URL, { action, code });
+  await fetchGiftPurchases();
 }
 
 async function fetchAllDashboardData() {
@@ -446,6 +492,8 @@ function startAutoRefresh() {
 analyticsTabEl?.addEventListener('click', () => setActiveTab('analytics'));
 giftsTabEl?.addEventListener('click', () => setActiveTab('gifts'));
 promosTabEl?.addEventListener('click', () => setActiveTab('promos'));
+promoEditorSubtabEl?.addEventListener('click', () => setPromoSubtab('editor'));
+promoArchiveSubtabEl?.addEventListener('click', () => setPromoSubtab('archive'));
 connectBtnEl?.addEventListener('click', connectDashboard);
 refreshBtnEl?.addEventListener('click', () => void fetchAllDashboardData().catch((error) => setStatus(error.message || 'Ошибка обновления')));
 promoSaveDraftBtnEl?.addEventListener('click', () => void savePromo(false).catch((error) => setStatus(error.message || 'Не удалось сохранить попап')));
@@ -471,6 +519,27 @@ promoImageFileInputEl?.addEventListener('change', () => {
   selectedPromoImageFile = promoImageFileInputEl.files?.[0] || null;
   updatePromoPreview();
 });
+periodSwitchEl?.addEventListener('click', (event) => {
+  const button = event.target.closest('.period-btn');
+  if (!button) return;
+  const nextPeriod = button.dataset.period || '24h';
+  currentAnalyticsPeriod = nextPeriod;
+  periodSwitchEl.querySelectorAll('.period-btn').forEach((node) => {
+    node.classList.toggle('is-active', node === button);
+  });
+  void fetchSummary().catch((error) => setStatus(error.message || 'Не удалось обновить аналитику'));
+});
+[giftSearchEl, giftFilterItemEl, giftFilterStatusEl].forEach((el) => {
+  el?.addEventListener('input', () => renderGiftPurchases(lastGiftPurchases));
+  el?.addEventListener('change', () => renderGiftPurchases(lastGiftPurchases));
+});
+giftPurchasesBodyEl?.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-gift-action][data-code]');
+  if (!button) return;
+  void runGiftAction(button.dataset.giftAction || '', button.dataset.code || '').catch((error) =>
+    setStatus(error.message || 'Не удалось обновить статус подарка'),
+  );
+});
 
 const savedSecret = loadDashboardSecret();
 if (savedSecret && secretInputEl) {
@@ -478,4 +547,5 @@ if (savedSecret && secretInputEl) {
   void fetchAllDashboardData().catch((error) => setStatus(error.message || 'Не удалось загрузить dashboard'));
 }
 resetPromoEditor();
+setPromoSubtab('editor');
 startAutoRefresh();

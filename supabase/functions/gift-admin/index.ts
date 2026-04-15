@@ -42,13 +42,32 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = typeof body?.action === 'string' ? body.action.trim().toLowerCase() : 'list';
 
-    if (action !== 'list') {
+    if (action === 'toggle-issued') {
+      const code = typeof body?.code === 'string' ? body.code.trim() : '';
+      if (!code) throw new Error('code is required');
+      const { data: existing, error: readError } = await admin
+        .from('shop_purchases')
+        .select('code, issued_at')
+        .eq('code', code)
+        .maybeSingle();
+      if (readError) throw new Error(readError.message);
+      if (!existing?.code) throw new Error('Purchase not found');
+
+      const nextIssuedAt = existing.issued_at ? null : new Date().toISOString();
+      const { error: updateError } = await admin
+        .from('shop_purchases')
+        .update({ issued_at: nextIssuedAt })
+        .eq('code', code);
+      if (updateError) throw new Error(updateError.message);
+    }
+
+    if (action !== 'list' && action !== 'toggle-issued') {
       return new Response(JSON.stringify({ error: 'Unknown action' }), { status: 400, headers: corsHeaders });
     }
 
     const { data, error } = await admin
       .from('shop_purchases')
-      .select('telegram_id, gift_id, code, display_name_snapshot, telegram_username_snapshot, telegram_first_name_snapshot, created_at')
+      .select('telegram_id, gift_id, code, display_name_snapshot, telegram_username_snapshot, telegram_first_name_snapshot, created_at, issued_at')
       .order('created_at', { ascending: false })
       .limit(500);
 
@@ -58,6 +77,8 @@ Deno.serve(async (req) => {
       player_label: playerLabel(row),
       gift_id: row.gift_id,
       code: row.code,
+      status: row.issued_at ? 'issued' : 'pending',
+      issued_at: row.issued_at,
       created_at: row.created_at,
     }));
 
