@@ -61,7 +61,17 @@ Deno.serve(async (req) => {
       if (updateError) throw new Error(updateError.message);
     }
 
-    if (action !== 'list' && action !== 'toggle-issued') {
+    if (action === 'delete') {
+      const code = typeof body?.code === 'string' ? body.code.trim() : '';
+      if (!code) throw new Error('code is required');
+      const { error: deleteError } = await admin
+        .from('shop_purchases')
+        .delete()
+        .eq('code', code);
+      if (deleteError) throw new Error(deleteError.message);
+    }
+
+    if (action !== 'list' && action !== 'toggle-issued' && action !== 'delete') {
       return new Response(JSON.stringify({ error: 'Unknown action' }), { status: 400, headers: corsHeaders });
     }
 

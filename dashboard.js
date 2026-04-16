@@ -30,6 +30,7 @@ const topPlayersListEl = document.getElementById('top-players-list');
 const eventsChartEl = document.getElementById('events-chart');
 const eventsLegendEl = document.getElementById('events-legend');
 const recentSessionsBodyEl = document.getElementById('recent-sessions-body');
+const sessionsClapsToggleEl = document.getElementById('sessions-claps-toggle');
 const updatedAtEl = document.getElementById('dashboard-updated-at');
 const messageImpactListEl = document.getElementById('message-impact-list');
 const broadcastHistoryBodyEl = document.getElementById('broadcast-history-body');
@@ -90,6 +91,8 @@ let lastPromoRows = [];
 let lastGiftPurchases = [];
 let selectedPromoImageFile = null;
 let promoPreviewObjectUrl = '';
+let currentSessionsClapsMode = 'earned';
+let lastSessionHistory = [];
 
 const EVENT_COLORS = ['#f7c83e', '#f3a620', '#ffdf7b', '#d9a83a', '#8cd18f', '#78a5ff', '#f98080', '#b58cff', '#63d6d6', '#f7edc0'];
 
@@ -321,15 +324,22 @@ function buildEventsChart(items = []) {
 }
 
 function renderSessions(items = []) {
+  lastSessionHistory = Array.isArray(items) ? items : [];
   if (!recentSessionsBodyEl) return;
   recentSessionsBodyEl.replaceChildren();
-  if (!items.length) {
+  if (!lastSessionHistory.length) {
     const row = document.createElement('tr');
     row.innerHTML = '<td colspan="8" class="empty-state">Пока нет сессий.</td>';
     recentSessionsBodyEl.appendChild(row);
     return;
   }
-  items.forEach((item) => {
+  if (sessionsClapsToggleEl) {
+    sessionsClapsToggleEl.textContent = currentSessionsClapsMode === 'earned' ? 'Ладошки: +' : 'Ладошки: -';
+  }
+  lastSessionHistory.forEach((item) => {
+    const clapsValue = currentSessionsClapsMode === 'earned'
+      ? Number(item.claps_earned || 0)
+      : Number(item.claps_spent || 0);
     const row = document.createElement('tr');
     row.innerHTML = `
       <td>${item.display_name || 'Игрок'}</td>
@@ -337,7 +347,7 @@ function renderSessions(items = []) {
       <td>${formatDateTime(item.session_started_at)}</td>
       <td>${formatDuration(item.duration_sec)}</td>
       <td>${formatNumber(item.best_score)}</td>
-      <td>${formatNumber(item.claps_spent)}</td>
+      <td>${formatNumber(clapsValue)}</td>
       <td>${formatNumber(item.moves_count)}</td>
       <td>${item.end_reason || 'active'}</td>
     `;
@@ -413,7 +423,7 @@ function renderGiftPurchases(items = []) {
   });
   if (!filteredItems.length) {
     const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="6" class="empty-state">Пока нет покупок.</td>';
+    row.innerHTML = '<td colspan="7" class="empty-state">Пока нет покупок.</td>';
     giftPurchasesBodyEl.appendChild(row);
     return;
   }
@@ -426,6 +436,7 @@ function renderGiftPurchases(items = []) {
       <td>${formatDateTime(item.created_at)}</td>
       <td><span class="status-pill ${item.status}">${item.status === 'issued' ? 'Выдан' : 'Не выдан'}</span></td>
       <td><button type="button" class="dashboard-ghost-btn" data-gift-action="toggle-issued" data-code="${item.code}">${item.status === 'issued' ? 'Снять' : 'Выдать'}</button></td>
+      <td><button type="button" class="dashboard-danger-btn" data-gift-action="delete" data-code="${item.code}">Удалить</button></td>
     `;
     giftPurchasesBodyEl.appendChild(row);
   });
@@ -617,6 +628,9 @@ async function fetchGiftPurchases() {
 }
 
 async function runGiftAction(action, code) {
+  if (action === 'delete' && !window.confirm('Удалить покупку из системы?')) {
+    return;
+  }
   await postDashboardJson(GIFT_ADMIN_URL, { action, code });
   await fetchGiftPurchases();
 }
@@ -754,6 +768,10 @@ giftPurchasesBodyEl?.addEventListener('click', (event) => {
   void runGiftAction(button.dataset.giftAction || '', button.dataset.code || '').catch((error) =>
     setStatus(error.message || 'Не удалось обновить статус подарка'),
   );
+});
+sessionsClapsToggleEl?.addEventListener('click', () => {
+  currentSessionsClapsMode = currentSessionsClapsMode === 'earned' ? 'spent' : 'earned';
+  renderSessions(lastSessionHistory);
 });
 broadcastDryRunBtnEl?.addEventListener('click', () => {
   void runBroadcast(true).catch((error) => setBroadcastResult(error.message || 'Не удалось проверить аудиторию', true));
