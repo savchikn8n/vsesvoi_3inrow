@@ -147,6 +147,10 @@
           <section class="shop-copy">
             <h2>Подарки</h2>
             <p>Обменивайте ладошки на реальные штуки в «Своих».</p>
+            <button id="shop-owned-btn" class="shop-owned-btn" type="button">
+              <span class="shop-owned-btn-icon" aria-hidden="true"></span>
+              <span>Мои подарки</span>
+            </button>
           </section>
 
           <section class="shop-list" aria-label="Каталог подарков">
@@ -388,6 +392,16 @@
         <div id="shop-code-value" class="shop-code-value">VS-000000</div>
         <div class="modal-actions">
           <button id="shop-code-close" type="button">Понятно</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="shop-owned-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card shop-owned-card">
+        <h2>Мои подарки</h2>
+        <div id="shop-owned-list" class="shop-owned-list"></div>
+        <div class="modal-actions">
+          <button id="shop-owned-close" type="button">Закрыть</button>
         </div>
       </div>
     </div>
