@@ -987,7 +987,7 @@ h1 {
 
 .shop-copy {
   display: grid;
-  gap: 6px;
+  gap: 10px;
   justify-items: center;
   text-align: center;
 }
@@ -1005,6 +1005,30 @@ h1 {
   font-family: "Manrope", sans-serif;
   font-size: 0.94rem;
   font-weight: 700;
+}
+
+.shop-owned-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 2px solid #f3b315;
+  background: #f3b315;
+  color: #000000;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
+  font-weight: 700;
+  border-radius: var(--ui-radius);
+}
+
+.shop-owned-btn-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M5 9.5h14v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-10Z' fill='%23000'/%3E%3Cpath d='M12 9.5v12M5 13h14' stroke='%23f3b315' stroke-width='0'/%3E%3Cpath d='M4 7.5a2 2 0 0 1 2-2h12a2 2 0 1 1 0 4H6a2 2 0 0 1-2-2Zm6.2-2.1c-.94-.74-1.53-1.44-1.42-2.18.12-.79 1-1.33 1.97-1.09 1.09.26 1.75 1.55 1.25 3.27H10.2Zm3.6 0c.94-.74 1.53-1.44 1.42-2.18-.12-.79-1-1.33-1.97-1.09-1.09.26-1.75 1.55-1.25 3.27h1.8Z' fill='%23000'/%3E%3Cpath d='M12 5.5v16' stroke='%23000' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
 .shop-list {
@@ -1131,6 +1155,49 @@ h1 {
   font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
   font-size: clamp(1rem, 2vw, 1.24rem);
   letter-spacing: 0.08em;
+}
+
+.shop-owned-card {
+  width: min(92vw, 420px);
+}
+
+.shop-owned-list {
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+  max-height: min(48vh, 360px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.shop-owned-item {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid rgba(243, 179, 21, 0.18);
+  border-radius: var(--ui-radius);
+  background: rgba(0, 0, 0, 0.82);
+  text-align: left;
+}
+
+.shop-owned-title {
+  color: #f3b315;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
+  font-size: 0.96rem;
+}
+
+.shop-owned-meta {
+  color: rgba(255, 255, 255, 0.72);
+  font-family: "Manrope", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.shop-owned-code {
+  color: #ffffff;
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
+  letter-spacing: 0.08em;
+  font-size: 0.94rem;
 }
 
 .start-card {

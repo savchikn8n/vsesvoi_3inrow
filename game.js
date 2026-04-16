@@ -93,6 +93,10 @@ const shopCodeModalEl = document.getElementById('shop-code-modal');
 const shopCodeBodyEl = document.getElementById('shop-code-body');
 const shopCodeValueEl = document.getElementById('shop-code-value');
 const shopCodeCloseBtn = document.getElementById('shop-code-close');
+const shopOwnedBtn = document.getElementById('shop-owned-btn');
+const shopOwnedModalEl = document.getElementById('shop-owned-modal');
+const shopOwnedListEl = document.getElementById('shop-owned-list');
+const shopOwnedCloseBtn = document.getElementById('shop-owned-close');
 
 let board = [];
 let score = 0;
@@ -135,6 +139,7 @@ let menuHeroSlide = 0;
 let menuHeroGesture = null;
 let continueRunBusy = false;
 let shopPurchaseBusy = false;
+let shopOwnedBusy = false;
 let pendingShopItemId = null;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
@@ -653,6 +658,23 @@ function updateShopButtons() {
     button.disabled = shopPurchaseBusy;
     button.classList.toggle('is-unaffordable', clapBalance < price);
   });
+}
+
+function shopGiftTitle(giftId) {
+  return SHOP_ITEM_MAP.get(giftId)?.title || giftId || 'Подарок';
+}
+
+function formatGiftPurchaseDate(iso) {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  } catch (_) {
+    return '';
+  }
 }
 
 function handleStartRecordTrigger() {
@@ -1279,6 +1301,62 @@ function closeShopCodeModal() {
   hideModal(shopCodeModalEl);
 }
 
+function renderOwnedGifts(items = []) {
+  if (!shopOwnedListEl) return;
+  shopOwnedListEl.replaceChildren();
+
+  if (!items.length) {
+    const empty = document.createElement('div');
+    empty.className = 'shop-owned-item';
+    empty.innerHTML = `
+      <div class="shop-owned-title">Пока пусто</div>
+      <div class="shop-owned-meta">Здесь появятся ваши купленные подарки и коды для получения.</div>
+    `;
+    shopOwnedListEl.appendChild(empty);
+    return;
+  }
+
+  items.forEach((item) => {
+    const row = document.createElement('article');
+    row.className = 'shop-owned-item';
+    const title = shopGiftTitle(item.gift_id);
+    const createdAt = formatGiftPurchaseDate(item.created_at);
+    row.innerHTML = `
+      <div class="shop-owned-title">${title}</div>
+      <div class="shop-owned-meta">${createdAt ? `Покупка от ${createdAt}` : 'Подарок оформлен'}</div>
+      <div class="shop-owned-code">${item.code || 'VS-0000-0000'}</div>
+    `;
+    shopOwnedListEl.appendChild(row);
+  });
+}
+
+async function openOwnedGiftsModal() {
+  if (shopOwnedBusy) return;
+  const initData = telegramInitData();
+  if (!initData || !profile?.telegram_id) {
+    openShopAlert('Нужен вход', 'Сначала авторизуйтесь через Telegram, чтобы открыть список своих подарков.');
+    return;
+  }
+
+  shopOwnedBusy = true;
+  shopOwnedBtn && (shopOwnedBtn.disabled = true);
+  try {
+    const result = await postJson('my-gifts', { initData });
+    renderOwnedGifts(result?.purchases || []);
+    closeAllModals();
+    showModal(shopOwnedModalEl);
+  } catch (error) {
+    openShopAlert('Не удалось открыть', error.message || 'Список подарков пока недоступен.');
+  } finally {
+    shopOwnedBusy = false;
+    shopOwnedBtn && (shopOwnedBtn.disabled = false);
+  }
+}
+
+function closeOwnedGiftsModal() {
+  hideModal(shopOwnedModalEl);
+}
+
 async function buyShopItem(itemId) {
   const item = SHOP_ITEM_MAP.get(itemId);
   if (!item || shopPurchaseBusy) return;
@@ -1723,6 +1801,7 @@ function closeAllModals() {
   hideModal(shopAlertModalEl);
   hideModal(shopConfirmModalEl);
   hideModal(shopCodeModalEl);
+  hideModal(shopOwnedModalEl);
 }
 
 async function fetchActivePromoPopup() {
@@ -3224,12 +3303,16 @@ profileNameEl?.addEventListener('input', handleProfileNameInput);
 startGiftsBtn?.addEventListener('click', openShopScreen);
 giftEntryBtn?.addEventListener('click', openShopScreen);
 shopBackBtn?.addEventListener('click', closeShopScreen);
+shopOwnedBtn?.addEventListener('click', () => {
+  void openOwnedGiftsModal();
+});
 shopAlertCloseBtn?.addEventListener('click', closeShopAlert);
 shopConfirmCancelBtn?.addEventListener('click', closeShopConfirm);
 shopConfirmAcceptBtn?.addEventListener('click', () => {
   if (pendingShopItemId) void buyShopItem(pendingShopItemId);
 });
 shopCodeCloseBtn?.addEventListener('click', closeShopCodeModal);
+shopOwnedCloseBtn?.addEventListener('click', closeOwnedGiftsModal);
 shopListEl?.addEventListener('click', (e) => {
   const button = e.target.closest('.shop-buy-btn');
   if (!button) return;
