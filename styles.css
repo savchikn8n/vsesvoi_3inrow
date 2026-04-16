@@ -964,6 +964,13 @@ h1 {
   gap: 12px;
 }
 
+.shop-header-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .shop-back-btn {
   border: 2px solid #f3b315;
   background: #000000;
@@ -976,13 +983,14 @@ h1 {
 }
 
 .shop-balance {
-  min-width: 128px;
+  min-width: 0;
   justify-self: end;
   display: inline-grid;
   grid-template-columns: auto auto;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 8px 10px;
+  width: auto;
 }
 
 .shop-copy {
@@ -1008,11 +1016,11 @@ h1 {
 }
 
 .shop-owned-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 14px;
+  width: 46px;
+  height: 46px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
   border: 2px solid #f3b315;
   background: #f3b315;
   color: #000000;
@@ -1022,8 +1030,8 @@ h1 {
 }
 
 .shop-owned-btn-icon {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   display: block;
   background-repeat: no-repeat;
   background-position: center;
