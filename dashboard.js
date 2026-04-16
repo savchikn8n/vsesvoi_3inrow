@@ -525,6 +525,7 @@ function fillPromoEditor(popup) {
   if (promoPrimaryLabelInputEl) promoPrimaryLabelInputEl.value = popup?.primary_label || 'Перейти';
   if (promoPrimaryUrlInputEl) promoPrimaryUrlInputEl.value = popup?.primary_url || '';
   updatePromoPreview();
+  setPromoSubtab('editor');
   setActiveTab('promos');
 }
 
