@@ -116,6 +116,8 @@ let touchInsideBoard = false;
 let bestScore = 0;
 let clapBalance = 0;
 let clapsAwardedThisRun = 0;
+let pendingBestScoreSync = false;
+let pendingClapBalanceSync = false;
 let profile = null;
 let selectedAvatar = 'gold';
 let authBusy = false;
@@ -750,6 +752,7 @@ function setupMenuHeroCarousel() {
 function maybeUpdateBestScore() {
   if (score <= bestScore) return;
   bestScore = score;
+  pendingBestScoreSync = true;
   saveBestScore(bestScore);
   updateBestScoreUi();
   scheduleSessionSnapshot();
@@ -761,12 +764,11 @@ function maybeAwardClapsFromScore() {
   const delta = earnedThresholds - clapsAwardedThisRun;
   clapsAwardedThisRun = earnedThresholds;
   clapBalance += delta;
+  pendingClapBalanceSync = true;
   saveClapBalance(clapBalance);
-  if (profile) {
-    saveProfile({ ...profile, clap_balance: clapBalance });
-  } else {
-    updateBestScoreUi();
-  }
+  updateBestScoreUi();
+  updateHud();
+  updateContinueRunButton();
   scheduleSessionSnapshot();
   void syncProgressIfNeeded();
 }
@@ -789,6 +791,7 @@ function loadProfile() {
 
 function saveProfile(next, options = {}) {
   const forceClapBalance = Boolean(options.forceClapBalance);
+  const synced = Boolean(options.synced);
   const normalized = {
     ...next,
     auth_verified: true,
@@ -807,6 +810,10 @@ function saveProfile(next, options = {}) {
   }
   profile = normalized;
   localStorage.setItem(PROFILE_KEY, JSON.stringify(normalized));
+  if (synced) {
+    pendingBestScoreSync = false;
+    pendingClapBalanceSync = false;
+  }
   updateProfileEntry();
   updateBestScoreUi();
   updateHud();
@@ -855,7 +862,7 @@ async function touchSession() {
   try {
     const result = await postJson('touch-session', { initData });
     if (result?.profile?.telegram_id) {
-      saveProfile({ ...(profile || {}), ...result.profile });
+      saveProfile({ ...(profile || {}), ...result.profile }, { forceClapBalance: true, synced: true });
     }
   } catch (_) {
     touchSessionSent = false;
@@ -984,8 +991,8 @@ function flushProgressLifecycleIfNeeded() {
   if (!profile?.telegram_id) return false;
   const localBest = Math.max(Number(profile.best_score || 0), score);
   const localClaps = Math.max(Number(profile.clap_balance || 0), clapBalance);
-  const bestChanged = localBest > Number(profile.best_score || 0);
-  const clapsChanged = localClaps > Number(profile.clap_balance || 0);
+  const bestChanged = pendingBestScoreSync || localBest > Number(profile.best_score || 0);
+  const clapsChanged = pendingClapBalanceSync || localClaps > Number(profile.clap_balance || 0);
   if (!bestChanged && !clapsChanged) return false;
 
   saveProfile({ ...profile, best_score: localBest, clap_balance: localClaps });
@@ -1378,7 +1385,7 @@ async function buyShopItem(itemId) {
     });
 
     if (result?.profile?.telegram_id) {
-      saveProfile({ ...profile, ...result.profile }, { forceClapBalance: true });
+      saveProfile({ ...profile, ...result.profile }, { forceClapBalance: true, synced: true });
     }
 
     void trackAnalytics('gift_purchased', {
@@ -2807,8 +2814,8 @@ async function syncProgressIfNeeded() {
   if (!profile?.telegram_id) return null;
   const localBest = Math.max(Number(profile.best_score || 0), score);
   const localClaps = Math.max(Number(profile.clap_balance || 0), clapBalance);
-  const bestChanged = localBest > Number(profile.best_score || 0);
-  const clapsChanged = localClaps > Number(profile.clap_balance || 0);
+  const bestChanged = pendingBestScoreSync || localBest > Number(profile.best_score || 0);
+  const clapsChanged = pendingClapBalanceSync || localClaps > Number(profile.clap_balance || 0);
   if (!bestChanged && !clapsChanged) return null;
 
   // Optimistically persist progress locally so the UI does not fall back to stale
@@ -2825,7 +2832,7 @@ async function syncProgressIfNeeded() {
       clapBalance: localClaps,
     });
     if (result?.profile) {
-      saveProfile(result.profile);
+      saveProfile(result.profile, { forceClapBalance: true, synced: true });
     }
     return result || null;
   } catch (_) {
@@ -2910,7 +2917,7 @@ async function continueRunWithClaps() {
       throw new Error('Сервер не вернул обновлённый профиль.');
     }
 
-    saveProfile(result.profile, { forceClapBalance: true });
+    saveProfile(result.profile, { forceClapBalance: true, synced: true });
     hideModal(gameOverModalEl);
     timeoutPendingAtZero = false;
     locked = false;
@@ -2997,7 +3004,7 @@ async function handleTelegramAuth() {
       throw new Error('Сервер не вернул профиль.');
     }
 
-    saveProfile(incomingProfile);
+    saveProfile(incomingProfile, { forceClapBalance: true, synced: true });
     touchSessionSent = true;
 
     if (result?.is_profile_complete) {
@@ -3052,7 +3059,7 @@ async function handleProfileSave() {
       throw new Error('Сервер не вернул профиль после сохранения.');
     }
 
-    saveProfile(savedProfile);
+    saveProfile(savedProfile, { forceClapBalance: true, synced: true });
     void trackAnalytics('profile_completed', { sessionId: activeSessionId });
     hideModal(profileModalEl);
     setProfileStatus('');
