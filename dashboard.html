@@ -14,293 +14,305 @@
   </head>
   <body>
     <main class="dashboard-shell">
-      <section class="dashboard-frame">
-        <header class="dashboard-header">
-          <div class="dashboard-brand">
-            <img src="./assets/bomb.png" alt="Dashboard logo" class="dashboard-brand-logo" />
-          </div>
-          <div class="dashboard-header-tools">
-            <span id="dashboard-loading" class="dashboard-loading" aria-hidden="true"></span>
-            <p id="dashboard-status" class="dashboard-status" aria-live="polite"></p>
-            <button id="toggle-secret" class="dashboard-ghost-btn dashboard-secret-toggle" type="button">Secret</button>
-            <section id="auth-panel" class="auth-panel">
-              <div class="auth-row">
-                <input id="dashboard-secret" type="password" placeholder="DASHBOARD_SECRET" />
-                <button id="connect-dashboard" type="button">Войти</button>
-              </div>
-            </section>
-          </div>
-        </header>
+      <header class="dashboard-header">
+        <div class="dashboard-brand">
+          <img src="./assets/logovs3inrowweb.png" alt="Все Свои: 3 в ряд" class="dashboard-brand-logo" />
+        </div>
 
         <nav class="dashboard-tabs" aria-label="Вкладки дэшборда">
           <button id="tab-analytics" class="dashboard-tab is-active" type="button">Аналитика</button>
+          <button id="tab-sessions" class="dashboard-tab" type="button">Сессии</button>
           <button id="tab-gifts" class="dashboard-tab" type="button">Подарки</button>
           <button id="tab-messages" class="dashboard-tab" type="button">Сообщения</button>
           <button id="tab-promos" class="dashboard-tab" type="button">Попапы</button>
         </nav>
 
-        <section id="analytics-panel" class="dashboard-panel is-active">
-          <div class="analytics-toolbar">
-            <div class="period-switch" role="tablist" aria-label="Период аналитики">
-              <button class="period-btn is-active" type="button" data-period="24h">24ч</button>
-              <button class="period-btn" type="button" data-period="7d">7д</button>
-              <button class="period-btn" type="button" data-period="30d">30д</button>
+        <div class="dashboard-header-tools">
+          <span id="dashboard-loading" class="dashboard-loading" aria-hidden="true"></span>
+          <p id="dashboard-status" class="dashboard-status" aria-live="polite"></p>
+          <div id="auth-panel" class="auth-panel is-collapsed">
+            <button id="toggle-secret" class="dashboard-ghost-btn dashboard-secret-toggle" type="button">Ключ</button>
+            <div class="auth-row">
+              <input id="dashboard-secret" type="password" placeholder="DASHBOARD_SECRET" />
+              <button id="connect-dashboard" type="button">Войти</button>
             </div>
           </div>
-          <section class="metrics-grid">
-            <article class="metric-card">
-              <span class="metric-label">Всего игроков</span>
-              <strong id="metric-total-players" class="metric-value">-</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Активные</span>
-              <strong id="metric-active-players" class="metric-value">-</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Новые</span>
-              <strong id="metric-new-players" class="metric-value">-</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Сессии</span>
-              <strong id="metric-sessions" class="metric-value">-</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Средняя сессия</span>
-              <strong id="metric-avg-duration" class="metric-value">-</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Средний счёт</span>
-              <strong id="metric-avg-score" class="metric-value">-</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Потрачено</span>
-              <strong id="metric-claps-spent" class="metric-value">-</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Заработано</span>
-              <strong id="metric-claps-earned" class="metric-value">-</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Подарков</span>
-              <strong id="metric-gifts-purchased" class="metric-value">-</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Средняя трата</span>
-              <strong id="metric-avg-spend" class="metric-value">-</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Вернувшиеся</span>
-              <strong id="metric-returning-players" class="metric-value">-</strong>
-            </article>
-          </section>
+        </div>
+      </header>
 
-          <section class="dashboard-grid">
-            <article class="panel-card">
-              <div class="panel-head">
-                <h2>Топ игроков</h2>
-                <span class="panel-note">По текущему рекорду</span>
+      <section id="analytics-panel" class="dashboard-panel is-active">
+        <div class="analytics-top-grid">
+          <article class="panel-card analytics-overview-card">
+            <div class="panel-head panel-head-stack">
+              <div>
+                <h2>Общая картина</h2>
+                <span class="panel-note">Период аналитики и ключевые показатели</span>
               </div>
-              <div class="table-wrap">
-                <table class="dashboard-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Игрок</th>
-                      <th>Рекорд</th>
-                      <th>Ладошки</th>
-                    </tr>
-                  </thead>
-                  <tbody id="top-players-body"></tbody>
-                </table>
+              <div class="period-switch" role="tablist" aria-label="Период аналитики">
+                <button class="period-btn is-active" type="button" data-period="24h">24ч</button>
+                <button class="period-btn" type="button" data-period="7d">7д</button>
+                <button class="period-btn" type="button" data-period="30d">30д</button>
               </div>
-            </article>
+            </div>
+            <section class="metrics-grid metrics-grid-compact">
+              <article class="metric-card"><span class="metric-label">Всего игроков</span><strong id="metric-total-players" class="metric-value">-</strong></article>
+              <article class="metric-card"><span class="metric-label">Активные</span><strong id="metric-active-players" class="metric-value">-</strong></article>
+              <article class="metric-card"><span class="metric-label">Новые</span><strong id="metric-new-players" class="metric-value">-</strong></article>
+              <article class="metric-card"><span class="metric-label">Сессии</span><strong id="metric-sessions" class="metric-value">-</strong></article>
+              <article class="metric-card"><span class="metric-label">Средняя сессия</span><strong id="metric-avg-duration" class="metric-value">-</strong></article>
+              <article class="metric-card"><span class="metric-label">Средний счёт</span><strong id="metric-avg-score" class="metric-value">-</strong></article>
+              <article class="metric-card"><span class="metric-label">Потрачено ладошек</span><strong id="metric-claps-spent" class="metric-value">-</strong></article>
+              <article class="metric-card"><span class="metric-label">Заработано ладошек</span><strong id="metric-claps-earned" class="metric-value">-</strong></article>
+              <article class="metric-card"><span class="metric-label">Куплено подарков</span><strong id="metric-gifts-purchased" class="metric-value">-</strong></article>
+              <article class="metric-card"><span class="metric-label">Средняя трата</span><strong id="metric-avg-spend" class="metric-value">-</strong></article>
+              <article class="metric-card"><span class="metric-label">Вернувшиеся</span><strong id="metric-returning-players" class="metric-value">-</strong></article>
+              <article class="metric-card"><span class="metric-label">После сообщений</span><strong id="metric-message-retention" class="metric-value">-</strong></article>
+            </section>
+          </article>
 
-            <article class="panel-card">
-              <div class="panel-head">
+          <article class="panel-card analytics-top-players-card">
+            <div class="panel-head panel-head-stack">
+              <div>
+                <h2>Топ-10 игроков</h2>
+                <span class="panel-note">Статичный лидерборд по рекорду</span>
+              </div>
+              <span id="dashboard-updated-at" class="panel-note">-</span>
+            </div>
+            <div id="top-players-list" class="rank-list"></div>
+          </article>
+        </div>
+
+        <div class="analytics-bottom-grid">
+          <article class="panel-card events-card">
+            <div class="panel-head">
+              <div>
                 <h2>События</h2>
-                <span class="panel-note">Самые частые действия за период</span>
+                <span class="panel-note">Распределение действий за выбранный период</span>
               </div>
-              <div id="top-events-list" class="event-list"></div>
-            </article>
+            </div>
+            <div class="events-chart-layout">
+              <div id="events-chart" class="events-chart"></div>
+              <div id="events-legend" class="events-legend"></div>
+            </div>
+          </article>
 
-            <article class="panel-card panel-card-wide">
-              <div class="panel-head">
-                <h2>Последние сессии</h2>
-                <span id="dashboard-updated-at" class="panel-note">-</span>
+          <article class="panel-card messages-impact-card">
+            <div class="panel-head">
+              <div>
+                <h2>Возвраты после сообщений</h2>
+                <span class="panel-note">Кто вернулся после массовых сообщений</span>
               </div>
-              <div class="table-wrap">
-                <table class="dashboard-table">
-                  <thead>
-                    <tr>
-                      <th>Игрок</th>
-                      <th>Игрок ID</th>
-                      <th>Начало</th>
-                      <th>Длительность</th>
-                      <th>Счёт</th>
-                      <th>Ладошки</th>
-                      <th>Ходы</th>
-                      <th>Финиш</th>
-                    </tr>
-                  </thead>
-                  <tbody id="recent-sessions-body"></tbody>
-                </table>
-              </div>
-            </article>
-          </section>
-        </section>
+            </div>
+            <div id="message-impact-list" class="broadcast-list"></div>
+          </article>
+        </div>
+      </section>
 
-        <section id="gifts-panel" class="dashboard-panel gifts-panel">
-          <section class="dashboard-grid gifts-grid">
-            <article class="panel-card panel-card-wide">
-              <div class="panel-head">
-                <h2>Покупки подарков</h2>
-                <span class="panel-note">Коды для выдачи и кто их купил</span>
-              </div>
-              <div class="gifts-toolbar">
-                <input id="gift-search" type="search" placeholder="Поиск по игроку или коду" />
-                <select id="gift-filter-item">
-                  <option value="">Все подарки</option>
-                  <option value="hookah">hookah</option>
-                  <option value="tea">tea</option>
-                  <option value="mundshtuk">mundshtuk</option>
-                  <option value="tshirt">tshirt</option>
-                </select>
-                <select id="gift-filter-status">
-                  <option value="">Все статусы</option>
-                  <option value="pending">Не выдан</option>
-                  <option value="issued">Выдан</option>
-                </select>
-              </div>
-              <div class="table-wrap">
-                <table class="dashboard-table">
-                  <thead>
-                    <tr>
-                      <th>Игрок</th>
-                      <th>Подарок</th>
-                      <th>Код</th>
-                      <th>Статус</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody id="gift-purchases-body"></tbody>
-                </table>
-              </div>
-            </article>
-          </section>
-        </section>
-
-        <section id="messages-panel" class="dashboard-panel messages-panel">
-          <section class="dashboard-grid messages-grid">
-            <article class="panel-card panel-card-wide">
-              <div class="panel-head">
-                <h2>Сообщения игрокам</h2>
-                <span class="panel-note">Отправка всем игрокам, которые запускали бота и не отключили уведомления</span>
-              </div>
-              <div class="messages-card-body">
-                <label class="promo-field">
-                  <span>Текст сообщения</span>
-                  <textarea id="broadcast-text" rows="7" maxlength="1000" placeholder="Введите текст массового сообщения."></textarea>
-                </label>
-                <div class="messages-actions">
-                  <button id="broadcast-dry-run" type="button" class="dashboard-ghost-btn">Проверить аудиторию</button>
-                  <button id="broadcast-send" type="button">Отправить всем</button>
-                </div>
-                <div id="broadcast-result" class="messages-result empty-state">Пока ничего не отправляли.</div>
-              </div>
-            </article>
-          </section>
-        </section>
-
-        <section id="promos-panel" class="dashboard-panel promos-panel">
-          <div class="promo-subtabs">
-            <button id="promo-subtab-editor" class="promo-subtab is-active" type="button">Редактор</button>
-            <button id="promo-subtab-archive" class="promo-subtab" type="button">Архив и аналитика</button>
+      <section id="sessions-panel" class="dashboard-panel">
+        <article class="panel-card panel-card-tall">
+          <div class="panel-head">
+            <div>
+              <h2>Все сессии</h2>
+              <span class="panel-note">Полная история с прокруткой до самых ранних сессий</span>
+            </div>
           </div>
-          <section class="promo-grid">
-            <article class="panel-card promo-editor-card">
-              <div class="panel-head">
-                <h2>Редактор попапа</h2>
-                <span id="promo-editor-note" class="panel-note">Новый попап</span>
-              </div>
-              <div class="promo-editor-scroll">
-                <div class="promo-form-grid">
-                  <label class="promo-field">
-                    <span>Заголовок</span>
-                    <input id="promo-title-input" type="text" maxlength="80" placeholder="Например: Ночной ивент в Своих" />
-                  </label>
-                  <label class="promo-field">
-                    <span>Описание</span>
-                    <textarea id="promo-body-input" rows="4" maxlength="280" placeholder="Короткий анонс события или предложения."></textarea>
-                  </label>
-                  <label class="promo-field">
-                    <span>Изображение</span>
-                    <input id="promo-image-file-input" type="file" accept="image/png,image/jpeg,image/webp" />
-                  </label>
-                  <label class="promo-field">
-                    <span>Загруженный URL</span>
-                    <input id="promo-image-input" type="url" placeholder="URL появится после upload" readonly />
-                  </label>
-                  <div class="promo-field-row">
-                    <label class="promo-field">
-                      <span>Кнопка отмены</span>
-                      <input id="promo-secondary-label-input" type="text" maxlength="24" placeholder="Уже" />
-                    </label>
-                    <label class="promo-field">
-                      <span>Кнопка перехода</span>
-                      <input id="promo-primary-label-input" type="text" maxlength="24" placeholder="Перейти" />
-                    </label>
-                  </div>
-                  <label class="promo-field">
-                    <span>Ссылка перехода</span>
-                    <input id="promo-primary-url-input" type="url" placeholder="https://..." />
-                  </label>
-                </div>
+          <div class="table-wrap table-wrap-tall">
+            <table class="dashboard-table sessions-table">
+              <thead>
+                <tr>
+                  <th>Игрок</th>
+                  <th>ID</th>
+                  <th>Начало</th>
+                  <th>Длительность</th>
+                  <th>Счёт</th>
+                  <th>Ладошки</th>
+                  <th>Ходы</th>
+                  <th>Финиш</th>
+                </tr>
+              </thead>
+              <tbody id="recent-sessions-body"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
 
-                <div class="promo-editor-actions">
-                  <button id="promo-save-draft" type="button" class="dashboard-ghost-btn">Сохранить черновик</button>
-                  <button id="promo-publish" type="button">Запустить попап</button>
-                  <button id="promo-reset" type="button" class="dashboard-ghost-btn">Сбросить</button>
-                </div>
-              </div>
-            </article>
+      <section id="gifts-panel" class="dashboard-panel gifts-panel">
+        <article class="panel-card panel-card-tall">
+          <div class="panel-head">
+            <div>
+              <h2>Покупки подарков</h2>
+              <span class="panel-note">Коды, даты покупки и статусы выдачи</span>
+            </div>
+          </div>
+          <div class="gifts-toolbar">
+            <input id="gift-search" type="search" placeholder="Поиск по игроку или коду" />
+            <select id="gift-filter-item">
+              <option value="">Все подарки</option>
+              <option value="hookah">hookah</option>
+              <option value="tea">tea</option>
+              <option value="mundshtuk">mundshtuk</option>
+              <option value="tshirt">tshirt</option>
+            </select>
+            <select id="gift-filter-status">
+              <option value="">Все статусы</option>
+              <option value="pending">Не выдан</option>
+              <option value="issued">Выдан</option>
+            </select>
+          </div>
+          <div class="table-wrap table-wrap-tall">
+            <table class="dashboard-table">
+              <thead>
+                <tr>
+                  <th>Игрок</th>
+                  <th>Подарок</th>
+                  <th>Код</th>
+                  <th>Покупка</th>
+                  <th>Статус</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="gift-purchases-body"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
 
-            <article class="panel-card promo-preview-card">
-              <div class="panel-head">
-                <h2>Превью</h2>
-                <span class="panel-note">Соотношение 4:5</span>
+      <section id="messages-panel" class="dashboard-panel messages-panel">
+        <div class="messages-grid">
+          <article class="panel-card">
+            <div class="panel-head">
+              <div>
+                <h2>Отправка сообщения</h2>
+                <span class="panel-note">Сообщение всем игрокам, у которых включены уведомления</span>
               </div>
-              <div class="promo-preview-wrap">
-                <article class="promo-preview">
-                  <div class="promo-preview-visual">
-                    <img id="promo-preview-image" class="promo-preview-image" src="" alt="Превью попапа" />
+            </div>
+            <div class="messages-card-body">
+              <label class="promo-field">
+                <span>Текст сообщения</span>
+                <textarea id="broadcast-text" rows="8" maxlength="1000" placeholder="Введите текст массового сообщения."></textarea>
+              </label>
+              <div class="messages-actions">
+                <button id="broadcast-dry-run" type="button" class="dashboard-ghost-btn">Проверить аудиторию</button>
+                <button id="broadcast-send" type="button">Отправить всем</button>
+              </div>
+              <div id="broadcast-result" class="messages-result empty-state">Пока ничего не отправляли.</div>
+            </div>
+          </article>
+
+          <article class="panel-card panel-card-tall">
+            <div class="panel-head">
+              <div>
+                <h2>История сообщений</h2>
+                <span class="panel-note">Доставка и возвраты после каждой рассылки</span>
+              </div>
+            </div>
+            <div class="table-wrap table-wrap-tall">
+              <table class="dashboard-table">
+                <thead>
+                  <tr>
+                    <th>Дата</th>
+                    <th>Сообщение</th>
+                    <th>Отправлено</th>
+                    <th>Ошибки</th>
+                    <th>Вернулись</th>
+                    <th>Retention</th>
+                  </tr>
+                </thead>
+                <tbody id="broadcast-history-body"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="promos-panel" class="dashboard-panel promos-panel">
+        <div class="promo-subtabs">
+          <button id="promo-subtab-editor" class="promo-subtab is-active" type="button">Редактор</button>
+          <button id="promo-subtab-archive" class="promo-subtab" type="button">Архив и аналитика</button>
+        </div>
+        <section class="promo-grid">
+          <article class="panel-card promo-editor-card">
+            <div class="panel-head">
+              <h2>Редактор попапа</h2>
+              <span id="promo-editor-note" class="panel-note">Новый попап</span>
+            </div>
+            <div class="promo-editor-scroll">
+              <div class="promo-form-grid">
+                <label class="promo-field">
+                  <span>Заголовок</span>
+                  <input id="promo-title-input" type="text" maxlength="80" placeholder="Например: Ночной ивент в Своих" />
+                </label>
+                <label class="promo-field">
+                  <span>Описание</span>
+                  <textarea id="promo-body-input" rows="4" maxlength="280" placeholder="Короткий анонс события или предложения."></textarea>
+                </label>
+                <label class="promo-field">
+                  <span>Изображение</span>
+                  <input id="promo-image-file-input" type="file" accept="image/png,image/jpeg,image/webp" />
+                </label>
+                <label class="promo-field">
+                  <span>Загруженный URL</span>
+                  <input id="promo-image-input" type="url" placeholder="URL появится после upload" readonly />
+                </label>
+                <label class="promo-field">
+                  <span>Левая кнопка</span>
+                  <input id="promo-secondary-label-input" type="text" maxlength="24" placeholder="Уже" />
+                </label>
+                <label class="promo-field">
+                  <span>Правая кнопка</span>
+                  <input id="promo-primary-label-input" type="text" maxlength="24" placeholder="Перейти" />
+                </label>
+                <label class="promo-field promo-field-full">
+                  <span>Ссылка перехода</span>
+                  <input id="promo-primary-url-input" type="url" placeholder="https://..." />
+                </label>
+              </div>
+              <div class="promo-actions">
+                <button id="promo-save-draft" type="button" class="dashboard-ghost-btn">Сохранить черновик</button>
+                <button id="promo-publish" type="button">Запустить попап</button>
+                <button id="promo-reset" type="button" class="dashboard-ghost-btn">Сбросить</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel-card promo-preview-card">
+            <div class="panel-head">
+              <h2>Превью</h2>
+              <span class="panel-note">Как это увидит игрок</span>
+            </div>
+            <div class="promo-preview-scroll">
+              <div class="promo-preview-shell">
+                <div class="promo-preview-card-ui">
+                  <div class="promo-preview-media">
+                    <img id="promo-preview-image" alt="Preview" />
                     <div id="promo-preview-placeholder" class="promo-preview-placeholder">4:5</div>
                   </div>
-                  <div class="promo-preview-copy">
-                    <h3 id="promo-preview-title">Заголовок попапа</h3>
-                    <p id="promo-preview-body">Описание появится здесь после заполнения формы.</p>
-                  </div>
+                  <h3 id="promo-preview-title"></h3>
+                  <p id="promo-preview-body"></p>
                   <div class="promo-preview-actions">
-                    <button id="promo-preview-secondary" type="button" class="promo-secondary-btn">Уже</button>
-                    <button id="promo-preview-primary" type="button">Перейти</button>
+                    <button id="promo-preview-secondary" type="button" class="promo-preview-secondary">Уже</button>
+                    <button id="promo-preview-primary" type="button" class="promo-preview-primary">Перейти</button>
                   </div>
-                </article>
+                </div>
               </div>
-            </article>
+            </div>
+          </article>
 
-            <article class="panel-card panel-card-wide promo-list-card">
-              <div class="panel-head">
-                <h2>Попапы</h2>
-                <span class="panel-note">Черновики, активные и архив</span>
+          <article class="panel-card promo-list-card">
+            <div class="panel-head">
+              <div>
+                <h2>Архив и аналитика</h2>
+                <span class="panel-note">Просмотры, закрытия, переходы и CTR</span>
               </div>
-              <div id="promo-list" class="promo-list"></div>
-            </article>
-          </section>
+            </div>
+            <div id="promo-list" class="promo-list"></div>
+          </article>
         </section>
       </section>
     </main>
 
     <script>
-      window.__SUPABASE_URL__ = 'https://tnngitplssufqeqpxuib.supabase.co';
+      window.__SUPABASE_URL__ = window.__SUPABASE_URL__ || '';
     </script>
     <script src="./dashboard.js"></script>
   </body>

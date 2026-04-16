@@ -66,10 +66,9 @@ Deno.serve(async (req) => {
 
     const now = Date.now();
     const since = new Date(now - hours * 60 * 60 * 1000).toISOString();
-    const previousSince = new Date(now - hours * 2 * 60 * 60 * 1000).toISOString();
     const since120d = new Date(now - 120 * 24 * 60 * 60 * 1000).toISOString();
 
-    const [profilesRes, sessionsRes, eventsRes, purchasesRes] = await Promise.all([
+    const [profilesRes, sessionsRes, eventsRes, purchasesRes, broadcastsRes, recipientsRes] = await Promise.all([
       admin
         .from('profiles')
         .select('telegram_id, display_name, best_score, clap_balance, created_at, last_seen_at', { count: 'exact' })
@@ -86,26 +85,42 @@ Deno.serve(async (req) => {
       admin
         .from('analytics_events')
         .select('telegram_id, session_id, event_name, event_payload, event_at')
-        .gte('event_at', previousSince)
+        .gte('event_at', since120d)
         .order('event_at', { ascending: false })
-        .limit(5000),
+        .limit(10000),
       admin
         .from('shop_purchases')
         .select('telegram_id, gift_id, created_at')
-        .gte('created_at', previousSince)
+        .gte('created_at', since120d)
         .order('created_at', { ascending: false })
-        .limit(5000),
+        .limit(10000),
+      admin
+        .from('broadcast_messages')
+        .select('id, text, created_at, sent_count, failed_count')
+        .gte('created_at', since120d)
+        .order('created_at', { ascending: false })
+        .limit(500),
+      admin
+        .from('broadcast_message_recipients')
+        .select('broadcast_id, telegram_id, status, sent_at')
+        .gte('sent_at', since120d)
+        .order('sent_at', { ascending: false })
+        .limit(30000),
     ]);
 
     if (profilesRes.error) throw new Error(profilesRes.error.message);
     if (sessionsRes.error) throw new Error(sessionsRes.error.message);
     if (eventsRes.error) throw new Error(eventsRes.error.message);
     if (purchasesRes.error) throw new Error(purchasesRes.error.message);
+    if (broadcastsRes.error) throw new Error(broadcastsRes.error.message);
+    if (recipientsRes.error) throw new Error(recipientsRes.error.message);
 
     const profiles = profilesRes.data || [];
     const sessions = sessionsRes.data || [];
     const events = eventsRes.data || [];
     const purchases = purchasesRes.data || [];
+    const broadcasts = broadcastsRes.data || [];
+    const broadcastRecipients = recipientsRes.data || [];
 
     const currentSessions = sessions.filter((item) => item.session_started_at >= since);
     const previousSessions = sessions.filter((item) => item.session_started_at < since);
@@ -115,6 +130,7 @@ Deno.serve(async (req) => {
     const currentClapsEarned = currentSessions.map((item) => Number(item.claps_earned || 0));
     const durations = endedSessions.map((item) => Number(item.duration_sec || 0)).filter((value) => value > 0);
     const currentPurchases = purchases.filter((item) => item.created_at >= since);
+    const currentBroadcasts = broadcasts.filter((item) => item.created_at >= since);
 
     const activePlayerIds = new Set(
       profiles.filter((item) => item.last_seen_at && item.last_seen_at >= since).map((item) => String(item.telegram_id)),
@@ -127,24 +143,24 @@ Deno.serve(async (req) => {
     const recentSessionTelegramIds = [
       ...new Set(
         sessions
-          .slice(0, 12)
+          .slice(0, 1000)
           .map((item) => item.telegram_id)
           .filter((value) => value !== null && value !== undefined),
       ),
     ];
 
-    let recentSessionProfiles: Array<{ telegram_id: number; display_name: string | null }> = [];
+    let sessionProfiles: Array<{ telegram_id: number; display_name: string | null }> = [];
     if (recentSessionTelegramIds.length) {
       const recentProfilesRes = await admin
         .from('profiles')
         .select('telegram_id, display_name')
         .in('telegram_id', recentSessionTelegramIds);
       if (recentProfilesRes.error) throw new Error(recentProfilesRes.error.message);
-      recentSessionProfiles = recentProfilesRes.data || [];
+      sessionProfiles = recentProfilesRes.data || [];
     }
 
-    const recentSessionNameMap = new Map(
-      recentSessionProfiles.map((item) => [String(item.telegram_id), item.display_name || 'Игрок']),
+    const sessionNameMap = new Map(
+      sessionProfiles.map((item) => [String(item.telegram_id), item.display_name || 'Игрок']),
     );
 
     const topPlayers = profiles.map((item, index) => ({
@@ -164,11 +180,11 @@ Deno.serve(async (req) => {
 
     const topEvents = [...eventCounts.entries()]
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
+      .slice(0, 10)
       .map(([event_name, count]) => ({ event_name, count }));
 
-    const recentSessions = sessions.slice(0, 12).map((item) => ({
-      display_name: recentSessionNameMap.get(String(item.telegram_id)) || 'Игрок',
+    const sessionHistory = sessions.map((item) => ({
+      display_name: sessionNameMap.get(String(item.telegram_id)) || 'Игрок',
       telegram_id: item.telegram_id,
       session_started_at: item.session_started_at,
       duration_sec: Number(item.duration_sec || 0),
@@ -177,6 +193,41 @@ Deno.serve(async (req) => {
       end_reason: item.end_reason || 'active',
       moves_count: Number(item.moves_count || 0),
     }));
+
+    const recipientsByBroadcast = new Map<string, Array<{ telegram_id: number; status: string; sent_at: string }>>();
+    for (const row of broadcastRecipients) {
+      const key = String(row.broadcast_id);
+      const bucket = recipientsByBroadcast.get(key) || [];
+      bucket.push({ telegram_id: Number(row.telegram_id), status: row.status, sent_at: row.sent_at });
+      recipientsByBroadcast.set(key, bucket);
+    }
+
+    const broadcastsWithStats = broadcasts.map((broadcast) => {
+      const recipients = recipientsByBroadcast.get(String(broadcast.id)) || [];
+      const sentRecipients = recipients.filter((item) => item.status === 'sent');
+      const returnedIds = new Set<string>();
+      for (const recipient of sentRecipients) {
+        const returned = sessions.some(
+          (session) =>
+            String(session.telegram_id) === String(recipient.telegram_id)
+            && session.session_started_at > recipient.sent_at,
+        );
+        if (returned) returnedIds.add(String(recipient.telegram_id));
+      }
+      return {
+        id: broadcast.id,
+        text: broadcast.text,
+        created_at: broadcast.created_at,
+        sent_count: Number(broadcast.sent_count || sentRecipients.length),
+        failed_count: Number(broadcast.failed_count || 0),
+        returned_count: returnedIds.size,
+        retention_rate: sentRecipients.length ? Math.round((returnedIds.size / sentRecipients.length) * 100) : 0,
+      };
+    });
+
+    const currentBroadcastStats = broadcastsWithStats.filter((item) => item.created_at >= since);
+    const messageRetentionCount = currentBroadcastStats.reduce((sum, item) => sum + item.returned_count, 0);
+    const currentSentTotal = currentBroadcastStats.reduce((sum, item) => sum + item.sent_count, 0);
 
     const spentTotal = currentClapsSpent.reduce((sum, value) => sum + value, 0);
     const earnedTotal = currentClapsEarned.reduce((sum, value) => sum + value, 0);
@@ -198,10 +249,13 @@ Deno.serve(async (req) => {
           avg_session_duration_sec_24h: Math.round(avg(durations)),
           avg_best_score_24h: Math.round(avg(currentScores)),
           median_best_score_24h: Math.round(median(currentScores)),
+          message_returned_users: messageRetentionCount,
+          message_retention_rate: currentSentTotal ? Math.round((messageRetentionCount / currentSentTotal) * 100) : 0,
         },
         top_players: topPlayers,
         top_events_24h: topEvents,
-        recent_sessions: recentSessions,
+        session_history: sessionHistory,
+        broadcasts: broadcastsWithStats,
       }),
       {
         status: 200,
