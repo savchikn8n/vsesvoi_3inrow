@@ -476,27 +476,8 @@ function refreshAmbientLayers() {
 
 function syncAmbientGameMask() {
   if (!ambientGameMaskEl) return;
-  if (!startScreenEl?.classList.contains('hidden') || !shopScreenEl?.classList.contains('hidden')) {
-    ambientGameMaskEl.classList.add('hidden');
-    return;
-  }
-
-  const frameRect = document.querySelector('.frame')?.getBoundingClientRect();
-  const hudRect = document.querySelector('.hud')?.getBoundingClientRect();
-  const controlsRect = document.querySelector('.controls')?.getBoundingClientRect();
-  if (!frameRect || !hudRect || !controlsRect) {
-    ambientGameMaskEl.classList.add('hidden');
-    return;
-  }
-
-  const top = Math.max(0, hudRect.top - frameRect.top - 8);
-  const bottom = Math.min(frameRect.height, controlsRect.bottom - frameRect.top + 8);
-  ambientGameMaskEl.style.left = '0px';
-  ambientGameMaskEl.style.right = '0px';
-  ambientGameMaskEl.style.top = `${top}px`;
-  ambientGameMaskEl.style.width = 'auto';
-  ambientGameMaskEl.style.height = `${Math.max(0, bottom - top)}px`;
   ambientGameMaskEl.classList.remove('hidden');
+  ambientGameMaskEl.classList.add('hidden');
 }
 
 function randColor() {
