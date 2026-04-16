@@ -241,7 +241,7 @@ function buildEventsChart(items = []) {
 
   if (!items.length) {
     const empty = document.createElement('div');
-    empty.className = 'empty-state';
+    empty.className = 'events-tooltip-empty';
     empty.textContent = 'Пока нет событий.';
     eventsLegendEl.appendChild(empty);
     return;
@@ -255,6 +255,17 @@ function buildEventsChart(items = []) {
   const svgNS = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(svgNS, 'svg');
   svg.setAttribute('viewBox', '0 0 220 220');
+
+  const tooltipEl = document.createElement('div');
+  tooltipEl.className = 'events-tooltip';
+
+  function setTooltip(item, fraction, color) {
+    tooltipEl.innerHTML = `
+      <div class="events-tooltip-title" style="color:${color}">${item.event_name}</div>
+      <div class="events-tooltip-meta">${formatNumber(item.count)} действий</div>
+      <div class="events-tooltip-meta">${Math.round(fraction * 100)}% от всех событий</div>
+    `;
+  }
 
   const bg = document.createElementNS(svgNS, 'circle');
   bg.setAttribute('cx', '110');
@@ -281,24 +292,12 @@ function buildEventsChart(items = []) {
     circle.setAttribute('stroke-dasharray', `${dash} ${circumference - dash}`);
     circle.setAttribute('stroke-dashoffset', String(-offset));
     circle.setAttribute('transform', 'rotate(-90 110 110)');
-    const title = document.createElementNS(svgNS, 'title');
-    title.textContent = `${item.event_name}: ${formatNumber(item.count)} (${Math.round(fraction * 100)}%)`;
-    circle.appendChild(title);
+    circle.dataset.eventName = item.event_name;
+    circle.addEventListener('mouseenter', () => setTooltip(item, fraction, color));
+    circle.addEventListener('focus', () => setTooltip(item, fraction, color));
     svg.appendChild(circle);
 
     offset += dash;
-
-    const legendRow = document.createElement('div');
-    legendRow.className = 'event-legend-row';
-    legendRow.innerHTML = `
-      <span class="event-swatch" style="background:${color}"></span>
-      <span class="event-meta">
-        <span class="event-name">${item.event_name}</span>
-        <span class="event-share">${Math.round(fraction * 100)}% от всех событий</span>
-      </span>
-      <span class="event-count">${formatNumber(item.count)}</span>
-    `;
-    eventsLegendEl.appendChild(legendRow);
   });
 
   const centerText = document.createElementNS(svgNS, 'text');
@@ -320,7 +319,9 @@ function buildEventsChart(items = []) {
   centerCaption.textContent = 'действий';
   svg.appendChild(centerCaption);
 
+  setTooltip(items[0], Number(items[0].count || 0) / total, EVENT_COLORS[0]);
   eventsChartEl.appendChild(svg);
+  eventsLegendEl.appendChild(tooltipEl);
 }
 
 function renderSessions(items = []) {
