@@ -57,7 +57,7 @@
             <section class="metrics-grid metrics-grid-compact">
               <article class="metric-card"><span class="metric-label">Всего игроков</span><strong id="metric-total-players" class="metric-value">-</strong></article>
               <article class="metric-card"><span class="metric-label">Активные</span><strong id="metric-active-players" class="metric-value">-</strong></article>
-              <article class="metric-card"><span class="metric-label">Новые</span><strong id="metric-new-players" class="metric-value">-</strong></article>
+              <article class="metric-card"><span class="metric-label">Новых игроков</span><strong id="metric-new-players" class="metric-value">-</strong></article>
               <article class="metric-card"><span class="metric-label">Сессии</span><strong id="metric-sessions" class="metric-value">-</strong></article>
               <article class="metric-card"><span class="metric-label">Средняя сессия</span><strong id="metric-avg-duration" class="metric-value">-</strong></article>
               <article class="metric-card"><span class="metric-label">Средний счёт</span><strong id="metric-avg-score" class="metric-value">-</strong></article>
@@ -83,6 +83,16 @@
         </div>
 
         <div class="analytics-bottom-grid">
+          <article class="panel-card frequent-events-card">
+            <div class="panel-head">
+              <div>
+                <h2>Частые события в игре</h2>
+                <span class="panel-note">Что игроки делают чаще всего за выбранный период</span>
+              </div>
+            </div>
+            <div id="message-impact-list" class="broadcast-list"></div>
+          </article>
+
           <article class="panel-card behavior-card">
             <div class="panel-head">
               <div>
@@ -96,16 +106,6 @@
               <article class="metric-card"><span class="metric-label">Таймауты</span><strong id="metric-timeout-share" class="metric-value">-</strong></article>
               <article class="metric-card"><span class="metric-label">Выходы через меню</span><strong id="metric-menu-exit-share" class="metric-value">-</strong></article>
             </section>
-          </article>
-
-          <article class="panel-card messages-impact-card">
-            <div class="panel-head">
-              <div>
-                <h2>Возвраты после сообщений</h2>
-                <span class="panel-note">Кто вернулся после массовых сообщений</span>
-              </div>
-            </div>
-            <div id="message-impact-list" class="broadcast-list"></div>
           </article>
         </div>
       </section>

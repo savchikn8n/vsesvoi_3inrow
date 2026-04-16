@@ -339,30 +339,30 @@ function renderBroadcasts(items = []) {
       });
     }
   }
+}
 
+function renderTopEventsList(items = []) {
   if (messageImpactListEl) {
     messageImpactListEl.replaceChildren();
     if (!items.length) {
       const empty = document.createElement('div');
       empty.className = 'empty-state';
-      empty.textContent = 'Пока нет отправленных сообщений.';
+      empty.textContent = 'Пока нет игровых событий.';
       messageImpactListEl.appendChild(empty);
       return;
     }
 
-    items.slice(0, 6).forEach((item) => {
+    items.slice(0, 6).forEach((item, index) => {
       const card = document.createElement('div');
       card.className = 'broadcast-item';
       card.innerHTML = `
         <div class="broadcast-item-top">
-          <span class="broadcast-date">${formatDateTime(item.created_at)}</span>
-          <span class="broadcast-rate">${formatPercent(item.retention_rate)}</span>
+          <span class="broadcast-date">#${index + 1}</span>
+          <span class="broadcast-rate">${formatNumber(item.count)}</span>
         </div>
-        <div class="broadcast-text">${truncate(item.text, 180)}</div>
+        <div class="broadcast-text">${item.event_name}</div>
         <div class="broadcast-stats">
-          <span>Отправлено: ${formatNumber(item.sent_count)}</span>
-          <span>Ошибки: ${formatNumber(item.failed_count)}</span>
-          <span>Вернулись: ${formatNumber(item.returned_count)}</span>
+          <span>${Math.round((Number(item.count || 0) / Math.max(1, items.reduce((sum, entry) => sum + Number(entry.count || 0), 0))) * 100)}% от частых событий</span>
         </div>
       `;
       messageImpactListEl.appendChild(card);
@@ -427,6 +427,7 @@ function renderSummary(summary) {
   metricEls.menuExitShare.textContent = behavior.menuExitShareLabel;
 
   renderTopPlayers(summary?.top_players || []);
+  renderTopEventsList(summary?.top_events_24h || []);
   renderSessions(summary?.session_history || []);
   renderBroadcasts(summary?.broadcasts || []);
   if (updatedAtEl) updatedAtEl.textContent = `Обновлено: ${formatDateTime(summary?.generated_at)}`;
