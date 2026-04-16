@@ -27,8 +27,6 @@ const promosPanelEl = document.getElementById('promos-panel');
 
 const periodSwitchEl = document.querySelector('.period-switch');
 const topPlayersListEl = document.getElementById('top-players-list');
-const eventsChartEl = document.getElementById('events-chart');
-const eventsLegendEl = document.getElementById('events-legend');
 const recentSessionsBodyEl = document.getElementById('recent-sessions-body');
 const sessionsClapsToggleEl = document.getElementById('sessions-claps-toggle');
 const updatedAtEl = document.getElementById('dashboard-updated-at');
@@ -80,6 +78,10 @@ const metricEls = {
   avgSpend: document.getElementById('metric-avg-spend'),
   returningPlayers: document.getElementById('metric-returning-players'),
   messageRetention: document.getElementById('metric-message-retention'),
+  peakHour: document.getElementById('metric-peak-hour'),
+  sessionsPerPlayer: document.getElementById('metric-sessions-per-player'),
+  timeoutShare: document.getElementById('metric-timeout-share'),
+  menuExitShare: document.getElementById('metric-menu-exit-share'),
 };
 
 let refreshTimerId = null;
@@ -234,94 +236,53 @@ function renderTopPlayers(items = []) {
   });
 }
 
-function buildEventsChart(items = []) {
-  if (!eventsChartEl || !eventsLegendEl) return;
-  eventsChartEl.replaceChildren();
-  eventsLegendEl.replaceChildren();
+function computeBehaviorMetrics(summary) {
+  const generatedAt = summary?.generated_at ? new Date(summary.generated_at).getTime() : Date.now();
+  const hours = currentAnalyticsPeriod === '30d' ? 30 * 24 : currentAnalyticsPeriod === '7d' ? 7 * 24 : 24;
+  const sinceMs = generatedAt - hours * 60 * 60 * 1000;
+  const sessions = Array.isArray(summary?.session_history)
+    ? summary.session_history.filter((item) => new Date(item.session_started_at).getTime() >= sinceMs)
+    : [];
 
-  if (!items.length) {
-    const empty = document.createElement('div');
-    empty.className = 'events-tooltip-empty';
-    empty.textContent = 'Пока нет событий.';
-    eventsLegendEl.appendChild(empty);
-    return;
+  if (!sessions.length) {
+    return {
+      peakHourLabel: '-',
+      sessionsPerPlayerLabel: '0',
+      timeoutShareLabel: '0%',
+      menuExitShareLabel: '0%',
+    };
   }
 
-  const total = items.reduce((sum, item) => sum + Number(item.count || 0), 0) || 1;
-  const radius = 88;
-  const circumference = 2 * Math.PI * radius;
-  let offset = 0;
+  const hourCounts = new Map();
+  const playerIds = new Set();
+  let timeoutCount = 0;
+  let menuExitCount = 0;
 
-  const svgNS = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(svgNS, 'svg');
-  svg.setAttribute('viewBox', '0 0 220 220');
-
-  const tooltipEl = document.createElement('div');
-  tooltipEl.className = 'events-tooltip';
-
-  function setTooltip(item, fraction, color) {
-    tooltipEl.innerHTML = `
-      <div class="events-tooltip-title" style="color:${color}">${item.event_name}</div>
-      <div class="events-tooltip-meta">${formatNumber(item.count)} действий</div>
-      <div class="events-tooltip-meta">${Math.round(fraction * 100)}% от всех событий</div>
-    `;
-  }
-
-  const bg = document.createElementNS(svgNS, 'circle');
-  bg.setAttribute('cx', '110');
-  bg.setAttribute('cy', '110');
-  bg.setAttribute('r', String(radius));
-  bg.setAttribute('fill', 'none');
-  bg.setAttribute('stroke', 'rgba(255,255,255,0.06)');
-  bg.setAttribute('stroke-width', '24');
-  svg.appendChild(bg);
-
-  items.forEach((item, index) => {
-    const fraction = Number(item.count || 0) / total;
-    const dash = fraction * circumference;
-    const color = EVENT_COLORS[index % EVENT_COLORS.length];
-
-    const circle = document.createElementNS(svgNS, 'circle');
-    circle.setAttribute('cx', '110');
-    circle.setAttribute('cy', '110');
-    circle.setAttribute('r', String(radius));
-    circle.setAttribute('fill', 'none');
-    circle.setAttribute('stroke', color);
-    circle.setAttribute('stroke-width', '24');
-    circle.setAttribute('stroke-linecap', 'round');
-    circle.setAttribute('stroke-dasharray', `${dash} ${circumference - dash}`);
-    circle.setAttribute('stroke-dashoffset', String(-offset));
-    circle.setAttribute('transform', 'rotate(-90 110 110)');
-    circle.dataset.eventName = item.event_name;
-    circle.addEventListener('mouseenter', () => setTooltip(item, fraction, color));
-    circle.addEventListener('focus', () => setTooltip(item, fraction, color));
-    svg.appendChild(circle);
-
-    offset += dash;
+  sessions.forEach((item) => {
+    const date = new Date(item.session_started_at);
+    const hour = date.getHours();
+    hourCounts.set(hour, (hourCounts.get(hour) || 0) + 1);
+    playerIds.add(String(item.telegram_id));
+    if (item.end_reason === 'timeout') timeoutCount += 1;
+    if (item.end_reason === 'menu_exit') menuExitCount += 1;
   });
 
-  const centerText = document.createElementNS(svgNS, 'text');
-  centerText.setAttribute('x', '110');
-  centerText.setAttribute('y', '102');
-  centerText.setAttribute('text-anchor', 'middle');
-  centerText.setAttribute('fill', '#f7c83e');
-  centerText.setAttribute('font-size', '28');
-  centerText.setAttribute('font-weight', '800');
-  centerText.textContent = formatNumber(total);
-  svg.appendChild(centerText);
+  let peakHour = 0;
+  let peakHourCount = -1;
+  hourCounts.forEach((count, hour) => {
+    if (count > peakHourCount) {
+      peakHour = hour;
+      peakHourCount = count;
+    }
+  });
 
-  const centerCaption = document.createElementNS(svgNS, 'text');
-  centerCaption.setAttribute('x', '110');
-  centerCaption.setAttribute('y', '126');
-  centerCaption.setAttribute('text-anchor', 'middle');
-  centerCaption.setAttribute('fill', 'rgba(244,241,232,0.55)');
-  centerCaption.setAttribute('font-size', '12');
-  centerCaption.textContent = 'действий';
-  svg.appendChild(centerCaption);
-
-  setTooltip(items[0], Number(items[0].count || 0) / total, EVENT_COLORS[0]);
-  eventsChartEl.appendChild(svg);
-  eventsLegendEl.appendChild(tooltipEl);
+  const nextHour = (peakHour + 1) % 24;
+  return {
+    peakHourLabel: `${String(peakHour).padStart(2, '0')}:00–${String(nextHour).padStart(2, '0')}:00`,
+    sessionsPerPlayerLabel: playerIds.size ? (sessions.length / playerIds.size).toFixed(1) : '0',
+    timeoutShareLabel: `${Math.round((timeoutCount / sessions.length) * 100)}%`,
+    menuExitShareLabel: `${Math.round((menuExitCount / sessions.length) * 100)}%`,
+  };
 }
 
 function renderSessions(items = []) {
@@ -445,6 +406,7 @@ function renderGiftPurchases(items = []) {
 
 function renderSummary(summary) {
   const overview = summary?.overview || {};
+  const behavior = computeBehaviorMetrics(summary);
   metricEls.totalPlayers.textContent = formatNumber(overview.total_players);
   metricEls.activePlayers.textContent = formatNumber(overview.active_players_24h);
   metricEls.newPlayers.textContent = formatNumber(overview.new_players_24h);
@@ -459,9 +421,12 @@ function renderSummary(summary) {
   metricEls.messageRetention.textContent = overview.message_retention_rate
     ? formatPercent(overview.message_retention_rate)
     : formatNumber(overview.message_returned_users || 0);
+  metricEls.peakHour.textContent = behavior.peakHourLabel;
+  metricEls.sessionsPerPlayer.textContent = behavior.sessionsPerPlayerLabel;
+  metricEls.timeoutShare.textContent = behavior.timeoutShareLabel;
+  metricEls.menuExitShare.textContent = behavior.menuExitShareLabel;
 
   renderTopPlayers(summary?.top_players || []);
-  buildEventsChart(summary?.top_events_24h || []);
   renderSessions(summary?.session_history || []);
   renderBroadcasts(summary?.broadcasts || []);
   if (updatedAtEl) updatedAtEl.textContent = `Обновлено: ${formatDateTime(summary?.generated_at)}`;

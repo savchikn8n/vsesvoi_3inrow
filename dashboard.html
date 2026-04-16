@@ -83,17 +83,19 @@
         </div>
 
         <div class="analytics-bottom-grid">
-          <article class="panel-card events-card">
+          <article class="panel-card behavior-card">
             <div class="panel-head">
               <div>
-                <h2>События</h2>
-                <span class="panel-note">Распределение действий за выбранный период</span>
+                <h2>Поведение игроков</h2>
+                <span class="panel-note">Ключевые паттерны внутри выбранного периода</span>
               </div>
             </div>
-            <div class="events-chart-layout">
-              <div id="events-chart" class="events-chart"></div>
-              <div id="events-legend" class="events-legend"></div>
-            </div>
+            <section class="metrics-grid metrics-grid-compact">
+              <article class="metric-card"><span class="metric-label">Пик входа</span><strong id="metric-peak-hour" class="metric-value">-</strong></article>
+              <article class="metric-card"><span class="metric-label">Сессий на игрока</span><strong id="metric-sessions-per-player" class="metric-value">-</strong></article>
+              <article class="metric-card"><span class="metric-label">Таймауты</span><strong id="metric-timeout-share" class="metric-value">-</strong></article>
+              <article class="metric-card"><span class="metric-label">Выходы через меню</span><strong id="metric-menu-exit-share" class="metric-value">-</strong></article>
+            </section>
           </article>
 
           <article class="panel-card messages-impact-card">
