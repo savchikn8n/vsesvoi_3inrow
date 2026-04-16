@@ -16,24 +16,21 @@
     <main class="dashboard-shell">
       <section class="dashboard-frame">
         <header class="dashboard-header">
-          <div>
-            <p class="eyebrow">Analytics</p>
-            <h1>Все Свои: 3 в ряд</h1>
-            <p class="subhead">Игроки, сессии, среднее время, активность, рекорды и промо-попапы.</p>
+          <div class="dashboard-brand">
+            <img src="./assets/bomb.png" alt="Dashboard logo" class="dashboard-brand-logo" />
           </div>
-          <div class="header-actions">
-            <button id="refresh-dashboard" type="button">Обновить</button>
+          <div class="dashboard-header-tools">
+            <span id="dashboard-loading" class="dashboard-loading" aria-hidden="true"></span>
+            <p id="dashboard-status" class="dashboard-status" aria-live="polite"></p>
+            <button id="toggle-secret" class="dashboard-ghost-btn dashboard-secret-toggle" type="button">Secret</button>
+            <section id="auth-panel" class="auth-panel">
+              <div class="auth-row">
+                <input id="dashboard-secret" type="password" placeholder="DASHBOARD_SECRET" />
+                <button id="connect-dashboard" type="button">Войти</button>
+              </div>
+            </section>
           </div>
         </header>
-
-        <section class="auth-panel">
-          <label for="dashboard-secret">Dashboard secret</label>
-          <div class="auth-row">
-            <input id="dashboard-secret" type="password" placeholder="Введите DASHBOARD_SECRET" />
-            <button id="connect-dashboard" type="button">Подключить</button>
-          </div>
-          <p id="dashboard-status" class="dashboard-status" aria-live="polite"></p>
-        </section>
 
         <nav class="dashboard-tabs" aria-label="Вкладки дэшборда">
           <button id="tab-analytics" class="dashboard-tab is-active" type="button">Аналитика</button>
