@@ -12,10 +12,10 @@
   --danger: #ff7d7d;
   --success: #94dd8f;
   --shadow: 0 22px 48px rgba(0, 0, 0, 0.38);
-  --radius-xl: 8px;
-  --radius-lg: 4px;
-  --radius-md: 2px;
-  --radius-sm: 0px;
+  --radius-xl: 10px;
+  --radius-lg: 10px;
+  --radius-md: 8px;
+  --radius-sm: 4px;
 }
 
 * {
@@ -251,6 +251,12 @@ textarea {
   padding: 14px 18px 18px;
 }
 
+#analytics-panel.dashboard-panel.is-active {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .dashboard-panel.is-active {
   display: block;
 }
@@ -301,19 +307,18 @@ textarea {
 
 .analytics-top-grid {
   display: grid;
-  grid-template-columns: 400px 360px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
-  justify-content: start;
-  margin-bottom: 14px;
+  margin-bottom: 0;
+  align-items: stretch;
 }
 
 .analytics-bottom-grid {
   display: grid;
-  grid-template-columns: 400px 360px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
-  justify-content: start;
-  min-height: 0;
-  height: auto;
+  min-height: 280px;
+  height: 100%;
 }
 
 .analytics-overview-card,
@@ -323,6 +328,11 @@ textarea {
 .messages-panel .panel-card,
 .gifts-panel .panel-card {
   min-height: 0;
+}
+
+.analytics-overview-card,
+.analytics-top-players-card {
+  height: 100%;
 }
 
 .period-switch {
@@ -387,6 +397,8 @@ textarea {
   display: grid;
   gap: 6px;
   padding: 0 14px 14px;
+  height: 100%;
+  align-content: start;
 }
 
 .rank-row {
@@ -426,10 +438,11 @@ textarea {
 }
 
 .events-chart-layout {
-  display: grid;
-  grid-template-columns: 168px minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   padding: 0 14px 14px;
   min-height: 0;
   height: 100%;
@@ -438,11 +451,12 @@ textarea {
 .events-chart {
   display: grid;
   place-items: center;
-  align-self: stretch;
+  width: 100%;
+  min-height: 0;
 }
 
 .events-chart svg {
-  width: min(156px, 100%);
+  width: min(220px, 100%);
   height: auto;
 }
 
@@ -456,9 +470,12 @@ textarea {
 }
 
 .events-legend {
-  max-height: 100%;
-  overflow: auto;
-  padding-right: 4px;
+  width: min(320px, 100%);
+  min-height: 74px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: rgba(255,255,255,0.02);
+  box-shadow: inset 0 0 0 1px rgba(247, 200, 62, 0.12);
 }
 
 .event-legend-row,
@@ -467,6 +484,26 @@ textarea {
   border-radius: var(--radius-lg);
   background: rgba(255,255,255,0.02);
   box-shadow: inset 0 0 0 1px rgba(247, 200, 62, 0.1);
+}
+
+.events-tooltip {
+  display: grid;
+  gap: 4px;
+}
+
+.events-tooltip-title {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.events-tooltip-meta {
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.events-tooltip-empty {
+  color: var(--text-dim);
+  font-size: 13px;
 }
 
 .event-legend-row {
