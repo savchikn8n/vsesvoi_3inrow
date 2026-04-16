@@ -136,21 +136,22 @@
         <div class="shop-shell">
           <header class="shop-header-row">
             <button id="shop-back" class="shop-back-btn" type="button">Назад</button>
-            <div class="shop-balance panel panel-compact" aria-label="Баланс ладошек">
-              <span class="panel-claps-icon" aria-hidden="true">
-                <img src="./assets/claps.svg" alt="" />
-              </span>
-              <span id="shop-claps" class="panel-claps-value">0</span>
+            <div class="shop-header-actions">
+              <button id="shop-owned-btn" class="shop-owned-btn" type="button" aria-label="Мои подарки">
+                <span class="shop-owned-btn-icon" aria-hidden="true"></span>
+              </button>
+              <div class="shop-balance panel panel-compact" aria-label="Баланс ладошек">
+                <span class="panel-claps-icon" aria-hidden="true">
+                  <img src="./assets/claps.svg" alt="" />
+                </span>
+                <span id="shop-claps" class="panel-claps-value">0</span>
+              </div>
             </div>
           </header>
 
           <section class="shop-copy">
             <h2>Подарки</h2>
             <p>Обменивайте ладошки на реальные штуки в «Своих».</p>
-            <button id="shop-owned-btn" class="shop-owned-btn" type="button">
-              <span class="shop-owned-btn-icon" aria-hidden="true"></span>
-              <span>Мои подарки</span>
-            </button>
           </section>
 
           <section class="shop-list" aria-label="Каталог подарков">
