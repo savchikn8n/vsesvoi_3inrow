@@ -189,6 +189,7 @@ Deno.serve(async (req) => {
       session_started_at: item.session_started_at,
       duration_sec: Number(item.duration_sec || 0),
       best_score: Number(item.best_score || 0),
+      claps_earned: Number(item.claps_earned || 0),
       claps_spent: Number(item.claps_spent || 0),
       end_reason: item.end_reason || 'active',
       moves_count: Number(item.moves_count || 0),
