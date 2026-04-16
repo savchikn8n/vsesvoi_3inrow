@@ -1,6 +1,7 @@
 const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUMMARY_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/analytics-summary` : '';
 const GIFT_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/gift-admin` : '';
+const MESSAGE_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/messages-admin` : '';
 const PROMO_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/promo-admin` : '';
 const PROMO_UPLOAD_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/promo-upload` : '';
 const DASHBOARD_SECRET_KEY = 'gold_match_dashboard_secret';
@@ -12,9 +13,11 @@ const statusEl = document.getElementById('dashboard-status');
 const updatedAtEl = document.getElementById('dashboard-updated-at');
 const analyticsTabEl = document.getElementById('tab-analytics');
 const giftsTabEl = document.getElementById('tab-gifts');
+const messagesTabEl = document.getElementById('tab-messages');
 const promosTabEl = document.getElementById('tab-promos');
 const analyticsPanelEl = document.getElementById('analytics-panel');
 const giftsPanelEl = document.getElementById('gifts-panel');
+const messagesPanelEl = document.getElementById('messages-panel');
 const promosPanelEl = document.getElementById('promos-panel');
 const periodSwitchEl = document.querySelector('.period-switch');
 const promoEditorSubtabEl = document.getElementById('promo-subtab-editor');
@@ -42,6 +45,10 @@ const giftPurchasesBodyEl = document.getElementById('gift-purchases-body');
 const giftSearchEl = document.getElementById('gift-search');
 const giftFilterItemEl = document.getElementById('gift-filter-item');
 const giftFilterStatusEl = document.getElementById('gift-filter-status');
+const broadcastTextEl = document.getElementById('broadcast-text');
+const broadcastDryRunBtnEl = document.getElementById('broadcast-dry-run');
+const broadcastSendBtnEl = document.getElementById('broadcast-send');
+const broadcastResultEl = document.getElementById('broadcast-result');
 
 const promoEditorNoteEl = document.getElementById('promo-editor-note');
 const promoTitleInputEl = document.getElementById('promo-title-input');
@@ -291,10 +298,18 @@ function setActiveTab(tab) {
   currentDashboardTab = tab;
   analyticsTabEl?.classList.toggle('is-active', tab === 'analytics');
   giftsTabEl?.classList.toggle('is-active', tab === 'gifts');
+  messagesTabEl?.classList.toggle('is-active', tab === 'messages');
   promosTabEl?.classList.toggle('is-active', tab === 'promos');
   analyticsPanelEl?.classList.toggle('is-active', tab === 'analytics');
   giftsPanelEl?.classList.toggle('is-active', tab === 'gifts');
+  messagesPanelEl?.classList.toggle('is-active', tab === 'messages');
   promosPanelEl?.classList.toggle('is-active', tab === 'promos');
+}
+
+function setBroadcastResult(message, isError = false) {
+  if (!broadcastResultEl) return;
+  broadcastResultEl.textContent = message || '';
+  broadcastResultEl.classList.toggle('is-error', Boolean(isError));
 }
 
 function setPromoSubtab(tab) {
@@ -437,6 +452,26 @@ async function runGiftAction(action, code) {
   await fetchGiftPurchases();
 }
 
+async function runBroadcast(dryRun) {
+  if (!MESSAGE_ADMIN_URL) throw new Error('Не задан SUPABASE_URL.');
+  const text = broadcastTextEl?.value.trim() || '';
+  if (!text) throw new Error('Введите текст сообщения.');
+  const data = await postDashboardJson(MESSAGE_ADMIN_URL, {
+    text,
+    dryRun: Boolean(dryRun),
+    limit: 2000,
+  });
+
+  if (dryRun) {
+    setBroadcastResult(`Получателей: ${formatNumber(data?.recipients || 0)}`);
+    return;
+  }
+
+  setBroadcastResult(
+    `Отправлено: ${formatNumber(data?.sent || 0)}. Ошибок: ${formatNumber(data?.failed || 0)}. Всего: ${formatNumber(data?.total || 0)}.`,
+  );
+}
+
 async function fetchAllDashboardData() {
   const secret = loadDashboardSecret();
   if (!secret) {
@@ -491,6 +526,7 @@ function startAutoRefresh() {
 
 analyticsTabEl?.addEventListener('click', () => setActiveTab('analytics'));
 giftsTabEl?.addEventListener('click', () => setActiveTab('gifts'));
+messagesTabEl?.addEventListener('click', () => setActiveTab('messages'));
 promosTabEl?.addEventListener('click', () => setActiveTab('promos'));
 promoEditorSubtabEl?.addEventListener('click', () => setPromoSubtab('editor'));
 promoArchiveSubtabEl?.addEventListener('click', () => setPromoSubtab('archive'));
@@ -539,6 +575,12 @@ giftPurchasesBodyEl?.addEventListener('click', (event) => {
   void runGiftAction(button.dataset.giftAction || '', button.dataset.code || '').catch((error) =>
     setStatus(error.message || 'Не удалось обновить статус подарка'),
   );
+});
+broadcastDryRunBtnEl?.addEventListener('click', () => {
+  void runBroadcast(true).catch((error) => setBroadcastResult(error.message || 'Не удалось проверить аудиторию', true));
+});
+broadcastSendBtnEl?.addEventListener('click', () => {
+  void runBroadcast(false).catch((error) => setBroadcastResult(error.message || 'Не удалось отправить сообщение', true));
 });
 
 const savedSecret = loadDashboardSecret();

@@ -205,11 +205,37 @@ select {
   grid-template-rows: 1fr;
 }
 
+.messages-grid {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
 .gifts-toolbar {
   margin-top: 12px;
   display: grid;
   grid-template-columns: minmax(260px, 1fr) 180px 160px;
   gap: 10px;
+}
+
+.messages-card-body {
+  margin-top: 12px;
+  display: grid;
+  gap: 14px;
+  min-height: 0;
+}
+
+.messages-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.messages-result {
+  min-height: 24px;
+}
+
+.messages-result.is-error {
+  color: #ff8f8f;
 }
 
 .status-pill {
