@@ -38,6 +38,7 @@
         <nav class="dashboard-tabs" aria-label="Вкладки дэшборда">
           <button id="tab-analytics" class="dashboard-tab is-active" type="button">Аналитика</button>
           <button id="tab-gifts" class="dashboard-tab" type="button">Подарки</button>
+          <button id="tab-messages" class="dashboard-tab" type="button">Сообщения</button>
           <button id="tab-promos" class="dashboard-tab" type="button">Попапы</button>
         </nav>
 
@@ -186,6 +187,28 @@
                   </thead>
                   <tbody id="gift-purchases-body"></tbody>
                 </table>
+              </div>
+            </article>
+          </section>
+        </section>
+
+        <section id="messages-panel" class="dashboard-panel messages-panel">
+          <section class="dashboard-grid messages-grid">
+            <article class="panel-card panel-card-wide">
+              <div class="panel-head">
+                <h2>Сообщения игрокам</h2>
+                <span class="panel-note">Отправка всем игрокам, которые запускали бота и не отключили уведомления</span>
+              </div>
+              <div class="messages-card-body">
+                <label class="promo-field">
+                  <span>Текст сообщения</span>
+                  <textarea id="broadcast-text" rows="7" maxlength="1000" placeholder="Введите текст массового сообщения."></textarea>
+                </label>
+                <div class="messages-actions">
+                  <button id="broadcast-dry-run" type="button" class="dashboard-ghost-btn">Проверить аудиторию</button>
+                  <button id="broadcast-send" type="button">Отправить всем</button>
+                </div>
+                <div id="broadcast-result" class="messages-result empty-state">Пока ничего не отправляли.</div>
               </div>
             </article>
           </section>
