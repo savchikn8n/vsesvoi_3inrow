@@ -8,10 +8,10 @@ const corsHeaders = {
 };
 
 const SHOP_ITEMS = {
-  hookah: { id: 'hookah', price: 350 },
-  tea: { id: 'tea', price: 200 },
-  mundshtuk: { id: 'mundshtuk', price: 75 },
-  tshirt: { id: 'tshirt', price: 500 },
+  hookah: { id: 'hookah', price: 350, title: 'Бесплатный покур кальяна' },
+  tea: { id: 'tea', price: 200, title: 'Чайник китайского чая, любого на ваш выбор' },
+  mundshtuk: { id: 'mundshtuk', price: 75, title: 'Фирменный мундштук' },
+  tshirt: { id: 'tshirt', price: 500, title: 'Эксклюзивная футболка' },
 } as const;
 
 type ShopGiftId = keyof typeof SHOP_ITEMS;
@@ -74,6 +74,41 @@ async function makeUniqueCode(admin: ReturnType<typeof createClient>) {
   throw new Error('Не удалось создать код покупки');
 }
 
+function buyerName(existing: {
+  telegram_first_name?: string | null;
+  telegram_username?: string | null;
+  display_name?: string | null;
+  telegram_id?: number | null;
+}) {
+  return existing.telegram_first_name?.trim()
+    || existing.telegram_username?.trim()
+    || existing.display_name?.trim()
+    || String(existing.telegram_id || '');
+}
+
+async function sendPurchaseNotification(
+  botToken: string,
+  chatId: string,
+  playerName: string,
+  giftTitle: string,
+  code: string,
+) {
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: `Игрок приобрёл подарок: ${giftTitle}!🎁\nКод подарка: ${code}\nИгрок: ${playerName}`,
+      disable_web_page_preview: true,
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data?.ok) {
+    throw new Error(data?.description || 'Telegram sendMessage failed');
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -90,6 +125,8 @@ Deno.serve(async (req) => {
     const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN') || '';
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const ADMIN_GIFTS_BOT_TOKEN = Deno.env.get('ADMIN_GIFTS_BOT_TOKEN') || '';
+    const ADMIN_GIFTS_CHAT_ID = Deno.env.get('ADMIN_GIFTS_CHAT_ID') || '';
     if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error('Missing required environment variables');
     }
@@ -175,12 +212,36 @@ Deno.serve(async (req) => {
       throw new Error(insertError.message);
     }
 
+    let botNotificationStatus: 'sent' | 'skipped' | 'failed' = 'skipped';
+    let botNotificationError: string | null = null;
+
+    if (ADMIN_GIFTS_BOT_TOKEN && ADMIN_GIFTS_CHAT_ID) {
+      try {
+        await sendPurchaseNotification(
+          ADMIN_GIFTS_BOT_TOKEN,
+          ADMIN_GIFTS_CHAT_ID,
+          buyerName(existing),
+          shopItem.title,
+          code,
+        );
+        botNotificationStatus = 'sent';
+      } catch (error) {
+        botNotificationStatus = 'failed';
+        botNotificationError = error instanceof Error ? error.message : 'Telegram notify failed';
+        console.error('[purchase-gift] notify failed', botNotificationError);
+      }
+    }
+
     return new Response(JSON.stringify({
       profile: profileData,
       purchase: {
         gift_id: shopItem.id,
         code,
         claps_spent: shopItem.price,
+      },
+      bot_notification: {
+        status: botNotificationStatus,
+        error: botNotificationError,
       },
     }), {
       status: 200,
