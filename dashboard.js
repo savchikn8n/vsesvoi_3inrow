@@ -7,8 +7,10 @@ const PROMO_UPLOAD_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/promo-uplo
 const DASHBOARD_SECRET_KEY = 'gold_match_dashboard_secret';
 
 const secretInputEl = document.getElementById('dashboard-secret');
+const authPanelEl = document.getElementById('auth-panel');
 const connectBtnEl = document.getElementById('connect-dashboard');
-const refreshBtnEl = document.getElementById('refresh-dashboard');
+const toggleSecretBtnEl = document.getElementById('toggle-secret');
+const loadingEl = document.getElementById('dashboard-loading');
 const statusEl = document.getElementById('dashboard-status');
 const updatedAtEl = document.getElementById('dashboard-updated-at');
 const analyticsTabEl = document.getElementById('tab-analytics');
@@ -78,6 +80,7 @@ let lastPromoRows = [];
 let lastGiftPurchases = [];
 let selectedPromoImageFile = null;
 let promoPreviewObjectUrl = '';
+let dashboardLoading = false;
 
 function loadDashboardSecret() {
   return sessionStorage.getItem(DASHBOARD_SECRET_KEY) || '';
@@ -89,6 +92,15 @@ function saveDashboardSecret(secret) {
 
 function setStatus(message) {
   if (statusEl) statusEl.textContent = message || '';
+}
+
+function setLoading(loading) {
+  dashboardLoading = Boolean(loading);
+  loadingEl?.classList.toggle('is-active', dashboardLoading);
+}
+
+function setSecretPanelCollapsed(collapsed) {
+  authPanelEl?.classList.toggle('is-collapsed', Boolean(collapsed));
 }
 
 function formatNumber(value) {
@@ -475,12 +487,18 @@ async function runBroadcast(dryRun) {
 async function fetchAllDashboardData() {
   const secret = loadDashboardSecret();
   if (!secret) {
-    setStatus('Введите DASHBOARD_SECRET.');
+    setStatus('Нужен dashboard secret.');
+    setSecretPanelCollapsed(false);
     return;
   }
-  setStatus('Загружаем dashboard...');
-  await Promise.all([fetchSummary(), fetchGiftPurchases(), fetchPromos()]);
-  setStatus('');
+  setLoading(true);
+  try {
+    await Promise.all([fetchSummary(), fetchGiftPurchases(), fetchPromos()]);
+    setStatus('');
+    setSecretPanelCollapsed(true);
+  } finally {
+    setLoading(false);
+  }
 }
 
 async function savePromo(isActive) {
@@ -509,6 +527,7 @@ function connectDashboard() {
   const secret = secretInputEl?.value.trim();
   if (!secret) {
     setStatus('Введите DASHBOARD_SECRET.');
+    setSecretPanelCollapsed(false);
     return;
   }
   saveDashboardSecret(secret);
@@ -531,7 +550,10 @@ promosTabEl?.addEventListener('click', () => setActiveTab('promos'));
 promoEditorSubtabEl?.addEventListener('click', () => setPromoSubtab('editor'));
 promoArchiveSubtabEl?.addEventListener('click', () => setPromoSubtab('archive'));
 connectBtnEl?.addEventListener('click', connectDashboard);
-refreshBtnEl?.addEventListener('click', () => void fetchAllDashboardData().catch((error) => setStatus(error.message || 'Ошибка обновления')));
+toggleSecretBtnEl?.addEventListener('click', () => {
+  const collapsed = authPanelEl?.classList.contains('is-collapsed');
+  setSecretPanelCollapsed(!collapsed);
+});
 promoSaveDraftBtnEl?.addEventListener('click', () => void savePromo(false).catch((error) => setStatus(error.message || 'Не удалось сохранить попап')));
 promoPublishBtnEl?.addEventListener('click', () => void savePromo(true).catch((error) => setStatus(error.message || 'Не удалось запустить попап')));
 promoResetBtnEl?.addEventListener('click', resetPromoEditor);
@@ -587,6 +609,8 @@ const savedSecret = loadDashboardSecret();
 if (savedSecret && secretInputEl) {
   secretInputEl.value = savedSecret;
   void fetchAllDashboardData().catch((error) => setStatus(error.message || 'Не удалось загрузить dashboard'));
+} else {
+  setSecretPanelCollapsed(false);
 }
 resetPromoEditor();
 setPromoSubtab('editor');
