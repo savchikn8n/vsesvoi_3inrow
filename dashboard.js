@@ -1,57 +1,52 @@
+const DASHBOARD_SECRET_KEY = 'vs_dashboard_secret';
 const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUMMARY_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/analytics-summary` : '';
 const GIFT_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/gift-admin` : '';
 const MESSAGE_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/messages-admin` : '';
 const PROMO_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/promo-admin` : '';
 const PROMO_UPLOAD_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/promo-upload` : '';
-const DASHBOARD_SECRET_KEY = 'gold_match_dashboard_secret';
 
+const statusEl = document.getElementById('dashboard-status');
+const loadingEl = document.getElementById('dashboard-loading');
 const secretInputEl = document.getElementById('dashboard-secret');
-const authPanelEl = document.getElementById('auth-panel');
 const connectBtnEl = document.getElementById('connect-dashboard');
 const toggleSecretBtnEl = document.getElementById('toggle-secret');
-const loadingEl = document.getElementById('dashboard-loading');
-const statusEl = document.getElementById('dashboard-status');
-const updatedAtEl = document.getElementById('dashboard-updated-at');
+const authPanelEl = document.getElementById('auth-panel');
+
 const analyticsTabEl = document.getElementById('tab-analytics');
+const sessionsTabEl = document.getElementById('tab-sessions');
 const giftsTabEl = document.getElementById('tab-gifts');
 const messagesTabEl = document.getElementById('tab-messages');
 const promosTabEl = document.getElementById('tab-promos');
+
 const analyticsPanelEl = document.getElementById('analytics-panel');
+const sessionsPanelEl = document.getElementById('sessions-panel');
 const giftsPanelEl = document.getElementById('gifts-panel');
 const messagesPanelEl = document.getElementById('messages-panel');
 const promosPanelEl = document.getElementById('promos-panel');
+
 const periodSwitchEl = document.querySelector('.period-switch');
-const promoEditorSubtabEl = document.getElementById('promo-subtab-editor');
-const promoArchiveSubtabEl = document.getElementById('promo-subtab-archive');
-const promoGridEl = document.querySelector('.promo-grid');
-
-const metricEls = {
-  totalPlayers: document.getElementById('metric-total-players'),
-  activePlayers: document.getElementById('metric-active-players'),
-  newPlayers: document.getElementById('metric-new-players'),
-  sessions: document.getElementById('metric-sessions'),
-  avgDuration: document.getElementById('metric-avg-duration'),
-  avgScore: document.getElementById('metric-avg-score'),
-  clapsSpent: document.getElementById('metric-claps-spent'),
-  clapsEarned: document.getElementById('metric-claps-earned'),
-  giftsPurchased: document.getElementById('metric-gifts-purchased'),
-  avgSpend: document.getElementById('metric-avg-spend'),
-  returningPlayers: document.getElementById('metric-returning-players'),
-};
-
-const topPlayersBodyEl = document.getElementById('top-players-body');
-const topEventsListEl = document.getElementById('top-events-list');
+const topPlayersListEl = document.getElementById('top-players-list');
+const eventsChartEl = document.getElementById('events-chart');
+const eventsLegendEl = document.getElementById('events-legend');
 const recentSessionsBodyEl = document.getElementById('recent-sessions-body');
-const giftPurchasesBodyEl = document.getElementById('gift-purchases-body');
+const updatedAtEl = document.getElementById('dashboard-updated-at');
+const messageImpactListEl = document.getElementById('message-impact-list');
+const broadcastHistoryBodyEl = document.getElementById('broadcast-history-body');
+
 const giftSearchEl = document.getElementById('gift-search');
 const giftFilterItemEl = document.getElementById('gift-filter-item');
 const giftFilterStatusEl = document.getElementById('gift-filter-status');
+const giftPurchasesBodyEl = document.getElementById('gift-purchases-body');
+
 const broadcastTextEl = document.getElementById('broadcast-text');
 const broadcastDryRunBtnEl = document.getElementById('broadcast-dry-run');
 const broadcastSendBtnEl = document.getElementById('broadcast-send');
 const broadcastResultEl = document.getElementById('broadcast-result');
 
+const promoEditorSubtabEl = document.getElementById('promo-subtab-editor');
+const promoArchiveSubtabEl = document.getElementById('promo-subtab-archive');
+const promoGridEl = document.querySelector('.promo-grid');
 const promoEditorNoteEl = document.getElementById('promo-editor-note');
 const promoTitleInputEl = document.getElementById('promo-title-input');
 const promoBodyInputEl = document.getElementById('promo-body-input');
@@ -71,6 +66,21 @@ const promoPreviewSecondaryEl = document.getElementById('promo-preview-secondary
 const promoPreviewPrimaryEl = document.getElementById('promo-preview-primary');
 const promoListEl = document.getElementById('promo-list');
 
+const metricEls = {
+  totalPlayers: document.getElementById('metric-total-players'),
+  activePlayers: document.getElementById('metric-active-players'),
+  newPlayers: document.getElementById('metric-new-players'),
+  sessions: document.getElementById('metric-sessions'),
+  avgDuration: document.getElementById('metric-avg-duration'),
+  avgScore: document.getElementById('metric-avg-score'),
+  clapsSpent: document.getElementById('metric-claps-spent'),
+  clapsEarned: document.getElementById('metric-claps-earned'),
+  giftsPurchased: document.getElementById('metric-gifts-purchased'),
+  avgSpend: document.getElementById('metric-avg-spend'),
+  returningPlayers: document.getElementById('metric-returning-players'),
+  messageRetention: document.getElementById('metric-message-retention'),
+};
+
 let refreshTimerId = null;
 let currentDashboardTab = 'analytics';
 let currentAnalyticsPeriod = '24h';
@@ -80,7 +90,8 @@ let lastPromoRows = [];
 let lastGiftPurchases = [];
 let selectedPromoImageFile = null;
 let promoPreviewObjectUrl = '';
-let dashboardLoading = false;
+
+const EVENT_COLORS = ['#f7c83e', '#f3a620', '#ffdf7b', '#d9a83a', '#8cd18f', '#78a5ff', '#f98080', '#b58cff', '#63d6d6', '#f7edc0'];
 
 function loadDashboardSecret() {
   return sessionStorage.getItem(DASHBOARD_SECRET_KEY) || '';
@@ -95,8 +106,7 @@ function setStatus(message) {
 }
 
 function setLoading(loading) {
-  dashboardLoading = Boolean(loading);
-  loadingEl?.classList.toggle('is-active', dashboardLoading);
+  loadingEl?.classList.toggle('is-active', Boolean(loading));
 }
 
 function setSecretPanelCollapsed(collapsed) {
@@ -124,6 +134,15 @@ function formatDateTime(iso) {
   }).format(new Date(iso));
 }
 
+function formatPercent(value) {
+  return `${formatNumber(value)}%`;
+}
+
+function truncate(value, limit = 140) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (text.length <= limit) return text;
+  return `${text.slice(0, limit - 1)}…`;
+}
 
 function revokePromoPreviewObjectUrl() {
   if (!promoPreviewObjectUrl) return;
@@ -189,48 +208,119 @@ async function postDashboardJson(url, payload) {
 }
 
 function renderTopPlayers(items = []) {
-  if (!topPlayersBodyEl) return;
-  topPlayersBodyEl.replaceChildren();
+  if (!topPlayersListEl) return;
+  topPlayersListEl.replaceChildren();
   if (!items.length) {
-    const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="4" class="empty-state">Пока нет данных.</td>';
-    topPlayersBodyEl.appendChild(row);
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Пока нет данных.';
+    topPlayersListEl.appendChild(empty);
     return;
   }
-  items.forEach((item) => {
-    const row = document.createElement('tr');
+
+  items.slice(0, 10).forEach((item) => {
+    const row = document.createElement('div');
+    row.className = 'rank-row';
     row.innerHTML = `
-      <td>${item.rank}</td>
-      <td>${item.display_name}</td>
-      <td>${formatNumber(item.best_score)}</td>
-      <td>${formatNumber(item.clap_balance)}</td>
+      <div class="rank-index">#${item.rank}</div>
+      <div class="rank-player">${item.display_name}</div>
+      <div class="rank-score">${formatNumber(item.best_score)}</div>
+      <div class="rank-claps">${formatNumber(item.clap_balance)}</div>
     `;
-    topPlayersBodyEl.appendChild(row);
+    topPlayersListEl.appendChild(row);
   });
 }
 
-function renderTopEvents(items = []) {
-  if (!topEventsListEl) return;
-  topEventsListEl.replaceChildren();
+function buildEventsChart(items = []) {
+  if (!eventsChartEl || !eventsLegendEl) return;
+  eventsChartEl.replaceChildren();
+  eventsLegendEl.replaceChildren();
+
   if (!items.length) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
     empty.textContent = 'Пока нет событий.';
-    topEventsListEl.appendChild(empty);
+    eventsLegendEl.appendChild(empty);
     return;
   }
-  items.forEach((item) => {
-    const row = document.createElement('div');
-    row.className = 'event-row';
-    row.innerHTML = `
-      <span class="event-name">${item.event_name}</span>
+
+  const total = items.reduce((sum, item) => sum + Number(item.count || 0), 0) || 1;
+  const radius = 88;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', '0 0 220 220');
+
+  const bg = document.createElementNS(svgNS, 'circle');
+  bg.setAttribute('cx', '110');
+  bg.setAttribute('cy', '110');
+  bg.setAttribute('r', String(radius));
+  bg.setAttribute('fill', 'none');
+  bg.setAttribute('stroke', 'rgba(255,255,255,0.06)');
+  bg.setAttribute('stroke-width', '24');
+  svg.appendChild(bg);
+
+  items.forEach((item, index) => {
+    const fraction = Number(item.count || 0) / total;
+    const dash = fraction * circumference;
+    const color = EVENT_COLORS[index % EVENT_COLORS.length];
+
+    const circle = document.createElementNS(svgNS, 'circle');
+    circle.setAttribute('cx', '110');
+    circle.setAttribute('cy', '110');
+    circle.setAttribute('r', String(radius));
+    circle.setAttribute('fill', 'none');
+    circle.setAttribute('stroke', color);
+    circle.setAttribute('stroke-width', '24');
+    circle.setAttribute('stroke-linecap', 'round');
+    circle.setAttribute('stroke-dasharray', `${dash} ${circumference - dash}`);
+    circle.setAttribute('stroke-dashoffset', String(-offset));
+    circle.setAttribute('transform', 'rotate(-90 110 110)');
+    const title = document.createElementNS(svgNS, 'title');
+    title.textContent = `${item.event_name}: ${formatNumber(item.count)} (${Math.round(fraction * 100)}%)`;
+    circle.appendChild(title);
+    svg.appendChild(circle);
+
+    offset += dash;
+
+    const legendRow = document.createElement('div');
+    legendRow.className = 'event-legend-row';
+    legendRow.innerHTML = `
+      <span class="event-swatch" style="background:${color}"></span>
+      <span class="event-meta">
+        <span class="event-name">${item.event_name}</span>
+        <span class="event-share">${Math.round(fraction * 100)}% от всех событий</span>
+      </span>
       <span class="event-count">${formatNumber(item.count)}</span>
     `;
-    topEventsListEl.appendChild(row);
+    eventsLegendEl.appendChild(legendRow);
   });
+
+  const centerText = document.createElementNS(svgNS, 'text');
+  centerText.setAttribute('x', '110');
+  centerText.setAttribute('y', '102');
+  centerText.setAttribute('text-anchor', 'middle');
+  centerText.setAttribute('fill', '#f7c83e');
+  centerText.setAttribute('font-size', '28');
+  centerText.setAttribute('font-weight', '800');
+  centerText.textContent = formatNumber(total);
+  svg.appendChild(centerText);
+
+  const centerCaption = document.createElementNS(svgNS, 'text');
+  centerCaption.setAttribute('x', '110');
+  centerCaption.setAttribute('y', '126');
+  centerCaption.setAttribute('text-anchor', 'middle');
+  centerCaption.setAttribute('fill', 'rgba(244,241,232,0.55)');
+  centerCaption.setAttribute('font-size', '12');
+  centerCaption.textContent = 'действий';
+  svg.appendChild(centerCaption);
+
+  eventsChartEl.appendChild(svg);
 }
 
-function renderRecentSessions(items = []) {
+function renderSessions(items = []) {
   if (!recentSessionsBodyEl) return;
   recentSessionsBodyEl.replaceChildren();
   if (!items.length) {
@@ -255,6 +345,59 @@ function renderRecentSessions(items = []) {
   });
 }
 
+function renderBroadcasts(items = []) {
+  if (broadcastHistoryBodyEl) {
+    broadcastHistoryBodyEl.replaceChildren();
+    if (!items.length) {
+      const row = document.createElement('tr');
+      row.innerHTML = '<td colspan="6" class="empty-state">Пока нет отправленных сообщений.</td>';
+      broadcastHistoryBodyEl.appendChild(row);
+    } else {
+      items.forEach((item) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${formatDateTime(item.created_at)}</td>
+          <td>${truncate(item.text, 110)}</td>
+          <td>${formatNumber(item.sent_count)}</td>
+          <td>${formatNumber(item.failed_count)}</td>
+          <td>${formatNumber(item.returned_count)}</td>
+          <td>${formatPercent(item.retention_rate)}</td>
+        `;
+        broadcastHistoryBodyEl.appendChild(row);
+      });
+    }
+  }
+
+  if (messageImpactListEl) {
+    messageImpactListEl.replaceChildren();
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'Пока нет отправленных сообщений.';
+      messageImpactListEl.appendChild(empty);
+      return;
+    }
+
+    items.slice(0, 6).forEach((item) => {
+      const card = document.createElement('div');
+      card.className = 'broadcast-item';
+      card.innerHTML = `
+        <div class="broadcast-item-top">
+          <span class="broadcast-date">${formatDateTime(item.created_at)}</span>
+          <span class="broadcast-rate">${formatPercent(item.retention_rate)}</span>
+        </div>
+        <div class="broadcast-text">${truncate(item.text, 180)}</div>
+        <div class="broadcast-stats">
+          <span>Отправлено: ${formatNumber(item.sent_count)}</span>
+          <span>Ошибки: ${formatNumber(item.failed_count)}</span>
+          <span>Вернулись: ${formatNumber(item.returned_count)}</span>
+        </div>
+      `;
+      messageImpactListEl.appendChild(card);
+    });
+  }
+}
+
 function renderGiftPurchases(items = []) {
   if (!giftPurchasesBodyEl) return;
   giftPurchasesBodyEl.replaceChildren();
@@ -270,7 +413,7 @@ function renderGiftPurchases(items = []) {
   });
   if (!filteredItems.length) {
     const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="5" class="empty-state">Пока нет покупок.</td>';
+    row.innerHTML = '<td colspan="6" class="empty-state">Пока нет покупок.</td>';
     giftPurchasesBodyEl.appendChild(row);
     return;
   }
@@ -280,6 +423,7 @@ function renderGiftPurchases(items = []) {
       <td>${item.player_label || 'Игрок'}</td>
       <td>${item.gift_id}</td>
       <td>${item.code}</td>
+      <td>${formatDateTime(item.created_at)}</td>
       <td><span class="status-pill ${item.status}">${item.status === 'issued' ? 'Выдан' : 'Не выдан'}</span></td>
       <td><button type="button" class="dashboard-ghost-btn" data-gift-action="toggle-issued" data-code="${item.code}">${item.status === 'issued' ? 'Снять' : 'Выдать'}</button></td>
     `;
@@ -300,19 +444,26 @@ function renderSummary(summary) {
   metricEls.giftsPurchased.textContent = formatNumber(overview.gifts_purchased_24h);
   metricEls.avgSpend.textContent = formatNumber(overview.avg_claps_spent_per_buyer_24h);
   metricEls.returningPlayers.textContent = formatNumber(overview.returning_players_24h);
+  metricEls.messageRetention.textContent = overview.message_retention_rate
+    ? formatPercent(overview.message_retention_rate)
+    : formatNumber(overview.message_returned_users || 0);
+
   renderTopPlayers(summary?.top_players || []);
-  renderTopEvents(summary?.top_events_24h || []);
-  renderRecentSessions(summary?.recent_sessions || []);
-  updatedAtEl.textContent = `Обновлено: ${formatDateTime(summary?.generated_at)}`;
+  buildEventsChart(summary?.top_events_24h || []);
+  renderSessions(summary?.session_history || []);
+  renderBroadcasts(summary?.broadcasts || []);
+  if (updatedAtEl) updatedAtEl.textContent = `Обновлено: ${formatDateTime(summary?.generated_at)}`;
 }
 
 function setActiveTab(tab) {
   currentDashboardTab = tab;
   analyticsTabEl?.classList.toggle('is-active', tab === 'analytics');
+  sessionsTabEl?.classList.toggle('is-active', tab === 'sessions');
   giftsTabEl?.classList.toggle('is-active', tab === 'gifts');
   messagesTabEl?.classList.toggle('is-active', tab === 'messages');
   promosTabEl?.classList.toggle('is-active', tab === 'promos');
   analyticsPanelEl?.classList.toggle('is-active', tab === 'analytics');
+  sessionsPanelEl?.classList.toggle('is-active', tab === 'sessions');
   giftsPanelEl?.classList.toggle('is-active', tab === 'gifts');
   messagesPanelEl?.classList.toggle('is-active', tab === 'messages');
   promosPanelEl?.classList.toggle('is-active', tab === 'promos');
@@ -414,6 +565,11 @@ function renderPromoList(items = []) {
     const card = document.createElement('article');
     card.className = 'promo-item';
     const status = popup.archived_at ? 'Архив' : popup.is_active ? 'Активен' : 'Черновик';
+    const views = Number(popup.stats?.views || 0);
+    const opens = Number(popup.stats?.opens || 0);
+    const dismisses = Number(popup.stats?.dismisses || 0);
+    const ctr = views ? Math.round((opens / views) * 100) : 0;
+    const dismissRate = views ? Math.round((dismisses / views) * 100) : 0;
     card.innerHTML = `
       <div class="promo-item-thumb">${popup.image_url ? `<img src="${popup.image_url}" alt="${popup.title}" />` : ''}</div>
       <div class="promo-item-copy">
@@ -424,9 +580,9 @@ function renderPromoList(items = []) {
         <div class="promo-item-body">${popup.body}</div>
         <div class="promo-item-meta">${popup.primary_label} → ${popup.primary_url}</div>
         <div class="promo-item-stats">
-          <span>Показы: ${formatNumber(popup.stats?.views)}</span>
-          <span>Отмена: ${formatNumber(popup.stats?.dismisses)}</span>
-          <span>Переходы: ${formatNumber(popup.stats?.opens)}</span>
+          <span>Показы: ${formatNumber(views)}</span>
+          <span>Закрытия: ${formatNumber(dismisses)} (${dismissRate}%)</span>
+          <span>Переходы: ${formatNumber(opens)} (${ctr}%)</span>
         </div>
       </div>
       <div class="promo-item-actions">
@@ -479,15 +635,14 @@ async function runBroadcast(dryRun) {
     return;
   }
 
-  setBroadcastResult(
-    `Отправлено: ${formatNumber(data?.sent || 0)}. Ошибок: ${formatNumber(data?.failed || 0)}. Всего: ${formatNumber(data?.total || 0)}.`,
-  );
+  setBroadcastResult(`Отправлено: ${formatNumber(data?.sent || 0)}. Ошибок: ${formatNumber(data?.failed || 0)}.`);
+  await fetchSummary();
 }
 
 async function fetchAllDashboardData() {
   const secret = loadDashboardSecret();
   if (!secret) {
-    setStatus('Нужен dashboard secret.');
+    setStatus('');
     setSecretPanelCollapsed(false);
     return;
   }
@@ -544,6 +699,7 @@ function startAutoRefresh() {
 }
 
 analyticsTabEl?.addEventListener('click', () => setActiveTab('analytics'));
+sessionsTabEl?.addEventListener('click', () => setActiveTab('sessions'));
 giftsTabEl?.addEventListener('click', () => setActiveTab('gifts'));
 messagesTabEl?.addEventListener('click', () => setActiveTab('messages'));
 promosTabEl?.addEventListener('click', () => setActiveTab('promos'));
