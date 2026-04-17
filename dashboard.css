@@ -321,6 +321,14 @@ textarea {
   height: 100%;
 }
 
+.events-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 14px 14px;
+  align-content: start;
+}
+
 .analytics-overview-card,
 .analytics-top-players-card,
 .behavior-card,
@@ -443,6 +451,53 @@ textarea {
   gap: 10px;
   align-content: start;
   min-height: 0;
+}
+
+.event-mini-card {
+  display: grid;
+  gap: 8px;
+  min-height: 96px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: rgba(255,255,255,0.02);
+  box-shadow: inset 0 0 0 1px rgba(247, 200, 62, 0.1);
+}
+
+.event-mini-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.event-mini-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.event-mini-count {
+  color: var(--accent);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.event-mini-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.event-mini-rank {
+  color: var(--accent);
+  font-weight: 800;
 }
 
 .broadcast-item,
@@ -920,6 +975,10 @@ textarea {
   .promo-list-card {
     grid-column: auto;
     grid-row: auto;
+  }
+
+  .events-mini-grid {
+    grid-template-columns: 1fr;
   }
 }
 

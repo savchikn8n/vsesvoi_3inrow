@@ -97,6 +97,22 @@ let currentSessionsClapsMode = 'earned';
 let lastSessionHistory = [];
 
 const EVENT_COLORS = ['#f7c83e', '#f3a620', '#ffdf7b', '#d9a83a', '#8cd18f', '#78a5ff', '#f98080', '#b58cff', '#63d6d6', '#f7edc0'];
+const EVENT_LABELS = {
+  session_start: 'Старт сессии',
+  game_started: 'Начало игры',
+  session_progress: 'Игровой ход',
+  session_end: 'Конец сессии',
+  gifts_opened: 'Открытие подарков',
+  gift_purchased: 'Покупка подарка',
+  leaderboard_opened: 'Открытие лидерборда',
+  titles_opened: 'Открытие титулов',
+  settings_opened: 'Открытие настроек',
+  profile_completed: 'Заполнение профиля',
+  promo_view: 'Показ попапа',
+  promo_open: 'Переход из попапа',
+  promo_dismiss: 'Закрытие попапа',
+  broadcast_sent: 'Рассылка сообщений',
+};
 
 function loadDashboardSecret() {
   return sessionStorage.getItem(DASHBOARD_SECRET_KEY) || '';
@@ -147,6 +163,12 @@ function truncate(value, limit = 140) {
   const text = typeof value === 'string' ? value.trim() : '';
   if (text.length <= limit) return text;
   return `${text.slice(0, limit - 1)}…`;
+}
+
+function translateAnalyticsEventName(name) {
+  const key = typeof name === 'string' ? name.trim() : '';
+  if (!key) return 'Событие';
+  return EVENT_LABELS[key] || key.replace(/_/g, ' ');
 }
 
 function revokePromoPreviewObjectUrl() {
@@ -352,17 +374,21 @@ function renderTopEventsList(items = []) {
       return;
     }
 
-    items.slice(0, 6).forEach((item, index) => {
+    const visibleItems = items.slice(0, 8);
+    const total = visibleItems.reduce((sum, entry) => sum + Number(entry.count || 0), 0);
+    visibleItems.forEach((item, index) => {
+      const count = Number(item.count || 0);
+      const share = Math.round((count / Math.max(1, total)) * 100);
       const card = document.createElement('div');
-      card.className = 'broadcast-item';
+      card.className = 'event-mini-card';
       card.innerHTML = `
-        <div class="broadcast-item-top">
-          <span class="broadcast-date">#${index + 1}</span>
-          <span class="broadcast-rate">${formatNumber(item.count)}</span>
+        <div class="event-mini-top">
+          <p class="event-mini-title">${translateAnalyticsEventName(item.event_name)}</p>
+          <span class="event-mini-count">${formatNumber(count)}</span>
         </div>
-        <div class="broadcast-text">${item.event_name}</div>
-        <div class="broadcast-stats">
-          <span>${Math.round((Number(item.count || 0) / Math.max(1, items.reduce((sum, entry) => sum + Number(entry.count || 0), 0))) * 100)}% от частых событий</span>
+        <div class="event-mini-meta">
+          <span class="event-mini-rank">#${index + 1}</span>
+          <span>${share}% от частых событий</span>
         </div>
       `;
       messageImpactListEl.appendChild(card);
