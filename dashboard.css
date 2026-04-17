@@ -603,7 +603,7 @@ textarea {
 .messages-grid,
 .promo-grid {
   display: grid;
-  grid-template-columns: minmax(360px, 0.9fr) minmax(460px, 1.1fr);
+  grid-template-columns: minmax(300px, 0.78fr) minmax(360px, 1fr) minmax(360px, 1fr);
   gap: 14px;
   height: 100%;
   min-height: 0;
@@ -648,6 +648,13 @@ textarea {
 
 .messages-result.is-error {
   color: var(--danger);
+}
+
+.feedback-cell-text {
+  max-width: 520px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.35;
 }
 
 .table-wrap {

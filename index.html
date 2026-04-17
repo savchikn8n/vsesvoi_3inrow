@@ -140,6 +140,9 @@
               <button id="shop-owned-btn" class="shop-owned-btn" type="button" aria-label="Мои подарки">
                 <span class="shop-owned-btn-icon" aria-hidden="true"></span>
               </button>
+              <button id="shop-feedback-btn" class="shop-feedback-btn" type="button" aria-label="Обратная связь">
+                <span class="shop-feedback-btn-icon" aria-hidden="true"></span>
+              </button>
               <div class="shop-balance panel panel-compact" aria-label="Баланс ладошек">
                 <span class="panel-claps-icon" aria-hidden="true">
                   <img src="./assets/claps.svg" alt="" />
@@ -403,6 +406,18 @@
         <div id="shop-owned-list" class="shop-owned-list"></div>
         <div class="modal-actions">
           <button id="shop-owned-close" type="button">Закрыть</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="feedback-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card shop-feedback-card">
+        <h2>Обратная связь</h2>
+        <p>Напишите, что стоит улучшить, сломалось или понравилось.</p>
+        <textarea id="feedback-input" class="feedback-input" rows="6" maxlength="600" placeholder="Ваше сообщение"></textarea>
+        <div class="modal-actions feedback-actions">
+          <button id="feedback-cancel" type="button" class="shop-confirm-cancel-btn">Не сейчас</button>
+          <button id="feedback-send" type="button">Отправить</button>
         </div>
       </div>
     </div>
