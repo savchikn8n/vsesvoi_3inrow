@@ -378,7 +378,7 @@ function renderFeedback(items = []) {
   feedbackHistoryBodyEl.replaceChildren();
   if (!items.length) {
     const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="3" class="empty-state">Пока нет входящих сообщений.</td>';
+    row.innerHTML = '<td colspan="4" class="empty-state">Пока нет входящих сообщений.</td>';
     feedbackHistoryBodyEl.appendChild(row);
     return;
   }
@@ -397,7 +397,16 @@ function renderFeedback(items = []) {
     messageWrap.textContent = item.message || '';
     messageCell.appendChild(messageWrap);
 
-    row.append(dateCell, playerCell, messageCell);
+    const actionCell = document.createElement('td');
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'dashboard-danger-btn feedback-delete-btn';
+    deleteBtn.dataset.feedbackAction = 'delete';
+    deleteBtn.dataset.feedbackId = item.id || '';
+    deleteBtn.setAttribute('aria-label', 'Удалить сообщение');
+    actionCell.appendChild(deleteBtn);
+
+    row.append(dateCell, playerCell, messageCell, actionCell);
     feedbackHistoryBodyEl.appendChild(row);
   });
 }
@@ -665,6 +674,12 @@ async function fetchFeedback() {
   renderFeedback(data?.feedback || []);
 }
 
+async function runFeedbackAction(action, feedbackId) {
+  if (action === 'delete' && !window.confirm('Удалить сообщение игрока?')) return;
+  await postDashboardJson(FEEDBACK_ADMIN_URL, { action, feedbackId });
+  await fetchFeedback();
+}
+
 async function runGiftAction(action, code) {
   if (action === 'delete' && !window.confirm('Удалить покупку из системы?')) {
     return;
@@ -805,6 +820,13 @@ giftPurchasesBodyEl?.addEventListener('click', (event) => {
   if (!button) return;
   void runGiftAction(button.dataset.giftAction || '', button.dataset.code || '').catch((error) =>
     setStatus(error.message || 'Не удалось обновить статус подарка'),
+  );
+});
+feedbackHistoryBodyEl?.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-feedback-action][data-feedback-id]');
+  if (!button) return;
+  void runFeedbackAction(button.dataset.feedbackAction || '', button.dataset.feedbackId || '').catch((error) =>
+    setStatus(error.message || 'Не удалось изменить сообщение'),
   );
 });
 sessionsClapsToggleEl?.addEventListener('click', () => {
