@@ -15,10 +15,8 @@ function playerLabel(row: {
 }) {
   const parts = [] as string[];
   if (row.display_name_snapshot) parts.push(row.display_name_snapshot);
-  if (row.telegram_first_name_snapshot) parts.push(row.telegram_first_name_snapshot);
   if (row.telegram_username_snapshot) parts.push(`@${row.telegram_username_snapshot}`);
-  parts.push(String(row.telegram_id));
-  return parts.join(' / ');
+  return parts.join(' / ') || 'Игрок';
 }
 
 Deno.serve(async (req) => {
@@ -39,15 +37,33 @@ Deno.serve(async (req) => {
     }
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+    const body = await req.json().catch(() => ({}));
+    const action = typeof body?.action === 'string' ? body.action.trim().toLowerCase() : 'list';
+
+    if (action === 'delete') {
+      const feedbackId = typeof body?.feedbackId === 'string' ? body.feedbackId.trim() : '';
+      if (!feedbackId) throw new Error('feedbackId is required');
+      const { error: deleteError } = await admin
+        .from('player_feedback')
+        .delete()
+        .eq('id', feedbackId);
+      if (deleteError) throw new Error(deleteError.message);
+    }
+
+    if (action !== 'list' && action !== 'delete') {
+      return new Response(JSON.stringify({ error: 'Unknown action' }), { status: 400, headers: corsHeaders });
+    }
+
     const { data, error } = await admin
       .from('player_feedback')
-      .select('telegram_id, message, created_at, display_name_snapshot, telegram_username_snapshot, telegram_first_name_snapshot')
+      .select('id, telegram_id, message, created_at, display_name_snapshot, telegram_username_snapshot, telegram_first_name_snapshot')
       .order('created_at', { ascending: false })
       .limit(500);
 
     if (error) throw new Error(error.message);
 
     const feedback = (data || []).map((row) => ({
+      id: row.id,
       player_label: playerLabel(row),
       message: row.message,
       created_at: row.created_at,

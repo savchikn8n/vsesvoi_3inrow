@@ -30,6 +30,7 @@ const startLeaderboardBtn = document.getElementById('start-leaderboard');
 const startGiftsBtn = document.getElementById('start-gifts');
 const giftEntryBtn = document.getElementById('gift-entry');
 const startSettingsBtn = document.getElementById('start-settings');
+const startFeedbackBtn = document.getElementById('start-feedback');
 const startActionsTrackEl = document.getElementById('start-actions-track');
 const startBoostExitBtn = document.getElementById('start-boost-exit');
 const menuHeroEl = document.getElementById('menu-hero');
@@ -97,7 +98,6 @@ const shopOwnedBtn = document.getElementById('shop-owned-btn');
 const shopOwnedModalEl = document.getElementById('shop-owned-modal');
 const shopOwnedListEl = document.getElementById('shop-owned-list');
 const shopOwnedCloseBtn = document.getElementById('shop-owned-close');
-const shopFeedbackBtn = document.getElementById('shop-feedback-btn');
 const feedbackModalEl = document.getElementById('feedback-modal');
 const feedbackInputEl = document.getElementById('feedback-input');
 const feedbackCancelBtn = document.getElementById('feedback-cancel');
@@ -1400,7 +1400,7 @@ async function sendFeedbackMessage() {
     await postJson('feedback-submit', { initData, message });
     void trackAnalytics('feedback_sent', { sessionId: activeSessionId, length: message.length });
     closeFeedbackModal();
-    openShopAlert('Спасибо', 'Сообщение отправлено. Увидим его в дэшборде.');
+    openShopAlert('Спасибо', 'Спасибо за вашу обратную связь! Это помогает нам делать игру лучше');
   } catch (error) {
     openShopAlert('Не удалось отправить', error.message || 'Попробуйте ещё раз чуть позже.');
   } finally {
@@ -3358,7 +3358,7 @@ shopBackBtn?.addEventListener('click', closeShopScreen);
 shopOwnedBtn?.addEventListener('click', () => {
   void openOwnedGiftsModal();
 });
-shopFeedbackBtn?.addEventListener('click', openFeedbackModal);
+startFeedbackBtn?.addEventListener('click', openFeedbackModal);
 shopAlertCloseBtn?.addEventListener('click', closeShopAlert);
 shopConfirmCancelBtn?.addEventListener('click', closeShopConfirm);
 shopConfirmAcceptBtn?.addEventListener('click', () => {
