@@ -97,6 +97,11 @@ const shopOwnedBtn = document.getElementById('shop-owned-btn');
 const shopOwnedModalEl = document.getElementById('shop-owned-modal');
 const shopOwnedListEl = document.getElementById('shop-owned-list');
 const shopOwnedCloseBtn = document.getElementById('shop-owned-close');
+const shopFeedbackBtn = document.getElementById('shop-feedback-btn');
+const feedbackModalEl = document.getElementById('feedback-modal');
+const feedbackInputEl = document.getElementById('feedback-input');
+const feedbackCancelBtn = document.getElementById('feedback-cancel');
+const feedbackSendBtn = document.getElementById('feedback-send');
 
 let board = [];
 let score = 0;
@@ -142,6 +147,7 @@ let menuHeroGesture = null;
 let continueRunBusy = false;
 let shopPurchaseBusy = false;
 let shopOwnedBusy = false;
+let feedbackSendBusy = false;
 let pendingShopItemId = null;
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
@@ -1362,6 +1368,45 @@ async function openOwnedGiftsModal() {
 
 function closeOwnedGiftsModal() {
   hideModal(shopOwnedModalEl);
+}
+
+function openFeedbackModal() {
+  closeAllModals();
+  if (feedbackInputEl) feedbackInputEl.value = '';
+  showModal(feedbackModalEl);
+}
+
+function closeFeedbackModal() {
+  hideModal(feedbackModalEl);
+}
+
+async function sendFeedbackMessage() {
+  if (feedbackSendBusy) return;
+  const initData = telegramInitData();
+  if (!initData || !profile?.telegram_id) {
+    openShopAlert('Нужен вход', 'Сначала авторизуйтесь через Telegram, чтобы отправить сообщение.');
+    return;
+  }
+
+  const message = feedbackInputEl?.value.trim() || '';
+  if (!message) {
+    openShopAlert('Пустое сообщение', 'Напишите текст, который хотите отправить.');
+    return;
+  }
+
+  feedbackSendBusy = true;
+  if (feedbackSendBtn) feedbackSendBtn.disabled = true;
+  try {
+    await postJson('feedback-submit', { initData, message });
+    void trackAnalytics('feedback_sent', { sessionId: activeSessionId, length: message.length });
+    closeFeedbackModal();
+    openShopAlert('Спасибо', 'Сообщение отправлено. Увидим его в дэшборде.');
+  } catch (error) {
+    openShopAlert('Не удалось отправить', error.message || 'Попробуйте ещё раз чуть позже.');
+  } finally {
+    feedbackSendBusy = false;
+    if (feedbackSendBtn) feedbackSendBtn.disabled = false;
+  }
 }
 
 async function buyShopItem(itemId) {
@@ -3313,6 +3358,7 @@ shopBackBtn?.addEventListener('click', closeShopScreen);
 shopOwnedBtn?.addEventListener('click', () => {
   void openOwnedGiftsModal();
 });
+shopFeedbackBtn?.addEventListener('click', openFeedbackModal);
 shopAlertCloseBtn?.addEventListener('click', closeShopAlert);
 shopConfirmCancelBtn?.addEventListener('click', closeShopConfirm);
 shopConfirmAcceptBtn?.addEventListener('click', () => {
@@ -3320,6 +3366,10 @@ shopConfirmAcceptBtn?.addEventListener('click', () => {
 });
 shopCodeCloseBtn?.addEventListener('click', closeShopCodeModal);
 shopOwnedCloseBtn?.addEventListener('click', closeOwnedGiftsModal);
+feedbackCancelBtn?.addEventListener('click', closeFeedbackModal);
+feedbackSendBtn?.addEventListener('click', () => {
+  void sendFeedbackMessage();
+});
 shopListEl?.addEventListener('click', (e) => {
   const button = e.target.closest('.shop-buy-btn');
   if (!button) return;

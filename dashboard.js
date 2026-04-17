@@ -3,6 +3,7 @@ const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUMMARY_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/analytics-summary` : '';
 const GIFT_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/gift-admin` : '';
 const MESSAGE_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/messages-admin` : '';
+const FEEDBACK_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/feedback-admin` : '';
 const PROMO_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/promo-admin` : '';
 const PROMO_UPLOAD_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/promo-upload` : '';
 
@@ -33,6 +34,7 @@ const sessionsSearchEl = document.getElementById('sessions-search');
 const updatedAtEl = document.getElementById('dashboard-updated-at');
 const messageImpactListEl = document.getElementById('message-impact-list');
 const broadcastHistoryBodyEl = document.getElementById('broadcast-history-body');
+const feedbackHistoryBodyEl = document.getElementById('feedback-history-body');
 
 const giftSearchEl = document.getElementById('gift-search');
 const giftFilterItemEl = document.getElementById('gift-filter-item');
@@ -105,6 +107,7 @@ const EVENT_LABELS = {
   session_end: 'Конец сессии',
   gifts_opened: 'Открытие подарков',
   gift_purchased: 'Покупка подарка',
+  feedback_sent: 'Отправка отзыва',
   leaderboard_opened: 'Открытие лидерборда',
   titles_opened: 'Открытие титулов',
   settings_opened: 'Открытие настроек',
@@ -370,6 +373,35 @@ function renderBroadcasts(items = []) {
   }
 }
 
+function renderFeedback(items = []) {
+  if (!feedbackHistoryBodyEl) return;
+  feedbackHistoryBodyEl.replaceChildren();
+  if (!items.length) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="3" class="empty-state">Пока нет входящих сообщений.</td>';
+    feedbackHistoryBodyEl.appendChild(row);
+    return;
+  }
+
+  items.forEach((item) => {
+    const row = document.createElement('tr');
+    const dateCell = document.createElement('td');
+    dateCell.textContent = formatDateTime(item.created_at);
+
+    const playerCell = document.createElement('td');
+    playerCell.textContent = item.player_label || 'Игрок';
+
+    const messageCell = document.createElement('td');
+    const messageWrap = document.createElement('div');
+    messageWrap.className = 'feedback-cell-text';
+    messageWrap.textContent = item.message || '';
+    messageCell.appendChild(messageWrap);
+
+    row.append(dateCell, playerCell, messageCell);
+    feedbackHistoryBodyEl.appendChild(row);
+  });
+}
+
 function renderTopEventsList(items = []) {
   if (messageImpactListEl) {
     messageImpactListEl.replaceChildren();
@@ -627,6 +659,12 @@ async function fetchGiftPurchases() {
   renderGiftPurchases(lastGiftPurchases);
 }
 
+async function fetchFeedback() {
+  if (!FEEDBACK_ADMIN_URL) throw new Error('Не задан SUPABASE_URL.');
+  const data = await postDashboardJson(FEEDBACK_ADMIN_URL, {});
+  renderFeedback(data?.feedback || []);
+}
+
 async function runGiftAction(action, code) {
   if (action === 'delete' && !window.confirm('Удалить покупку из системы?')) {
     return;
@@ -663,7 +701,7 @@ async function fetchAllDashboardData() {
   }
   setLoading(true);
   try {
-    await Promise.all([fetchSummary(), fetchGiftPurchases(), fetchPromos()]);
+    await Promise.all([fetchSummary(), fetchGiftPurchases(), fetchPromos(), fetchFeedback()]);
     setStatus('');
     setSecretPanelCollapsed(true);
   } finally {
