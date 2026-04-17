@@ -149,18 +149,24 @@ Deno.serve(async (req) => {
       ),
     ];
 
-    let sessionProfiles: Array<{ telegram_id: number; display_name: string | null }> = [];
+    let sessionProfiles: Array<{ telegram_id: number; display_name: string | null; telegram_username: string | null }> = [];
     if (recentSessionTelegramIds.length) {
       const recentProfilesRes = await admin
         .from('profiles')
-        .select('telegram_id, display_name')
+        .select('telegram_id, display_name, telegram_username')
         .in('telegram_id', recentSessionTelegramIds);
       if (recentProfilesRes.error) throw new Error(recentProfilesRes.error.message);
       sessionProfiles = recentProfilesRes.data || [];
     }
 
-    const sessionNameMap = new Map(
-      sessionProfiles.map((item) => [String(item.telegram_id), item.display_name || 'Игрок']),
+    const sessionProfileMap = new Map(
+      sessionProfiles.map((item) => [
+        String(item.telegram_id),
+        {
+          display_name: item.display_name || 'Игрок',
+          telegram_username: item.telegram_username || '',
+        },
+      ]),
     );
 
     const topPlayers = profiles.map((item, index) => ({
@@ -184,7 +190,8 @@ Deno.serve(async (req) => {
       .map(([event_name, count]) => ({ event_name, count }));
 
     const sessionHistory = sessions.map((item) => ({
-      display_name: sessionNameMap.get(String(item.telegram_id)) || 'Игрок',
+      display_name: sessionProfileMap.get(String(item.telegram_id))?.display_name || 'Игрок',
+      telegram_username: sessionProfileMap.get(String(item.telegram_id))?.telegram_username || '',
       telegram_id: item.telegram_id,
       session_started_at: item.session_started_at,
       duration_sec: Number(item.duration_sec || 0),

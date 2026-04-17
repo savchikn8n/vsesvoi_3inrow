@@ -29,6 +29,7 @@ const periodSwitchEl = document.querySelector('.period-switch');
 const topPlayersListEl = document.getElementById('top-players-list');
 const recentSessionsBodyEl = document.getElementById('recent-sessions-body');
 const sessionsClapsToggleEl = document.getElementById('sessions-claps-toggle');
+const sessionsSearchEl = document.getElementById('sessions-search');
 const updatedAtEl = document.getElementById('dashboard-updated-at');
 const messageImpactListEl = document.getElementById('message-impact-list');
 const broadcastHistoryBodyEl = document.getElementById('broadcast-history-body');
@@ -311,16 +312,22 @@ function renderSessions(items = []) {
   lastSessionHistory = Array.isArray(items) ? items : [];
   if (!recentSessionsBodyEl) return;
   recentSessionsBodyEl.replaceChildren();
-  if (!lastSessionHistory.length) {
+  const search = sessionsSearchEl?.value.trim().toLowerCase() || '';
+  const filteredSessions = lastSessionHistory.filter((item) => {
+    if (!search) return true;
+    const haystack = `${item.display_name || ''} ${item.telegram_username || ''} ${item.telegram_id || ''}`.toLowerCase();
+    return haystack.includes(search);
+  });
+  if (!filteredSessions.length) {
     const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="8" class="empty-state">Пока нет сессий.</td>';
+    row.innerHTML = '<td colspan="8" class="empty-state">Сессии не найдены.</td>';
     recentSessionsBodyEl.appendChild(row);
     return;
   }
   if (sessionsClapsToggleEl) {
     sessionsClapsToggleEl.textContent = currentSessionsClapsMode === 'earned' ? 'Ладошки: +' : 'Ладошки: -';
   }
-  lastSessionHistory.forEach((item) => {
+  filteredSessions.forEach((item) => {
     const clapsValue = currentSessionsClapsMode === 'earned'
       ? Number(item.claps_earned || 0)
       : Number(item.claps_spent || 0);
@@ -766,6 +773,7 @@ sessionsClapsToggleEl?.addEventListener('click', () => {
   currentSessionsClapsMode = currentSessionsClapsMode === 'earned' ? 'spent' : 'earned';
   renderSessions(lastSessionHistory);
 });
+sessionsSearchEl?.addEventListener('input', () => renderSessions(lastSessionHistory));
 broadcastDryRunBtnEl?.addEventListener('click', () => {
   void runBroadcast(true).catch((error) => setBroadcastResult(error.message || 'Не удалось проверить аудиторию', true));
 });

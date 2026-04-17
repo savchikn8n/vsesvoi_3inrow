@@ -323,7 +323,7 @@ textarea {
 
 .events-mini-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   padding: 0 14px 14px;
   align-content: start;
@@ -456,7 +456,7 @@ textarea {
 .event-mini-card {
   display: grid;
   gap: 6px;
-  min-height: 68px;
+  min-height: 62px;
   padding: 9px 10px;
   border-radius: var(--radius-lg);
   background: rgba(255,255,255,0.02);
@@ -473,14 +473,14 @@ textarea {
 .event-mini-title {
   margin: 0;
   color: var(--text);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1.1;
 }
 
 .event-mini-count {
   color: var(--accent);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
@@ -492,7 +492,15 @@ textarea {
   justify-content: space-between;
   gap: 10px;
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: 10px;
+}
+
+.sessions-toolbar {
+  width: min(280px, 28vw);
+}
+
+.sessions-toolbar input {
+  min-height: 38px;
 }
 
 .event-mini-rank {
