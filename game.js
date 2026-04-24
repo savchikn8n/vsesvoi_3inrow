@@ -74,6 +74,9 @@ const promoTitleEl = document.getElementById('promo-title');
 const promoBodyEl = document.getElementById('promo-body');
 const promoSecondaryBtn = document.getElementById('promo-secondary');
 const promoPrimaryBtn = document.getElementById('promo-primary');
+const bonusModalEl = document.getElementById('bonus-modal');
+const bonusClapsValueEl = document.getElementById('bonus-claps-value');
+const bonusCloseBtn = document.getElementById('bonus-close');
 const launcherLinksModalEl = document.getElementById('launcher-links-modal');
 const launcherLinksCloseBtn = document.getElementById('launcher-links-close');
 const launcherLinkSavchikBtn = document.getElementById('launcher-link-savchik');
@@ -141,6 +144,8 @@ let sessionClapsSpent = 0;
 let sessionSnapshotTimerId = null;
 let activePromoPopup = null;
 let promoFetchPromise = null;
+let bonusFetchPromise = null;
+let pendingBroadcastBonus = null;
 let shareRecordState = null;
 let menuHeroSlide = 0;
 let menuHeroGesture = null;
@@ -1849,6 +1854,7 @@ function closeAllModals() {
   hideModal(authModalEl);
   hideModal(profileModalEl);
   hideModal(promoModalEl);
+  hideModal(bonusModalEl);
   hideModal(launcherLinksModalEl);
   hideModal(shopAlertModalEl);
   hideModal(shopConfirmModalEl);
@@ -1884,6 +1890,52 @@ async function trackPromoAction(popupId, action) {
   }
 }
 
+async function fetchClaimedBroadcastBonus() {
+  if (bonusFetchPromise) return bonusFetchPromise;
+  const initData = telegramInitData();
+  if (!initData || !profile?.telegram_id) return null;
+
+  bonusFetchPromise = postJson('claim-broadcast-bonus', { initData })
+    .then((result) => {
+      const awardedClaps = Math.max(0, Number(result?.awardedClaps || 0));
+      if (result?.profile) {
+        saveProfile({ ...(profile || {}), ...result.profile }, { forceClapBalance: true, synced: true });
+      }
+      pendingBroadcastBonus = awardedClaps > 0 ? { awardedClaps } : null;
+      return pendingBroadcastBonus;
+    })
+    .catch(() => pendingBroadcastBonus)
+    .finally(() => {
+      bonusFetchPromise = null;
+    });
+
+  return bonusFetchPromise;
+}
+
+function showPendingBroadcastBonus() {
+  if (!pendingBroadcastBonus?.awardedClaps || !bonusModalEl || !bonusClapsValueEl) return;
+  if (startScreenEl?.classList.contains('hidden')) return;
+  bonusClapsValueEl.textContent = String(pendingBroadcastBonus.awardedClaps);
+  showModal(bonusModalEl);
+  pendingBroadcastBonus = null;
+}
+
+async function maybeShowStartScreenPopups() {
+  if (startScreenEl?.classList.contains('hidden')) return;
+  await fetchClaimedBroadcastBonus();
+
+  const popup = await fetchActivePromoPopup();
+  if (popup?.id && !hasSeenPromo(popup.id)) {
+    renderPromoPopup(popup);
+    showModal(promoModalEl);
+    markPromoSeen(popup.id);
+    void trackPromoAction(popup.id, 'view');
+    return;
+  }
+
+  showPendingBroadcastBonus();
+}
+
 function renderPromoPopup(popup) {
   if (!popup || !promoModalEl || !promoImageEl || !promoTitleEl || !promoBodyEl || !promoSecondaryBtn || !promoPrimaryBtn) return;
   promoImageEl.src = popup.image_url || '';
@@ -1894,13 +1946,7 @@ function renderPromoPopup(popup) {
 }
 
 async function maybeShowPromoPopup() {
-  if (startScreenEl?.classList.contains('hidden')) return;
-  const popup = await fetchActivePromoPopup();
-  if (!popup?.id || hasSeenPromo(popup.id)) return;
-  renderPromoPopup(popup);
-  showModal(promoModalEl);
-  markPromoSeen(popup.id);
-  void trackPromoAction(popup.id, 'view');
+  await maybeShowStartScreenPopups();
 }
 
 function dismissPromoPopup() {
@@ -1909,6 +1955,7 @@ function dismissPromoPopup() {
   if (popupId) {
     void trackPromoAction(popupId, 'dismiss');
   }
+  window.setTimeout(showPendingBroadcastBonus, 140);
 }
 
 function openPromoPrimaryAction() {
@@ -1916,6 +1963,7 @@ function openPromoPrimaryAction() {
   if (!popup?.primary_url) return;
   hideModal(promoModalEl);
   void trackPromoAction(popup.id, 'open');
+  window.setTimeout(showPendingBroadcastBonus, 140);
   window.open(popup.primary_url, '_blank', 'noopener,noreferrer');
 }
 
@@ -3348,6 +3396,7 @@ profileEntryBtn?.addEventListener('click', openProfileEditor);
 profileCloseBtn?.addEventListener('click', closeProfileEditor);
 promoSecondaryBtn?.addEventListener('click', dismissPromoPopup);
 promoPrimaryBtn?.addEventListener('click', openPromoPrimaryAction);
+bonusCloseBtn?.addEventListener('click', () => hideModal(bonusModalEl));
 launcherLinksCloseBtn?.addEventListener('click', closeLauncherLinksModal);
 launcherLinkSavchikBtn?.addEventListener('click', () => openLauncherLink('https://t.me/savchiksasha'));
 launcherLinkVsesvoiBtn?.addEventListener('click', () => openLauncherLink('https://t.me/vsesvoi_kld'));

@@ -42,9 +42,12 @@ const giftFilterStatusEl = document.getElementById('gift-filter-status');
 const giftPurchasesBodyEl = document.getElementById('gift-purchases-body');
 
 const broadcastTextEl = document.getElementById('broadcast-text');
+const broadcastBonusClapsEl = document.getElementById('broadcast-bonus-claps');
+const broadcastBonusHoursEl = document.getElementById('broadcast-bonus-hours');
 const broadcastDryRunBtnEl = document.getElementById('broadcast-dry-run');
 const broadcastSendBtnEl = document.getElementById('broadcast-send');
 const broadcastResultEl = document.getElementById('broadcast-result');
+const formatButtons = Array.from(document.querySelectorAll('.format-btn'));
 
 const promoEditorSubtabEl = document.getElementById('promo-subtab-editor');
 const promoArchiveSubtabEl = document.getElementById('promo-subtab-archive');
@@ -169,6 +172,16 @@ function truncate(value, limit = 140) {
   return `${text.slice(0, limit - 1)}…`;
 }
 
+function stripTelegramHtml(value) {
+  return String(value || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/?(?:b|strong|i|em|u|ins|tg-spoiler|blockquote)>/gi, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .trim();
+}
+
 function translateAnalyticsEventName(name) {
   const key = typeof name === 'string' ? name.trim() : '';
   if (!key) return 'Событие';
@@ -264,8 +277,14 @@ function renderTopPlayers(items = []) {
 
 function computeBehaviorMetrics(summary) {
   const generatedAt = summary?.generated_at ? new Date(summary.generated_at).getTime() : Date.now();
-  const hours = currentAnalyticsPeriod === '30d' ? 30 * 24 : currentAnalyticsPeriod === '7d' ? 7 * 24 : 24;
-  const sinceMs = generatedAt - hours * 60 * 60 * 1000;
+  const hours = currentAnalyticsPeriod === 'all'
+    ? null
+    : currentAnalyticsPeriod === '30d'
+      ? 30 * 24
+      : currentAnalyticsPeriod === '7d'
+        ? 7 * 24
+        : 24;
+  const sinceMs = hours === null ? Number.NEGATIVE_INFINITY : generatedAt - hours * 60 * 60 * 1000;
   const sessions = Array.isArray(summary?.session_history)
     ? summary.session_history.filter((item) => new Date(item.session_started_at).getTime() >= sinceMs)
     : [];
@@ -359,9 +378,10 @@ function renderBroadcasts(items = []) {
     } else {
       items.forEach((item) => {
         const row = document.createElement('tr');
+        const summaryText = stripTelegramHtml(item.text);
         row.innerHTML = `
           <td>${formatDateTime(item.created_at)}</td>
-          <td>${truncate(item.text, 110)}</td>
+          <td>${truncate(summaryText, 110)}</td>
           <td>${formatNumber(item.sent_count)}</td>
           <td>${formatNumber(item.failed_count)}</td>
           <td>${formatNumber(item.returned_count)}</td>
@@ -691,9 +711,13 @@ async function runGiftAction(action, code) {
 async function runBroadcast(dryRun) {
   if (!MESSAGE_ADMIN_URL) throw new Error('Не задан SUPABASE_URL.');
   const text = broadcastTextEl?.value.trim() || '';
+  const bonusClaps = Math.max(0, Math.floor(Number(broadcastBonusClapsEl?.value || 0)));
+  const bonusWindowHours = Math.max(0, Math.floor(Number(broadcastBonusHoursEl?.value || 0)));
   if (!text) throw new Error('Введите текст сообщения.');
   const data = await postDashboardJson(MESSAGE_ADMIN_URL, {
     text,
+    bonusClaps,
+    bonusWindowHours,
     dryRun: Boolean(dryRun),
     limit: 2000,
   });
@@ -705,6 +729,30 @@ async function runBroadcast(dryRun) {
 
   setBroadcastResult(`Отправлено: ${formatNumber(data?.sent || 0)}. Ошибок: ${formatNumber(data?.failed || 0)}.`);
   await fetchSummary();
+}
+
+function applyFormatToBroadcast(format) {
+  if (!broadcastTextEl) return;
+  const selectionStart = broadcastTextEl.selectionStart ?? 0;
+  const selectionEnd = broadcastTextEl.selectionEnd ?? 0;
+  const current = broadcastTextEl.value || '';
+  const selected = current.slice(selectionStart, selectionEnd);
+  const map = {
+    bold: ['<b>', '</b>', 'Жирный текст'],
+    italic: ['<i>', '</i>', 'Курсив'],
+    underline: ['<u>', '</u>', 'Подчеркнутый'],
+    spoiler: ['<tg-spoiler>', '</tg-spoiler>', 'Скрытый текст'],
+    quote: ['<blockquote>', '</blockquote>', 'Текст цитаты'],
+  };
+  const [open, close, fallback] = map[format] || [];
+  if (!open || !close) return;
+  const content = selected || fallback;
+  const nextValue = `${current.slice(0, selectionStart)}${open}${content}${close}${current.slice(selectionEnd)}`;
+  broadcastTextEl.value = nextValue;
+  const start = selectionStart + open.length;
+  const end = start + content.length;
+  broadcastTextEl.focus();
+  broadcastTextEl.setSelectionRange(start, end);
 }
 
 async function fetchAllDashboardData() {
@@ -834,6 +882,9 @@ sessionsClapsToggleEl?.addEventListener('click', () => {
   renderSessions(lastSessionHistory);
 });
 sessionsSearchEl?.addEventListener('input', () => renderSessions(lastSessionHistory));
+formatButtons.forEach((button) => {
+  button.addEventListener('click', () => applyFormatToBroadcast(button.dataset.format || ''));
+});
 broadcastDryRunBtnEl?.addEventListener('click', () => {
   void runBroadcast(true).catch((error) => setBroadcastResult(error.message || 'Не удалось проверить аудиторию', true));
 });

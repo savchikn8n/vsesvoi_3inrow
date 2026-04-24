@@ -52,6 +52,7 @@
                 <button class="period-btn is-active" type="button" data-period="24h">24ч</button>
                 <button class="period-btn" type="button" data-period="7d">7д</button>
                 <button class="period-btn" type="button" data-period="30d">30д</button>
+                <button class="period-btn" type="button" data-period="all">All</button>
               </div>
             </div>
             <section class="metrics-grid metrics-grid-compact">
@@ -193,10 +194,27 @@
               </div>
             </div>
             <div class="messages-card-body">
+              <div class="message-toolbar" aria-label="Форматирование текста">
+                <button type="button" class="format-btn" data-format="bold"><strong>B</strong></button>
+                <button type="button" class="format-btn" data-format="italic"><em>I</em></button>
+                <button type="button" class="format-btn" data-format="underline"><span class="format-underline">U</span></button>
+                <button type="button" class="format-btn" data-format="spoiler"><span class="format-spoiler">Скрытый</span></button>
+                <button type="button" class="format-btn" data-format="quote">Цитата</button>
+              </div>
               <label class="promo-field">
                 <span>Текст сообщения</span>
                 <textarea id="broadcast-text" rows="8" maxlength="1000" placeholder="Введите текст массового сообщения."></textarea>
               </label>
+              <div class="message-bonus-grid">
+                <label class="promo-field">
+                  <span>Кол-во ладошек</span>
+                  <input id="broadcast-bonus-claps" type="number" min="0" max="100000" step="1" placeholder="0" />
+                </label>
+                <label class="promo-field">
+                  <span>На какое время</span>
+                  <input id="broadcast-bonus-hours" type="number" min="0" max="720" step="1" placeholder="Часы" />
+                </label>
+              </div>
               <div class="messages-actions">
                 <button id="broadcast-dry-run" type="button" class="dashboard-ghost-btn">Проверить аудиторию</button>
                 <button id="broadcast-send" type="button">Отправить всем</button>
