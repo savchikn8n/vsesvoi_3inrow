@@ -20,6 +20,7 @@ function median(items: number[]) {
 }
 
 function periodHours(period: string) {
+  if (period === 'all') return null;
   if (period === '7d') return 7 * 24;
   if (period === '30d') return 30 * 24;
   return 24;
@@ -65,8 +66,11 @@ Deno.serve(async (req) => {
     });
 
     const now = Date.now();
-    const since = new Date(now - hours * 60 * 60 * 1000).toISOString();
-    const since120d = new Date(now - 120 * 24 * 60 * 60 * 1000).toISOString();
+    const since = hours === null
+      ? new Date(0).toISOString()
+      : new Date(now - hours * 60 * 60 * 1000).toISOString();
+    const lookbackHours = hours === null ? 24 * 3650 : 120 * 24;
+    const sinceLookback = new Date(now - lookbackHours * 60 * 60 * 1000).toISOString();
 
     const [profilesRes, sessionsRes, eventsRes, purchasesRes, broadcastsRes, recipientsRes] = await Promise.all([
       admin
@@ -79,31 +83,31 @@ Deno.serve(async (req) => {
         .select(
           'session_id, telegram_id, session_started_at, session_ended_at, duration_sec, end_reason, best_score, claps_earned, claps_spent, moves_count',
         )
-        .gte('session_started_at', since120d)
+        .gte('session_started_at', sinceLookback)
         .order('session_started_at', { ascending: false })
         .limit(10000),
       admin
         .from('analytics_events')
         .select('telegram_id, session_id, event_name, event_payload, event_at')
-        .gte('event_at', since120d)
+        .gte('event_at', sinceLookback)
         .order('event_at', { ascending: false })
         .limit(10000),
       admin
         .from('shop_purchases')
         .select('telegram_id, gift_id, created_at')
-        .gte('created_at', since120d)
+        .gte('created_at', sinceLookback)
         .order('created_at', { ascending: false })
         .limit(10000),
       admin
         .from('broadcast_messages')
-        .select('id, text, created_at, sent_count, failed_count')
-        .gte('created_at', since120d)
+        .select('id, text, created_at, sent_count, failed_count, bonus_claps, bonus_window_hours')
+        .gte('created_at', sinceLookback)
         .order('created_at', { ascending: false })
         .limit(500),
       admin
         .from('broadcast_message_recipients')
         .select('broadcast_id, telegram_id, status, sent_at')
-        .gte('sent_at', since120d)
+        .gte('sent_at', sinceLookback)
         .order('sent_at', { ascending: false })
         .limit(30000),
     ]);
@@ -226,6 +230,8 @@ Deno.serve(async (req) => {
         id: broadcast.id,
         text: broadcast.text,
         created_at: broadcast.created_at,
+        bonus_claps: Number(broadcast.bonus_claps || 0),
+        bonus_window_hours: Number(broadcast.bonus_window_hours || 0),
         sent_count: Number(broadcast.sent_count || sentRecipients.length),
         failed_count: Number(broadcast.failed_count || 0),
         returned_count: returnedIds.size,

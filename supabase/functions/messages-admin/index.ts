@@ -18,6 +18,7 @@ async function sendTelegramMessage(botToken: string, chatId: number, text: strin
     body: JSON.stringify({
       chat_id: chatId,
       text,
+      parse_mode: 'HTML',
       disable_web_page_preview: true,
     }),
   });
@@ -53,6 +54,14 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const messageText = normalizeText(body?.text, 1000);
+    const requestedBonusClaps = Number(body?.bonusClaps || 0);
+    const requestedBonusWindowHours = Number(body?.bonusWindowHours || 0);
+    const bonusClaps = Number.isFinite(requestedBonusClaps)
+      ? Math.max(0, Math.min(100000, Math.floor(requestedBonusClaps)))
+      : 0;
+    const bonusWindowHours = Number.isFinite(requestedBonusWindowHours)
+      ? Math.max(0, Math.min(24 * 30, Math.floor(requestedBonusWindowHours)))
+      : 0;
     const requestedLimit = Number(body?.limit || 2000);
     const limit = Number.isFinite(requestedLimit)
       ? Math.max(1, Math.min(5000, Math.floor(requestedLimit)))
@@ -61,6 +70,9 @@ Deno.serve(async (req) => {
 
     if (!messageText) {
       return new Response(JSON.stringify({ error: 'Text is required' }), { status: 400, headers: corsHeaders });
+    }
+    if (bonusClaps > 0 && bonusWindowHours <= 0) {
+      return new Response(JSON.stringify({ error: 'Bonus window is required when bonus claps are set' }), { status: 400, headers: corsHeaders });
     }
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
@@ -89,6 +101,8 @@ Deno.serve(async (req) => {
       .insert({
         id: broadcastId,
         text: messageText,
+        bonus_claps: bonusClaps,
+        bonus_window_hours: bonusWindowHours,
         created_at: nowIso,
         sent_count: 0,
         failed_count: 0,
@@ -157,6 +171,8 @@ Deno.serve(async (req) => {
           recipients: recipients.length,
           sent: sentCount,
           failed: failedCount,
+          bonus_claps: bonusClaps,
+          bonus_window_hours: bonusWindowHours,
         },
         event_at: nowIso,
       });
@@ -167,6 +183,8 @@ Deno.serve(async (req) => {
       sent: sentCount,
       failed: failedCount,
       total: recipients.length,
+      bonusClaps,
+      bonusWindowHours,
       results,
     }), { status: 200, headers: corsHeaders });
   } catch (error) {
