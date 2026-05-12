@@ -28,6 +28,7 @@ const promosPanelEl = document.getElementById('promos-panel');
 
 const periodSwitchEl = document.querySelector('.period-switch');
 const topPlayersListEl = document.getElementById('top-players-list');
+const topClapsListEl = document.getElementById('top-claps-list');
 const recentSessionsBodyEl = document.getElementById('recent-sessions-body');
 const sessionsClapsToggleEl = document.getElementById('sessions-claps-toggle');
 const sessionsSearchEl = document.getElementById('sessions-search');
@@ -44,6 +45,10 @@ const giftPurchasesBodyEl = document.getElementById('gift-purchases-body');
 const broadcastTextEl = document.getElementById('broadcast-text');
 const broadcastBonusClapsEl = document.getElementById('broadcast-bonus-claps');
 const broadcastBonusHoursEl = document.getElementById('broadcast-bonus-hours');
+const broadcastScheduleToggleEl = document.getElementById('broadcast-schedule-toggle');
+const broadcastScheduleFieldsEl = document.getElementById('broadcast-schedule-fields');
+const broadcastScheduledForEl = document.getElementById('broadcast-scheduled-for');
+const broadcastScheduleSendBtnEl = document.getElementById('broadcast-schedule-send');
 const broadcastDryRunBtnEl = document.getElementById('broadcast-dry-run');
 const broadcastSendBtnEl = document.getElementById('broadcast-send');
 const broadcastResultEl = document.getElementById('broadcast-result');
@@ -60,6 +65,7 @@ const promoImageInputEl = document.getElementById('promo-image-input');
 const promoSecondaryLabelInputEl = document.getElementById('promo-secondary-label-input');
 const promoPrimaryLabelInputEl = document.getElementById('promo-primary-label-input');
 const promoPrimaryUrlInputEl = document.getElementById('promo-primary-url-input');
+const promoActiveUntilInputEl = document.getElementById('promo-active-until-input');
 const promoSaveDraftBtnEl = document.getElementById('promo-save-draft');
 const promoPublishBtnEl = document.getElementById('promo-publish');
 const promoResetBtnEl = document.getElementById('promo-reset');
@@ -101,6 +107,7 @@ let selectedPromoImageFile = null;
 let promoPreviewObjectUrl = '';
 let currentSessionsClapsMode = 'earned';
 let lastSessionHistory = [];
+let isScheduleMode = false;
 
 const EVENT_COLORS = ['#f7c83e', '#f3a620', '#ffdf7b', '#d9a83a', '#8cd18f', '#78a5ff', '#f98080', '#b58cff', '#63d6d6', '#f7edc0'];
 const EVENT_LABELS = {
@@ -251,28 +258,37 @@ async function postDashboardJson(url, payload) {
   return data;
 }
 
-function renderTopPlayers(items = []) {
-  if (!topPlayersListEl) return;
-  topPlayersListEl.replaceChildren();
+function renderTopPlayers(items = [], targetEl, mode = 'score') {
+  if (!targetEl) return;
+  targetEl.replaceChildren();
   if (!items.length) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
     empty.textContent = 'Пока нет данных.';
-    topPlayersListEl.appendChild(empty);
+    targetEl.appendChild(empty);
     return;
   }
 
   items.slice(0, 10).forEach((item) => {
     const row = document.createElement('div');
     row.className = 'rank-row';
+    const primaryValue = mode === 'claps' ? formatNumber(item.clap_balance) : formatNumber(item.best_score);
+    const secondaryValue = mode === 'claps' ? formatNumber(item.best_score) : formatNumber(item.clap_balance);
     row.innerHTML = `
       <div class="rank-index">#${item.rank}</div>
       <div class="rank-player">${item.display_name}</div>
-      <div class="rank-score">${formatNumber(item.best_score)}</div>
-      <div class="rank-claps">${formatNumber(item.clap_balance)}</div>
+      <div class="rank-score">${primaryValue}</div>
+      <div class="rank-claps">${secondaryValue}</div>
     `;
-    topPlayersListEl.appendChild(row);
+    targetEl.appendChild(row);
   });
+}
+
+function broadcastStatusLabel(item) {
+  if (item.status === 'scheduled') return 'Запланировано';
+  if (item.status === 'failed') return 'Ошибка';
+  if (item.status === 'sending') return 'Отправляется';
+  return 'Отправлено';
 }
 
 function computeBehaviorMetrics(summary) {
@@ -373,15 +389,16 @@ function renderBroadcasts(items = []) {
     broadcastHistoryBodyEl.replaceChildren();
     if (!items.length) {
       const row = document.createElement('tr');
-      row.innerHTML = '<td colspan="6" class="empty-state">Пока нет отправленных сообщений.</td>';
+      row.innerHTML = '<td colspan="7" class="empty-state">Пока нет отправленных сообщений.</td>';
       broadcastHistoryBodyEl.appendChild(row);
     } else {
       items.forEach((item) => {
         const row = document.createElement('tr');
         const summaryText = stripTelegramHtml(item.text);
         row.innerHTML = `
-          <td>${formatDateTime(item.created_at)}</td>
+          <td>${formatDateTime(item.sent_at || item.scheduled_for || item.created_at)}</td>
           <td>${truncate(summaryText, 110)}</td>
+          <td>${broadcastStatusLabel(item)}</td>
           <td>${formatNumber(item.sent_count)}</td>
           <td>${formatNumber(item.failed_count)}</td>
           <td>${formatNumber(item.returned_count)}</td>
@@ -520,7 +537,8 @@ function renderSummary(summary) {
   metricEls.timeoutShare.textContent = behavior.timeoutShareLabel;
   metricEls.menuExitShare.textContent = behavior.menuExitShareLabel;
 
-  renderTopPlayers(summary?.top_players || []);
+  renderTopPlayers(summary?.top_players || [], topPlayersListEl, 'score');
+  renderTopPlayers(summary?.top_clap_players || [], topClapsListEl, 'claps');
   renderTopEventsList(summary?.top_events_24h || []);
   renderSessions(summary?.session_history || []);
   renderBroadcasts(summary?.broadcasts || []);
@@ -566,6 +584,7 @@ function promoFormValue() {
     secondary_label: promoSecondaryLabelInputEl?.value.trim() || 'Уже',
     primary_label: promoPrimaryLabelInputEl?.value.trim() || 'Перейти',
     primary_url: promoPrimaryUrlInputEl?.value.trim() || '',
+    active_until: promoActiveUntilInputEl?.value ? new Date(promoActiveUntilInputEl.value).toISOString() : '',
   };
 }
 
@@ -581,6 +600,7 @@ function resetPromoEditor() {
   if (promoSecondaryLabelInputEl) promoSecondaryLabelInputEl.value = 'Уже';
   if (promoPrimaryLabelInputEl) promoPrimaryLabelInputEl.value = 'Перейти';
   if (promoPrimaryUrlInputEl) promoPrimaryUrlInputEl.value = '';
+  if (promoActiveUntilInputEl) promoActiveUntilInputEl.value = '';
   updatePromoPreview();
 }
 
@@ -596,6 +616,9 @@ function fillPromoEditor(popup) {
   if (promoSecondaryLabelInputEl) promoSecondaryLabelInputEl.value = popup?.secondary_label || 'Уже';
   if (promoPrimaryLabelInputEl) promoPrimaryLabelInputEl.value = popup?.primary_label || 'Перейти';
   if (promoPrimaryUrlInputEl) promoPrimaryUrlInputEl.value = popup?.primary_url || '';
+  if (promoActiveUntilInputEl) {
+    promoActiveUntilInputEl.value = popup?.active_until ? new Date(popup.active_until).toISOString().slice(0, 16) : '';
+  }
   updatePromoPreview();
   setPromoSubtab('editor');
   setActiveTab('promos');
@@ -637,7 +660,8 @@ function renderPromoList(items = []) {
   lastPromoRows.forEach((popup) => {
     const card = document.createElement('article');
     card.className = 'promo-item';
-    const status = popup.archived_at ? 'Архив' : popup.is_active ? 'Активен' : 'Черновик';
+    const isExpired = popup.active_until && new Date(popup.active_until).getTime() < Date.now();
+    const status = popup.archived_at ? 'Архив' : isExpired ? 'Истёк' : popup.is_active ? 'Активен' : 'Черновик';
     const views = Number(popup.stats?.views || 0);
     const opens = Number(popup.stats?.opens || 0);
     const dismisses = Number(popup.stats?.dismisses || 0);
@@ -652,6 +676,7 @@ function renderPromoList(items = []) {
         </div>
         <div class="promo-item-body">${popup.body}</div>
         <div class="promo-item-meta">${popup.primary_label} → ${popup.primary_url}</div>
+        <div class="promo-item-meta">${popup.active_until ? `Активен до: ${formatDateTime(popup.active_until)}` : 'Без срока окончания'}</div>
         <div class="promo-item-stats">
           <span>Показы: ${formatNumber(views)}</span>
           <span>Закрытия: ${formatNumber(dismisses)} (${dismissRate}%)</span>
@@ -708,22 +733,46 @@ async function runGiftAction(action, code) {
   await fetchGiftPurchases();
 }
 
-async function runBroadcast(dryRun) {
+function updateBroadcastScheduleMode() {
+  if (broadcastScheduleFieldsEl) {
+    broadcastScheduleFieldsEl.classList.toggle('is-hidden', !isScheduleMode);
+  }
+  if (broadcastScheduleToggleEl) {
+    broadcastScheduleToggleEl.textContent = isScheduleMode ? 'Скрыть отложенную отправку' : 'Отправить отложенное сообщение';
+  }
+  broadcastScheduleSendBtnEl?.classList.toggle('is-hidden', !isScheduleMode);
+  broadcastSendBtnEl?.classList.toggle('is-hidden', isScheduleMode);
+}
+
+async function runBroadcast(options = {}) {
   if (!MESSAGE_ADMIN_URL) throw new Error('Не задан SUPABASE_URL.');
   const text = broadcastTextEl?.value.trim() || '';
   const bonusClaps = Math.max(0, Math.floor(Number(broadcastBonusClapsEl?.value || 0)));
   const bonusWindowHours = Math.max(0, Math.floor(Number(broadcastBonusHoursEl?.value || 0)));
+  const dryRun = Boolean(options.dryRun);
+  const scheduledForRaw = typeof options.scheduledFor === 'string' ? options.scheduledFor : '';
+  const scheduledFor = scheduledForRaw ? new Date(scheduledForRaw).toISOString() : '';
   if (!text) throw new Error('Введите текст сообщения.');
   const data = await postDashboardJson(MESSAGE_ADMIN_URL, {
     text,
     bonusClaps,
     bonusWindowHours,
-    dryRun: Boolean(dryRun),
+    dryRun,
+    scheduledFor,
     limit: 2000,
   });
 
   if (dryRun) {
     setBroadcastResult(`Получателей: ${formatNumber(data?.recipients || 0)}`);
+    return;
+  }
+
+  if (data?.scheduled) {
+    setBroadcastResult(`Сообщение запланировано на ${formatDateTime(data.scheduledFor)}.`);
+    if (broadcastScheduledForEl) broadcastScheduledForEl.value = '';
+    isScheduleMode = false;
+    updateBroadcastScheduleMode();
+    await fetchSummary();
     return;
   }
 
@@ -886,10 +935,28 @@ formatButtons.forEach((button) => {
   button.addEventListener('click', () => applyFormatToBroadcast(button.dataset.format || ''));
 });
 broadcastDryRunBtnEl?.addEventListener('click', () => {
-  void runBroadcast(true).catch((error) => setBroadcastResult(error.message || 'Не удалось проверить аудиторию', true));
+  void runBroadcast({ dryRun: true }).catch((error) => setBroadcastResult(error.message || 'Не удалось проверить аудиторию', true));
 });
 broadcastSendBtnEl?.addEventListener('click', () => {
-  void runBroadcast(false).catch((error) => setBroadcastResult(error.message || 'Не удалось отправить сообщение', true));
+  void runBroadcast({ dryRun: false }).catch((error) => setBroadcastResult(error.message || 'Не удалось отправить сообщение', true));
+});
+broadcastScheduleToggleEl?.addEventListener('click', () => {
+  isScheduleMode = !isScheduleMode;
+  updateBroadcastScheduleMode();
+});
+broadcastScheduleSendBtnEl?.addEventListener('click', () => {
+  const scheduledFor = broadcastScheduledForEl?.value || '';
+  if (!scheduledFor) {
+    setBroadcastResult('Укажите дату и время отложенного сообщения.', true);
+    return;
+  }
+  if (Number.isNaN(new Date(scheduledFor).getTime())) {
+    setBroadcastResult('Дата отложенного сообщения заполнена некорректно.', true);
+    return;
+  }
+  void runBroadcast({ dryRun: false, scheduledFor }).catch((error) =>
+    setBroadcastResult(error.message || 'Не удалось запланировать сообщение', true),
+  );
 });
 
 const savedSecret = loadDashboardSecret();
@@ -901,4 +968,5 @@ if (savedSecret && secretInputEl) {
 }
 resetPromoEditor();
 setPromoSubtab('editor');
+updateBroadcastScheduleMode();
 startAutoRefresh();

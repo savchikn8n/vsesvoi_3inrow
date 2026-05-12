@@ -47,16 +47,17 @@ Deno.serve(async (req) => {
     await verifyTelegramInitData(initData, BOT_TOKEN);
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+    const nowIso = new Date().toISOString();
     const { data, error } = await admin
       .from('promo_popups')
-      .select('id, title, body, image_url, primary_label, primary_url, secondary_label, published_at')
+      .select('id, title, body, image_url, primary_label, primary_url, secondary_label, published_at, active_until')
       .eq('is_active', true)
       .is('archived_at', null)
       .order('published_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(10);
     if (error) throw new Error(error.message);
-    return new Response(JSON.stringify({ popup: data || null }), { status: 200, headers: corsHeaders });
+    const popup = (data || []).find((item) => !item.active_until || item.active_until > nowIso) || null;
+    return new Response(JSON.stringify({ popup }), { status: 200, headers: corsHeaders });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message || 'Promo fetch error' }), { status: 400, headers: corsHeaders });
   }

@@ -23,6 +23,16 @@ function normalizeUrl(value: unknown) {
   }
 }
 
+function normalizeDateTime(value: unknown) {
+  const text = normalizeText(value, 64);
+  if (!text) return null;
+  const timestamp = Date.parse(text);
+  if (Number.isNaN(timestamp)) {
+    throw new Error('Invalid promo end time');
+  }
+  return new Date(timestamp).toISOString();
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') {
@@ -79,6 +89,7 @@ Deno.serve(async (req) => {
         primary_label: normalizeText(popup.primary_label || 'Перейти', 24) || 'Перейти',
         primary_url: normalizeUrl(popup.primary_url),
         secondary_label: normalizeText(popup.secondary_label || 'Уже', 24) || 'Уже',
+        active_until: normalizeDateTime(popup.active_until),
         is_active: Boolean(popup.is_active),
       };
       if (!row.title || !row.body || !row.image_url || !row.primary_url) {
