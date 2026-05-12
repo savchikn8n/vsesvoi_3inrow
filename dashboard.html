@@ -81,6 +81,17 @@
             </div>
             <div id="top-players-list" class="rank-list"></div>
           </article>
+
+          <article class="panel-card analytics-top-claps-card">
+            <div class="panel-head panel-head-stack">
+              <div>
+                <h2>Топ-10 по ладошкам</h2>
+                <span class="panel-note">Кто ближе всего к подаркам</span>
+              </div>
+              <span class="panel-note">Баланс</span>
+            </div>
+            <div id="top-claps-list" class="rank-list"></div>
+          </article>
         </div>
 
         <div class="analytics-bottom-grid">
@@ -215,9 +226,23 @@
                   <input id="broadcast-bonus-hours" type="number" min="0" max="720" step="1" placeholder="Часы" />
                 </label>
               </div>
+              <div class="message-schedule-toolbar">
+                <button id="broadcast-schedule-toggle" type="button" class="dashboard-ghost-btn">Отправить отложенное сообщение</button>
+              </div>
+              <div id="broadcast-schedule-fields" class="message-schedule-grid is-hidden">
+                <label class="promo-field">
+                  <span>Дата и время отправки</span>
+                  <input id="broadcast-scheduled-for" type="datetime-local" />
+                </label>
+                <label class="promo-field">
+                  <span>Режим</span>
+                  <input id="broadcast-scheduled-note" type="text" value="Сообщение уйдёт автоматически в указанное время" disabled />
+                </label>
+              </div>
               <div class="messages-actions">
                 <button id="broadcast-dry-run" type="button" class="dashboard-ghost-btn">Проверить аудиторию</button>
                 <button id="broadcast-send" type="button">Отправить всем</button>
+                <button id="broadcast-schedule-send" type="button" class="dashboard-ghost-btn is-hidden">Запланировать</button>
               </div>
               <div id="broadcast-result" class="messages-result empty-state">Пока ничего не отправляли.</div>
             </div>
@@ -236,6 +261,7 @@
                   <tr>
                     <th>Дата</th>
                     <th>Сообщение</th>
+                    <th>Статус</th>
                     <th>Отправлено</th>
                     <th>Ошибки</th>
                     <th>Вернулись</th>
@@ -311,6 +337,10 @@
                 <label class="promo-field promo-field-full">
                   <span>Ссылка перехода</span>
                   <input id="promo-primary-url-input" type="url" placeholder="https://..." />
+                </label>
+                <label class="promo-field">
+                  <span>Активен до</span>
+                  <input id="promo-active-until-input" type="datetime-local" />
                 </label>
               </div>
               <div class="promo-actions">

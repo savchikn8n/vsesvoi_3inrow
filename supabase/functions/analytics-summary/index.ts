@@ -26,6 +26,10 @@ function periodHours(period: string) {
   return 24;
 }
 
+function isWithinWindow(iso: string | null | undefined, since: string) {
+  return Boolean(iso && iso >= since);
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -47,9 +51,9 @@ Deno.serve(async (req) => {
     }
 
     const providedSecret =
-      req.headers.get('x-dashboard-secret') ||
-      req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ||
-      '';
+      req.headers.get('x-dashboard-secret')
+      || req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
+      || '';
     if (providedSecret !== DASHBOARD_SECRET) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
@@ -72,10 +76,30 @@ Deno.serve(async (req) => {
     const lookbackHours = hours === null ? 24 * 3650 : 120 * 24;
     const sinceLookback = new Date(now - lookbackHours * 60 * 60 * 1000).toISOString();
 
-    const [profilesRes, sessionsRes, eventsRes, purchasesRes, broadcastsRes, recipientsRes] = await Promise.all([
+    const [
+      totalPlayersRes,
+      activePlayersRes,
+      newPlayersRes,
+      topPlayersRes,
+      topClapPlayersRes,
+      sessionsRes,
+      eventsRes,
+      purchasesRes,
+      broadcastsRes,
+      recipientsRes,
+    ] = await Promise.all([
+      admin.from('profiles').select('telegram_id', { count: 'exact', head: true }),
+      admin.from('profiles').select('telegram_id', { count: 'exact', head: true }).gte('last_seen_at', since),
+      admin.from('profiles').select('telegram_id', { count: 'exact', head: true }).gte('created_at', since),
       admin
         .from('profiles')
-        .select('telegram_id, display_name, best_score, clap_balance, created_at, last_seen_at', { count: 'exact' })
+        .select('telegram_id, display_name, best_score, clap_balance')
+        .order('best_score', { ascending: false })
+        .limit(10),
+      admin
+        .from('profiles')
+        .select('telegram_id, display_name, best_score, clap_balance')
+        .order('clap_balance', { ascending: false })
         .order('best_score', { ascending: false })
         .limit(10),
       admin
@@ -94,13 +118,13 @@ Deno.serve(async (req) => {
         .limit(10000),
       admin
         .from('shop_purchases')
-        .select('telegram_id, gift_id, created_at')
+        .select('telegram_id, gift_id, created_at, claps_spent')
         .gte('created_at', sinceLookback)
         .order('created_at', { ascending: false })
         .limit(10000),
       admin
         .from('broadcast_messages')
-        .select('id, text, created_at, sent_count, failed_count, bonus_claps, bonus_window_hours')
+        .select('id, text, created_at, sent_at, scheduled_for, status, sent_count, failed_count, bonus_claps, bonus_window_hours')
         .gte('created_at', sinceLookback)
         .order('created_at', { ascending: false })
         .limit(500),
@@ -112,34 +136,35 @@ Deno.serve(async (req) => {
         .limit(30000),
     ]);
 
-    if (profilesRes.error) throw new Error(profilesRes.error.message);
+    if (totalPlayersRes.error) throw new Error(totalPlayersRes.error.message);
+    if (activePlayersRes.error) throw new Error(activePlayersRes.error.message);
+    if (newPlayersRes.error) throw new Error(newPlayersRes.error.message);
+    if (topPlayersRes.error) throw new Error(topPlayersRes.error.message);
+    if (topClapPlayersRes.error) throw new Error(topClapPlayersRes.error.message);
     if (sessionsRes.error) throw new Error(sessionsRes.error.message);
     if (eventsRes.error) throw new Error(eventsRes.error.message);
     if (purchasesRes.error) throw new Error(purchasesRes.error.message);
     if (broadcastsRes.error) throw new Error(broadcastsRes.error.message);
     if (recipientsRes.error) throw new Error(recipientsRes.error.message);
 
-    const profiles = profilesRes.data || [];
     const sessions = sessionsRes.data || [];
     const events = eventsRes.data || [];
     const purchases = purchasesRes.data || [];
     const broadcasts = broadcastsRes.data || [];
     const broadcastRecipients = recipientsRes.data || [];
+    const topPlayersRows = topPlayersRes.data || [];
+    const topClapPlayersRows = topClapPlayersRes.data || [];
 
     const currentSessions = sessions.filter((item) => item.session_started_at >= since);
     const previousSessions = sessions.filter((item) => item.session_started_at < since);
     const endedSessions = currentSessions.filter((item) => item.session_ended_at);
     const currentScores = currentSessions.map((item) => Number(item.best_score || 0));
-    const currentClapsSpent = currentSessions.map((item) => Number(item.claps_spent || 0));
+    const currentClapsSpentFromSessions = currentSessions.map((item) => Number(item.claps_spent || 0));
     const currentClapsEarned = currentSessions.map((item) => Number(item.claps_earned || 0));
     const durations = endedSessions.map((item) => Number(item.duration_sec || 0)).filter((value) => value > 0);
     const currentPurchases = purchases.filter((item) => item.created_at >= since);
-    const currentBroadcasts = broadcasts.filter((item) => item.created_at >= since);
+    const currentPurchaseClapsSpent = currentPurchases.reduce((sum, item) => sum + Number(item.claps_spent || 0), 0);
 
-    const activePlayerIds = new Set(
-      profiles.filter((item) => item.last_seen_at && item.last_seen_at >= since).map((item) => String(item.telegram_id)),
-    );
-    const newPlayers = profiles.filter((item) => item.created_at && item.created_at >= since).length;
     const currentSessionUserIds = new Set(currentSessions.map((item) => String(item.telegram_id)));
     const previousSessionUserIds = new Set(previousSessions.map((item) => String(item.telegram_id)));
     const returningPlayers = [...currentSessionUserIds].filter((id) => previousSessionUserIds.has(id)).length;
@@ -173,7 +198,15 @@ Deno.serve(async (req) => {
       ]),
     );
 
-    const topPlayers = profiles.map((item, index) => ({
+    const topPlayers = topPlayersRows.map((item, index) => ({
+      rank: index + 1,
+      telegram_id: item.telegram_id,
+      display_name: item.display_name || 'Игрок',
+      best_score: Number(item.best_score || 0),
+      clap_balance: Number(item.clap_balance || 0),
+    }));
+
+    const topClapPlayers = topClapPlayersRows.map((item, index) => ({
       rank: index + 1,
       telegram_id: item.telegram_id,
       display_name: item.display_name || 'Игрок',
@@ -230,6 +263,9 @@ Deno.serve(async (req) => {
         id: broadcast.id,
         text: broadcast.text,
         created_at: broadcast.created_at,
+        sent_at: broadcast.sent_at,
+        scheduled_for: broadcast.scheduled_for,
+        status: broadcast.status || 'sent',
         bonus_claps: Number(broadcast.bonus_claps || 0),
         bonus_window_hours: Number(broadcast.bonus_window_hours || 0),
         sent_count: Number(broadcast.sent_count || sentRecipients.length),
@@ -239,26 +275,29 @@ Deno.serve(async (req) => {
       };
     });
 
-    const currentBroadcastStats = broadcastsWithStats.filter((item) => item.created_at >= since);
+    const currentBroadcastStats = broadcastsWithStats.filter((item) => isWithinWindow(item.sent_at || item.created_at, since));
     const messageRetentionCount = currentBroadcastStats.reduce((sum, item) => sum + item.returned_count, 0);
     const currentSentTotal = currentBroadcastStats.reduce((sum, item) => sum + item.sent_count, 0);
 
-    const spentTotal = currentClapsSpent.reduce((sum, value) => sum + value, 0);
+    const spentTotal = currentClapsSpentFromSessions.reduce((sum, value) => sum + value, 0) + currentPurchaseClapsSpent;
     const earnedTotal = currentClapsEarned.reduce((sum, value) => sum + value, 0);
-    const buyersCount = new Set(currentPurchases.map((item) => String(item.telegram_id))).size;
+    const spendersCount = new Set([
+      ...currentSessions.filter((item) => Number(item.claps_spent || 0) > 0).map((item) => String(item.telegram_id)),
+      ...currentPurchases.filter((item) => Number(item.claps_spent || 0) > 0).map((item) => String(item.telegram_id)),
+    ]).size;
 
     return new Response(
       JSON.stringify({
         generated_at: new Date().toISOString(),
         overview: {
-          total_players: profilesRes.count || profiles.length,
-          active_players_24h: activePlayerIds.size,
-          new_players_24h: newPlayers,
+          total_players: totalPlayersRes.count || 0,
+          active_players_24h: activePlayersRes.count || 0,
+          new_players_24h: newPlayersRes.count || 0,
           sessions_24h: currentSessions.length,
           claps_spent_24h: spentTotal,
           claps_earned_24h: earnedTotal,
           gifts_purchased_24h: currentPurchases.length,
-          avg_claps_spent_per_buyer_24h: buyersCount ? Math.round(spentTotal / buyersCount) : 0,
+          avg_claps_spent_per_buyer_24h: spendersCount ? Math.round(spentTotal / spendersCount) : 0,
           returning_players_24h: returningPlayers,
           avg_session_duration_sec_24h: Math.round(avg(durations)),
           avg_best_score_24h: Math.round(avg(currentScores)),
@@ -267,6 +306,7 @@ Deno.serve(async (req) => {
           message_retention_rate: currentSentTotal ? Math.round((messageRetentionCount / currentSentTotal) * 100) : 0,
         },
         top_players: topPlayers,
+        top_clap_players: topClapPlayers,
         top_events_24h: topEvents,
         session_history: sessionHistory,
         broadcasts: broadcastsWithStats,

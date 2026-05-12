@@ -11,6 +11,22 @@ function normalizeText(value: unknown, max = 1000) {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
+function normalizePositiveInt(value: unknown, max: number) {
+  const raw = Number(value || 0);
+  if (!Number.isFinite(raw)) return 0;
+  return Math.max(0, Math.min(max, Math.floor(raw)));
+}
+
+function normalizeScheduledFor(value: unknown) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (!text) return null;
+  const timestamp = Date.parse(text);
+  if (Number.isNaN(timestamp)) {
+    throw new Error('Неверная дата отложенного сообщения');
+  }
+  return new Date(timestamp).toISOString();
+}
+
 async function sendTelegramMessage(botToken: string, chatId: number, text: string) {
   const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: 'POST',
@@ -27,6 +43,106 @@ async function sendTelegramMessage(botToken: string, chatId: number, text: strin
   if (!response.ok || !data?.ok) {
     throw new Error(data?.description || 'Telegram sendMessage failed');
   }
+}
+
+async function fetchRecipients(admin: ReturnType<typeof createClient>, limit: number) {
+  const { data, error } = await admin
+    .from('profiles')
+    .select('telegram_id, notifications_enabled')
+    .eq('notifications_enabled', true)
+    .not('telegram_id', 'is', null)
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(error.message);
+  return (data || []).filter((item) => item?.telegram_id);
+}
+
+async function dispatchBroadcast(
+  admin: ReturnType<typeof createClient>,
+  botToken: string,
+  payload: {
+    id: string;
+    text: string;
+    bonusClaps: number;
+    bonusWindowHours: number;
+    createdAt: string;
+  },
+  limit: number,
+) {
+  const recipients = await fetchRecipients(admin, limit);
+  const recipientRows = [];
+  let sentCount = 0;
+  let failedCount = 0;
+
+  for (const item of recipients) {
+    try {
+      await sendTelegramMessage(botToken, Number(item.telegram_id), payload.text);
+      sentCount += 1;
+      recipientRows.push({
+        id: crypto.randomUUID(),
+        broadcast_id: payload.id,
+        telegram_id: Number(item.telegram_id),
+        status: 'sent',
+        error: null,
+        sent_at: new Date().toISOString(),
+      });
+    } catch (sendError) {
+      failedCount += 1;
+      recipientRows.push({
+        id: crypto.randomUUID(),
+        broadcast_id: payload.id,
+        telegram_id: Number(item.telegram_id),
+        status: 'failed',
+        error: sendError instanceof Error ? sendError.message : 'Unknown error',
+        sent_at: new Date().toISOString(),
+      });
+    }
+  }
+
+  if (recipientRows.length) {
+    const { error: recipientsInsertError } = await admin
+      .from('broadcast_message_recipients')
+      .insert(recipientRows);
+    if (recipientsInsertError) throw new Error(recipientsInsertError.message);
+  }
+
+  const sentAt = new Date().toISOString();
+  const finalStatus = sentCount > 0 ? 'sent' : 'failed';
+  const { error: broadcastUpdateError } = await admin
+    .from('broadcast_messages')
+    .update({
+      status: finalStatus,
+      sent_at: sentAt,
+      sent_count: sentCount,
+      failed_count: failedCount,
+    })
+    .eq('id', payload.id);
+  if (broadcastUpdateError) throw new Error(broadcastUpdateError.message);
+
+  const { error: analyticsEventError } = await admin
+    .from('analytics_events')
+    .insert({
+      telegram_id: 0,
+      session_id: `broadcast:${payload.id}`,
+      event_name: 'broadcast_sent',
+      event_payload: {
+        broadcast_id: payload.id,
+        recipients: recipients.length,
+        sent: sentCount,
+        failed: failedCount,
+        bonus_claps: payload.bonusClaps,
+        bonus_window_hours: payload.bonusWindowHours,
+      },
+      event_at: sentAt,
+    });
+  if (analyticsEventError) throw new Error(analyticsEventError.message);
+
+  return {
+    total: recipients.length,
+    sent: sentCount,
+    failed: failedCount,
+  };
 }
 
 Deno.serve(async (req) => {
@@ -54,19 +170,11 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const messageText = normalizeText(body?.text, 1000);
-    const requestedBonusClaps = Number(body?.bonusClaps || 0);
-    const requestedBonusWindowHours = Number(body?.bonusWindowHours || 0);
-    const bonusClaps = Number.isFinite(requestedBonusClaps)
-      ? Math.max(0, Math.min(100000, Math.floor(requestedBonusClaps)))
-      : 0;
-    const bonusWindowHours = Number.isFinite(requestedBonusWindowHours)
-      ? Math.max(0, Math.min(24 * 30, Math.floor(requestedBonusWindowHours)))
-      : 0;
-    const requestedLimit = Number(body?.limit || 2000);
-    const limit = Number.isFinite(requestedLimit)
-      ? Math.max(1, Math.min(5000, Math.floor(requestedLimit)))
-      : 2000;
+    const bonusClaps = normalizePositiveInt(body?.bonusClaps, 100000);
+    const bonusWindowHours = normalizePositiveInt(body?.bonusWindowHours, 24 * 30);
+    const limit = Math.max(1, Math.min(5000, normalizePositiveInt(body?.limit, 5000) || 2000));
     const dryRun = Boolean(body?.dryRun);
+    const scheduledFor = normalizeScheduledFor(body?.scheduledFor);
 
     if (!messageText) {
       return new Response(JSON.stringify({ error: 'Text is required' }), { status: 400, headers: corsHeaders });
@@ -76,116 +184,92 @@ Deno.serve(async (req) => {
     }
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-    const { data, error } = await admin
-      .from('profiles')
-      .select('telegram_id, notifications_enabled')
-      .eq('notifications_enabled', true)
-      .not('telegram_id', 'is', null)
-      .order('updated_at', { ascending: false })
-      .limit(limit);
 
-    if (error) throw new Error(error.message);
-
-    const recipients = (data || []).filter((item) => item?.telegram_id);
     if (dryRun) {
+      const recipients = await fetchRecipients(admin, limit);
       return new Response(JSON.stringify({
         dryRun: true,
         recipients: recipients.length,
       }), { status: 200, headers: corsHeaders });
     }
 
+    if (scheduledFor && Date.parse(scheduledFor) > Date.now() + 60 * 1000) {
+      const row = {
+        id: crypto.randomUUID(),
+        text: messageText,
+        bonus_claps: bonusClaps,
+        bonus_window_hours: bonusWindowHours,
+        created_at: new Date().toISOString(),
+        scheduled_for: scheduledFor,
+        sent_at: null,
+        status: 'scheduled',
+        sent_count: 0,
+        failed_count: 0,
+      };
+      const { error: insertError } = await admin.from('broadcast_messages').insert(row);
+      if (insertError) throw new Error(insertError.message);
+
+      const { error: analyticsEventError } = await admin
+        .from('analytics_events')
+        .insert({
+          telegram_id: 0,
+          session_id: `broadcast:${row.id}`,
+          event_name: 'broadcast_scheduled',
+          event_payload: {
+            broadcast_id: row.id,
+            scheduled_for: scheduledFor,
+            bonus_claps: bonusClaps,
+            bonus_window_hours: bonusWindowHours,
+          },
+          event_at: row.created_at,
+        });
+      if (analyticsEventError) throw new Error(analyticsEventError.message);
+
+      return new Response(JSON.stringify({
+        broadcastId: row.id,
+        scheduled: true,
+        scheduledFor,
+      }), { status: 200, headers: corsHeaders });
+    }
+
     const broadcastId = crypto.randomUUID();
-    const nowIso = new Date().toISOString();
-    const { error: broadcastInsertError } = await admin
+    const createdAt = new Date().toISOString();
+    const { error: insertError } = await admin
       .from('broadcast_messages')
       .insert({
         id: broadcastId,
         text: messageText,
         bonus_claps: bonusClaps,
         bonus_window_hours: bonusWindowHours,
-        created_at: nowIso,
+        created_at: createdAt,
+        sent_at: null,
+        status: 'sending',
         sent_count: 0,
         failed_count: 0,
       });
-    if (broadcastInsertError) throw new Error(broadcastInsertError.message);
+    if (insertError) throw new Error(insertError.message);
 
-    const results = [];
-    const recipientRows = [];
-    for (const item of recipients) {
-      try {
-        await sendTelegramMessage(BOT_TOKEN, Number(item.telegram_id), messageText);
-        results.push({ telegram_id: item.telegram_id, status: 'sent' });
-        recipientRows.push({
-          id: crypto.randomUUID(),
-          broadcast_id: broadcastId,
-          telegram_id: Number(item.telegram_id),
-          status: 'sent',
-          error: null,
-          sent_at: new Date().toISOString(),
-        });
-      } catch (sendError) {
-        const errorMessage = sendError instanceof Error ? sendError.message : 'Unknown error';
-        results.push({
-          telegram_id: item.telegram_id,
-          status: 'failed',
-          error: errorMessage,
-        });
-        recipientRows.push({
-          id: crypto.randomUUID(),
-          broadcast_id: broadcastId,
-          telegram_id: Number(item.telegram_id),
-          status: 'failed',
-          error: errorMessage,
-          sent_at: new Date().toISOString(),
-        });
-      }
-    }
-
-    if (recipientRows.length) {
-      const { error: recipientsInsertError } = await admin
-        .from('broadcast_message_recipients')
-        .insert(recipientRows);
-      if (recipientsInsertError) throw new Error(recipientsInsertError.message);
-    }
-
-    const sentCount = results.filter((item) => item.status === 'sent').length;
-    const failedCount = results.filter((item) => item.status === 'failed').length;
-
-    const { error: broadcastUpdateError } = await admin
-      .from('broadcast_messages')
-      .update({
-        sent_count: sentCount,
-        failed_count: failedCount,
-      })
-      .eq('id', broadcastId);
-    if (broadcastUpdateError) throw new Error(broadcastUpdateError.message);
-
-    const { error: analyticsEventError } = await admin
-      .from('analytics_events')
-      .insert({
-        telegram_id: 0,
-        session_id: `broadcast:${broadcastId}`,
-        event_name: 'broadcast_sent',
-        event_payload: {
-          broadcast_id: broadcastId,
-          recipients: recipients.length,
-          sent: sentCount,
-          failed: failedCount,
-          bonus_claps: bonusClaps,
-          bonus_window_hours: bonusWindowHours,
-        },
-        event_at: nowIso,
-      });
-    if (analyticsEventError) throw new Error(analyticsEventError.message);
+    const result = await dispatchBroadcast(
+      admin,
+      BOT_TOKEN,
+      {
+        id: broadcastId,
+        text: messageText,
+        bonusClaps,
+        bonusWindowHours,
+        createdAt,
+      },
+      limit,
+    );
 
     return new Response(JSON.stringify({
       broadcastId,
-      sent: sentCount,
-      failed: failedCount,
-      total: recipients.length,
+      sent: result.sent,
+      failed: result.failed,
+      total: result.total,
       bonusClaps,
       bonusWindowHours,
-      results,
+      scheduled: false,
     }), { status: 200, headers: corsHeaders });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message || 'Messages admin error' }), {
