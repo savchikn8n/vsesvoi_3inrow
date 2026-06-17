@@ -2169,45 +2169,20 @@ function queueBufferedMove(from, to) {
 }
 
 function drawBoard(highlight = new Set(), blast = new Set()) {
-  boardEl.innerHTML = '';
-
-  let hintDir = '';
-  if (hintMove) {
-    hintDir = directionClass(hintMove.from, hintMove.to);
-  }
-
-  board.forEach((cell, index) => {
-    const tile = tileTpl.content.firstElementChild.cloneNode(true);
-    if (cell) {
-      tile.classList.add(`type-${cell.color}`);
-      if (cell.special) tile.classList.add(`special-${cell.special}`);
-      if (cell._fall && cell._fall > 0) {
-        tile.classList.add('falling');
-        tile.style.setProperty('--fall-distance', String(cell._fall));
-      }
-    } else {
-      tile.classList.add('empty');
-    }
-    tile.dataset.index = index;
-
-    if (selected === index) tile.classList.add('selected');
-    if (highlight.has(index)) tile.classList.add('match');
-    if (blast.has(index)) tile.classList.add('blast');
-
-    if (!locked && hintMove) {
-      if (index === hintMove.from) {
-        tile.classList.add('hint-source', hintDir);
-      } else if (index === hintMove.to) {
-        tile.classList.add('hint-target');
-      }
-    }
-
-    tile.addEventListener('click', onTileClick);
-    tile.addEventListener('pointerdown', onTilePointerDown);
-    tile.addEventListener('pointermove', onTilePointerMove);
-    tile.addEventListener('pointerup', onTilePointerEnd);
-    tile.addEventListener('pointercancel', onTilePointerEnd);
-    boardEl.appendChild(tile);
+  window.VSBoardRenderer.renderBoardDom({
+    boardEl,
+    tileTemplate: tileTpl,
+    board,
+    selected,
+    highlight,
+    blast,
+    hintMove,
+    locked,
+    directionClass,
+    onTileClick,
+    onTilePointerDown,
+    onTilePointerMove,
+    onTilePointerEnd,
   });
 
   board.forEach((cell) => {
