@@ -15,7 +15,7 @@ test('game animation timing budget is explicit and used by cascades', () => {
   assert.match(game, /const ANIMATION_TIMINGS = Object\.freeze\(\{/);
   assert.match(game, /swapMs: 180/);
   assert.match(game, /invalidSwapMs: 220/);
-  assert.match(game, /matchPopMs: 260/);
+  assert.match(game, /matchPopMs: 300/);
   assert.match(game, /gravityMs: 320/);
   assert.match(game, /cascadePauseMs: 120/);
   assert.match(game, /specialBlastMs: 340/);
@@ -34,7 +34,7 @@ test('tile animations use the fast game budget and support reduced motion', () =
   );
   assert.match(
     css,
-    /\.tile\.match \{\s*animation: pop-hit 260ms cubic-bezier\(0\.2, 0\.82, 0\.22, 1\);/,
+    /\.tile\.match \{\s*animation: pop-hit 300ms cubic-bezier\(0\.2, 0\.82, 0\.22, 1\);/,
   );
   assert.match(
     css,
@@ -42,4 +42,17 @@ test('tile animations use the fast game budget and support reduced motion', () =
   );
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /\.tile\.falling \.gem,\s*\.tile\.match,\s*\.tile\.blast,\s*\.tile\.invalid/);
+});
+
+test('tile motion has visible game feel without slowing interactions', () => {
+  const css = readRepoFile('styles.css');
+
+  assert.match(css, /\.tile:active \.gem \{/);
+  assert.match(css, /\.tile\.selected \.gem \{\s*animation: tile-selected-pulse 520ms/);
+  assert.match(css, /\.tile\.match \{\s*animation: pop-hit 300ms/);
+  assert.match(css, /animation-delay: var\(--tile-pop-delay, 0ms\);/);
+  assert.match(css, /\.tile\.falling \.gem \{[^}]*animation-delay: var\(--tile-drop-delay, 0ms\);/s);
+  assert.match(css, /\.ghost-tile \.gem \{\s*animation: ghost-swap-glow 180ms/);
+  assert.match(css, /@keyframes tile-selected-pulse/);
+  assert.match(css, /@keyframes ghost-swap-glow/);
 });

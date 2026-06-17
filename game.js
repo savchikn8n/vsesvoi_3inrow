@@ -5,7 +5,7 @@ const HINT_THRESHOLD_SECONDS = 3;
 const ANIMATION_TIMINGS = Object.freeze({
   swapMs: 180,
   invalidSwapMs: 220,
-  matchPopMs: 260,
+  matchPopMs: 300,
   gravityMs: 320,
   cascadePauseMs: 120,
   specialBlastMs: 340,
