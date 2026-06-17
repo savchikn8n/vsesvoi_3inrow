@@ -555,17 +555,15 @@ function makeStableCell(r, c) {
 }
 
 function idxToPos(index) {
-  return [Math.floor(index / SIZE), index % SIZE];
+  return window.VSGameCore.idxToPos(index, SIZE);
 }
 
 function posToIdx(r, c) {
-  return r * SIZE + c;
+  return window.VSGameCore.posToIdx(r, c, SIZE);
 }
 
 function areAdjacent(a, b) {
-  const [ar, ac] = idxToPos(a);
-  const [br, bc] = idxToPos(b);
-  return Math.abs(ar - br) + Math.abs(ac - bc) === 1;
+  return window.VSGameCore.areAdjacent(a, b, SIZE);
 }
 
 function isHorizontalSwap([a, b]) {
@@ -575,11 +573,11 @@ function isHorizontalSwap([a, b]) {
 }
 
 function cloneBoard(src = board) {
-  return src.map((cell) => (cell ? { color: cell.color, special: cell.special } : null));
+  return window.VSGameCore.cloneBoard(src);
 }
 
 function swapIn(arr, a, b) {
-  [arr[a], arr[b]] = [arr[b], arr[a]];
+  return window.VSGameCore.swapIn(arr, a, b);
 }
 
 function hasSpecial(index) {
