@@ -25,16 +25,20 @@ test('browser loads tested game modules before game.js', () => {
   const boardCoreIndex = scripts.indexOf('src/game/core/board-core.js');
   const resolutionCoreIndex = scripts.indexOf('src/game/core/resolution-core.js');
   const progressAdapterIndex = scripts.indexOf('src/game/runtime/progress-adapter.js');
+  const boardRendererIndex = scripts.indexOf('src/game/runtime/board-renderer.js');
   const gameIndex = scripts.indexOf('game.js');
 
   assert.notEqual(maintenanceIndex, -1);
   assert.notEqual(boardCoreIndex, -1);
   assert.notEqual(resolutionCoreIndex, -1);
   assert.notEqual(progressAdapterIndex, -1);
+  assert.notEqual(boardRendererIndex, -1);
   assert.notEqual(gameIndex, -1);
   assert.ok(maintenanceIndex < boardCoreIndex);
   assert.ok(boardCoreIndex < resolutionCoreIndex);
   assert.ok(resolutionCoreIndex < progressAdapterIndex);
+  assert.ok(progressAdapterIndex < boardRendererIndex);
+  assert.ok(boardRendererIndex < gameIndex);
   assert.ok(progressAdapterIndex < gameIndex);
 });
 
@@ -67,4 +71,15 @@ test('match resolution wrappers delegate to VSGameResolution', () => {
     functionBody(game, 'getRocketRocketComboArea'),
     /return window\.VSGameResolution\.getRocketRocketComboArea\(center, SIZE\);/,
   );
+});
+
+test('drawBoard delegates DOM rendering to VSBoardRenderer', () => {
+  const game = readRepoFile('game.js');
+
+  assert.match(game, /function drawBoard\(highlight = new Set\(\), blast = new Set\(\)\) \{/);
+  assert.match(game, /window\.VSBoardRenderer\.renderBoardDom\(\{/);
+  assert.match(game, /tileTemplate: tileTpl/);
+  assert.match(game, /onTilePointerEnd/);
+  assert.match(game, /syncEffectsLayer\(\);/);
+  assert.match(game, /updateHud\(\);/);
 });
