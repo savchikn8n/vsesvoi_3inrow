@@ -663,35 +663,36 @@ h1 {
   background: transparent;
   box-shadow: none;
   transition:
-    transform 260ms cubic-bezier(0.2, 0.82, 0.22, 1),
-    box-shadow 260ms,
-    filter 260ms;
+    transform 180ms cubic-bezier(0.2, 0.82, 0.22, 1),
+    box-shadow 180ms,
+    filter 180ms;
   border-radius: var(--ui-radius);
   border: none;
 }
 
 .tile.falling .gem {
-  animation: tile-fall 480ms cubic-bezier(0.18, 0.78, 0.24, 1) both;
+  animation: tile-fall var(--tile-fall-ms, 320ms) cubic-bezier(0.18, 0.78, 0.24, 1) both;
+  will-change: transform, opacity, filter;
 }
 
 @keyframes tile-fall {
   0% {
     transform: translateY(calc(-1 * var(--fall-distance, 1) * (var(--cell) + var(--gap)))) scale(0.96)
       rotate(var(--gem-rot, 0deg));
-    opacity: 0.25;
-    filter: blur(0.8px);
+    opacity: 0.22;
+    filter: blur(1px) brightness(1.06);
   }
-  60% {
+  58% {
+    opacity: 1;
+    filter: blur(0) brightness(1.03);
+  }
+  78% {
+    transform: translateY(1.25px) scale(1.006) rotate(var(--gem-rot, 0deg));
     opacity: 1;
     filter: blur(0);
   }
-  76% {
-    transform: translateY(1.5px) scale(1.008) rotate(var(--gem-rot, 0deg));
-    opacity: 1;
-    filter: blur(0);
-  }
-  88% {
-    transform: translateY(-0.5px) scale(0.998) rotate(var(--gem-rot, 0deg));
+  90% {
+    transform: translateY(-0.35px) scale(0.998) rotate(var(--gem-rot, 0deg));
     opacity: 1;
     filter: blur(0);
   }
@@ -716,15 +717,17 @@ h1 {
 }
 
 .tile.match {
-  animation: pop-hit 560ms cubic-bezier(0.2, 0.82, 0.22, 1);
+  animation: pop-hit 260ms cubic-bezier(0.2, 0.82, 0.22, 1);
+  will-change: transform, opacity, filter;
 }
 
 .tile.blast {
-  animation: blast 620ms cubic-bezier(0.2, 0.82, 0.22, 1);
+  animation: blast 340ms cubic-bezier(0.2, 0.82, 0.22, 1);
+  will-change: transform, opacity, filter;
 }
 
 .tile.invalid {
-  animation: shake 340ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  animation: shake 220ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
 }
 
 .tile.empty {
@@ -742,18 +745,18 @@ h1 {
     filter: brightness(1);
     opacity: 1;
   }
-  38% {
-    transform: scale(1.1) translateY(-1px);
-    filter: brightness(1.25);
+  34% {
+    transform: scale(1.14) translateY(-1px);
+    filter: brightness(1.38) drop-shadow(0 0 10px rgba(255, 215, 110, 0.42));
     opacity: 1;
   }
-  70% {
-    transform: scale(0.96);
-    filter: brightness(0.98);
-    opacity: 0.82;
+  72% {
+    transform: scale(0.92);
+    filter: brightness(1.08) drop-shadow(0 0 4px rgba(255, 215, 110, 0.18));
+    opacity: 0.72;
   }
   100% {
-    transform: scale(1);
+    transform: scale(0.74);
     filter: brightness(1);
     opacity: 0;
   }
@@ -765,13 +768,19 @@ h1 {
     filter: brightness(1);
     opacity: 1;
   }
-  30% {
-    transform: scale(1.08);
-    filter: brightness(1.35);
+  28% {
+    transform: scale(1.16);
+    filter: brightness(1.5) drop-shadow(0 0 14px rgba(255, 210, 95, 0.55));
     opacity: 1;
   }
+  62% {
+    transform: scale(1.02);
+    filter: brightness(1.16) drop-shadow(0 0 8px rgba(255, 168, 76, 0.28));
+    opacity: 0.72;
+  }
   100% {
-    transform: scale(0.88);
+    transform: scale(0.7);
+    filter: brightness(1);
     opacity: 0;
   }
 }
@@ -2553,4 +2562,27 @@ h1 {
   background: #000;
   color: #f3b315;
   border: 2px solid #f3b315;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile.falling .gem,
+  .tile.match,
+  .tile.blast,
+  .tile.invalid,
+  .tile.hint-source,
+  .ambient-item,
+  .ambient-item-inner,
+  .brand::after,
+  .effect-flash,
+  .effect-rocket,
+  .effect-bomb,
+  .effect-smoke,
+  .effect-giga-charge,
+  .effect-giga-link,
+  .effect-board-dim,
+  .effect-board-flash {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
 }

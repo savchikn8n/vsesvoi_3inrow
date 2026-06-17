@@ -2,6 +2,15 @@ const SIZE = 7;
 const COLORS = 4;
 const TURN_SECONDS = 7;
 const HINT_THRESHOLD_SECONDS = 3;
+const ANIMATION_TIMINGS = Object.freeze({
+  swapMs: 180,
+  invalidSwapMs: 220,
+  matchPopMs: 260,
+  gravityMs: 320,
+  cascadePauseMs: 120,
+  specialBlastMs: 340,
+  megaBombMs: 430,
+});
 
 const boardEl = document.getElementById('board');
 const boardWrapEl = document.querySelector('.board-wrap');
@@ -2465,7 +2474,7 @@ async function animateSwap(a, b, valid) {
         { transform: 'translate(0,0)' },
       ];
 
-  const duration = valid ? 210 : 320;
+  const duration = valid ? ANIMATION_TIMINGS.swapMs : ANIMATION_TIMINGS.invalidSwapMs;
   const a1 = g1.animate(key1, { duration, easing: ease, fill: 'forwards' });
   const a2 = g2.animate(key2, { duration, easing: ease, fill: 'forwards' });
 
@@ -2480,7 +2489,7 @@ async function animateSwap(a, b, valid) {
     t1.classList.add('invalid');
     t2.classList.add('invalid');
     playInvalidSound();
-    await delay(330);
+    await delay(ANIMATION_TIMINGS.invalidSwapMs);
   }
 }
 
@@ -2893,7 +2902,7 @@ async function resolveCascades(swappedPair = null) {
     const blastCells = applyRemoval(removals, specialCreates);
     activeComboConstraint = makeConstraintFromIndices(blastCells);
     drawBoard(removals, blastCells);
-    if (!(await interruptibleDelay(420, sessionId))) return false;
+    if (!(await interruptibleDelay(cascadeDelay(combo), sessionId))) return false;
     applyGravity();
     drawBoard();
     locked = false;
@@ -2907,7 +2916,7 @@ async function resolveCascades(swappedPair = null) {
     if (bufferedMove && !canSwapMakeMatch(bufferedMove.from, bufferedMove.to)) {
       bufferedMove = null;
     }
-    if (!(await interruptibleDelay(240, sessionId))) return false;
+    if (!(await interruptibleDelay(ANIMATION_TIMINGS.cascadePauseMs, sessionId))) return false;
     locked = true;
     clearComboConstraint();
 
@@ -2927,6 +2936,11 @@ function canSwapMakeMatch(a, b) {
   const test = cloneBoard(board);
   swapIn(test, a, b);
   return findMatchGroups(test).length > 0;
+}
+
+function cascadeDelay(combo) {
+  const base = ANIMATION_TIMINGS.matchPopMs + ANIMATION_TIMINGS.cascadePauseMs;
+  return Math.max(180, base - Math.min(combo - 1, 3) * 35);
 }
 
 function findPotentialMove(arr = board) {
