@@ -2685,11 +2685,7 @@ function findMatchGroups(arr = board) {
 }
 
 function chooseSpecialIndex(cells, swappedPair) {
-  if (!swappedPair) return cells[Math.floor(cells.length / 2)];
-  const [a, b] = swappedPair;
-  if (cells.includes(b)) return b;
-  if (cells.includes(a)) return a;
-  return cells[Math.floor(cells.length / 2)];
+  return window.VSGameResolution.chooseSpecialIndex(cells, swappedPair);
 }
 
 function upsertSpecialCreate(map, idx, special, color) {
@@ -2809,62 +2805,15 @@ function collectSpecialBlast(start, resultSet) {
 }
 
 function getBlastArea(center, special) {
-  const [r, c] = idxToPos(center);
-  const targets = new Set([center]);
-
-  if (special === 'rocket-h') {
-    for (let x = 0; x < SIZE; x++) targets.add(posToIdx(r, x));
-  } else if (special === 'rocket-v') {
-    for (let y = 0; y < SIZE; y++) targets.add(posToIdx(y, c));
-  } else if (special === 'bomb') {
-    for (let dr = -2; dr <= 2; dr++) {
-      for (let dc = -2; dc <= 2; dc++) {
-        const nr = r + dr;
-        const nc = c + dc;
-        if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
-          targets.add(posToIdx(nr, nc));
-        }
-      }
-    }
-  }
-
-  return targets;
+  return window.VSGameResolution.getBlastArea(center, special, SIZE);
 }
 
 function getBombRocketComboArea(center) {
-  const [r, c] = idxToPos(center);
-  const targets = new Set();
-
-  for (let row = r - 1; row <= r + 1; row++) {
-    if (row < 0 || row >= SIZE) continue;
-    for (let x = 0; x < SIZE; x++) {
-      targets.add(posToIdx(row, x));
-    }
-  }
-
-  for (let col = c - 1; col <= c + 1; col++) {
-    if (col < 0 || col >= SIZE) continue;
-    for (let y = 0; y < SIZE; y++) {
-      targets.add(posToIdx(y, col));
-    }
-  }
-
-  return targets;
+  return window.VSGameResolution.getBombRocketComboArea(center, SIZE);
 }
 
 function getRocketRocketComboArea(center) {
-  const [r, c] = idxToPos(center);
-  const targets = new Set();
-
-  for (let x = 0; x < SIZE; x++) {
-    targets.add(posToIdx(r, x));
-  }
-
-  for (let y = 0; y < SIZE; y++) {
-    targets.add(posToIdx(y, c));
-  }
-
-  return targets;
+  return window.VSGameResolution.getRocketRocketComboArea(center, SIZE);
 }
 
 function applyGravity() {
