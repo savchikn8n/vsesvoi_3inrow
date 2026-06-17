@@ -98,6 +98,31 @@ test('boardRenderModel suppresses hints while locked and carries fall distance',
   assert.equal(model[0].fallDistance, 2);
 });
 
+test('boardRenderModel exposes tile position variables for motion choreography', () => {
+  const model = boardRenderModel(Array.from({ length: 49 }, (_, index) => c(index % 4)));
+
+  assert.deepEqual(
+    model.map((item) => ({
+      index: item.index,
+      row: item.row,
+      col: item.col,
+      popDelayMs: item.popDelayMs,
+      dropDelayMs: item.dropDelayMs,
+    })).slice(0, 9),
+    [
+      { index: 0, row: 0, col: 0, popDelayMs: 0, dropDelayMs: 0 },
+      { index: 1, row: 0, col: 1, popDelayMs: 8, dropDelayMs: 6 },
+      { index: 2, row: 0, col: 2, popDelayMs: 16, dropDelayMs: 12 },
+      { index: 3, row: 0, col: 3, popDelayMs: 24, dropDelayMs: 18 },
+      { index: 4, row: 0, col: 4, popDelayMs: 32, dropDelayMs: 24 },
+      { index: 5, row: 0, col: 5, popDelayMs: 40, dropDelayMs: 30 },
+      { index: 6, row: 0, col: 6, popDelayMs: 48, dropDelayMs: 36 },
+      { index: 7, row: 1, col: 0, popDelayMs: 8, dropDelayMs: 0 },
+      { index: 8, row: 1, col: 1, popDelayMs: 16, dropDelayMs: 6 },
+    ],
+  );
+});
+
 test('renderBoardDom creates tiles with classes, data-index, styles, and handlers', () => {
   const boardEl = new FakeBoard();
   const tileTemplate = {
@@ -145,6 +170,10 @@ test('renderBoardDom creates tiles with classes, data-index, styles, and handler
     'hint-target',
   ]);
   assert.equal(boardEl.children[2].styleValues['--fall-distance'], '3');
+  assert.equal(boardEl.children[2].styleValues['--tile-row'], '0');
+  assert.equal(boardEl.children[2].styleValues['--tile-col'], '2');
+  assert.equal(boardEl.children[2].styleValues['--tile-pop-delay'], '16ms');
+  assert.equal(boardEl.children[2].styleValues['--tile-drop-delay'], '12ms');
   assert.equal(boardEl.children[2].dataset.index, '2');
   assert.equal(boardEl.children[2].listeners.click, handlers.onTileClick);
   assert.equal(boardEl.children[2].listeners.pointercancel, handlers.onTilePointerEnd);

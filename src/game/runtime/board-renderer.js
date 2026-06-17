@@ -28,9 +28,14 @@
     const locked = Boolean(options.locked);
     const directionClass = options.directionClass || (() => '');
     const hintDirection = hintMove ? directionClass(hintMove.from, hintMove.to) : '';
+    const boardSize = inferBoardSize(board);
 
     return board.map((cell, index) => {
       const fallDistance = cell && cell._fall > 0 ? cell._fall : 0;
+      const row = Math.floor(index / boardSize);
+      const col = index % boardSize;
+      const popDelayMs = Math.min(row + col, 6) * 8;
+      const dropDelayMs = col * 6;
       const classes = tileClassListForCell(cell, { falling: fallDistance > 0 });
 
       if (selected === index) classes.push('selected');
@@ -50,9 +55,18 @@
         cell,
         classes,
         fallDistance,
+        row,
+        col,
+        popDelayMs,
+        dropDelayMs,
         index,
       };
     });
+  }
+
+  function inferBoardSize(board) {
+    const size = Math.sqrt(board.length);
+    return Number.isInteger(size) && size > 0 ? size : 7;
   }
 
   function cloneTile(tileTemplate) {
@@ -104,6 +118,10 @@
       const tile = cloneTile(tileTemplate);
       item.classes.forEach((className) => tile.classList.add(className));
       tile.dataset.index = String(item.index);
+      tile.style.setProperty('--tile-row', String(item.row));
+      tile.style.setProperty('--tile-col', String(item.col));
+      tile.style.setProperty('--tile-pop-delay', `${item.popDelayMs}ms`);
+      tile.style.setProperty('--tile-drop-delay', `${item.dropDelayMs}ms`);
 
       if (item.fallDistance > 0) {
         tile.style.setProperty('--fall-distance', String(item.fallDistance));
