@@ -17,7 +17,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body class="app-booting">
     <main class="frame">
       <div id="ambient-layer" class="ambient-layer" aria-hidden="true"></div>
       <div id="ambient-game-mask" class="ambient-game-mask hidden" aria-hidden="true"></div>
@@ -222,6 +222,31 @@
               </div>
             </article>
           </section>
+        </div>
+      </section>
+
+      <section id="maintenance-screen" class="maintenance-screen hidden" aria-label="Технические работы">
+        <div class="maintenance-card">
+          <img id="maintenance-image" class="maintenance-image" src="./assets/maintenance-claps.svg" alt="" />
+          <div class="maintenance-copy">
+            <h1 id="maintenance-title">Техническая пауза</h1>
+            <p id="maintenance-body">Мы делаем игру чуточку лучше</p>
+            <p id="maintenance-note">Приносим извинения за доставленные неудобства</p>
+          </div>
+          <div class="maintenance-actions">
+            <button id="maintenance-book" class="maintenance-action maintenance-action-book" type="button">
+              Забронировать столик
+            </button>
+            <button id="maintenance-retry" class="maintenance-action maintenance-action-retry" type="button">
+              <span id="maintenance-retry-label">Повторить</span>
+              <span class="maintenance-retry-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M20 7.5v5h-5" />
+                  <path d="M19.1 12.4A7.2 7.2 0 1 1 17 7.3L20 10" />
+                </svg>
+              </span>
+            </button>
+          </div>
         </div>
       </section>
     </main>
@@ -446,6 +471,7 @@
     <script>
       window.__SUPABASE_URL__ = 'https://tnngitplssufqeqpxuib.supabase.co';
     </script>
+    <script src="maintenance-config.js"></script>
     <script src="game.js"></script>
   </body>
 </html>

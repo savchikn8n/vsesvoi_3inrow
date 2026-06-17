@@ -6,6 +6,7 @@ const MESSAGE_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/messages-
 const FEEDBACK_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/feedback-admin` : '';
 const PROMO_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/promo-admin` : '';
 const PROMO_UPLOAD_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/promo-upload` : '';
+const RUNTIME_CONFIG_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/runtime-config-admin` : '';
 
 const statusEl = document.getElementById('dashboard-status');
 const loadingEl = document.getElementById('dashboard-loading');
@@ -19,12 +20,14 @@ const sessionsTabEl = document.getElementById('tab-sessions');
 const giftsTabEl = document.getElementById('tab-gifts');
 const messagesTabEl = document.getElementById('tab-messages');
 const promosTabEl = document.getElementById('tab-promos');
+const maintenanceTabEl = document.getElementById('tab-maintenance');
 
 const analyticsPanelEl = document.getElementById('analytics-panel');
 const sessionsPanelEl = document.getElementById('sessions-panel');
 const giftsPanelEl = document.getElementById('gifts-panel');
 const messagesPanelEl = document.getElementById('messages-panel');
 const promosPanelEl = document.getElementById('promos-panel');
+const maintenancePanelEl = document.getElementById('maintenance-panel');
 
 const periodSwitchEl = document.querySelector('.period-switch');
 const topPlayersListEl = document.getElementById('top-players-list');
@@ -76,6 +79,26 @@ const promoPreviewBodyEl = document.getElementById('promo-preview-body');
 const promoPreviewSecondaryEl = document.getElementById('promo-preview-secondary');
 const promoPreviewPrimaryEl = document.getElementById('promo-preview-primary');
 const promoListEl = document.getElementById('promo-list');
+
+const maintenanceEnabledInputEl = document.getElementById('maintenance-enabled-input');
+const maintenanceStateLabelEl = document.getElementById('maintenance-state-label');
+const maintenanceUpdatedAtEl = document.getElementById('maintenance-updated-at');
+const maintenanceTitleInputEl = document.getElementById('maintenance-title-input');
+const maintenanceBodyInputEl = document.getElementById('maintenance-body-input');
+const maintenanceNoteInputEl = document.getElementById('maintenance-note-input');
+const maintenancePrimaryLabelInputEl = document.getElementById('maintenance-primary-label-input');
+const maintenanceSecondaryLabelInputEl = document.getElementById('maintenance-secondary-label-input');
+const maintenanceSecondaryUrlInputEl = document.getElementById('maintenance-secondary-url-input');
+const maintenanceImageUrlInputEl = document.getElementById('maintenance-image-url-input');
+const maintenanceSaveBtnEl = document.getElementById('maintenance-save');
+const maintenanceRefreshBtnEl = document.getElementById('maintenance-refresh');
+const maintenanceStatusEl = document.getElementById('maintenance-status');
+const maintenancePreviewImageEl = document.getElementById('maintenance-preview-image');
+const maintenancePreviewTitleEl = document.getElementById('maintenance-preview-title');
+const maintenancePreviewBodyEl = document.getElementById('maintenance-preview-body');
+const maintenancePreviewNoteEl = document.getElementById('maintenance-preview-note');
+const maintenancePreviewBookEl = document.getElementById('maintenance-preview-book');
+const maintenancePreviewRetryEl = document.getElementById('maintenance-preview-retry');
 
 const metricEls = {
   totalPlayers: document.getElementById('metric-total-players'),
@@ -256,6 +279,80 @@ async function postDashboardJson(url, payload) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data?.error || 'Ошибка dashboard-запроса');
   return data;
+}
+
+function normalizeDashboardRuntimeConfig(value) {
+  if (window.VSRuntimeConfig?.normalizeRuntimeConfig) {
+    return window.VSRuntimeConfig.normalizeRuntimeConfig(value);
+  }
+  return {
+    maintenance: {
+      enabled: false,
+      title: 'Техническая пауза',
+      body: 'Мы делаем игру чуточку лучше',
+      note: 'Приносим извинения за доставленные неудобства',
+      primaryLabel: 'Повторить',
+      secondaryLabel: 'Забронировать столик',
+      secondaryUrl: 'https://t.me/+Ew4VcHco7XBjNDU6',
+      imageUrl: './assets/maintenance-claps.svg',
+      updatedAt: '',
+    },
+  };
+}
+
+function maintenanceFormValue() {
+  return {
+    enabled: Boolean(maintenanceEnabledInputEl?.checked),
+    title: maintenanceTitleInputEl?.value.trim() || '',
+    body: maintenanceBodyInputEl?.value.trim() || '',
+    note: maintenanceNoteInputEl?.value.trim() || '',
+    primaryLabel: maintenancePrimaryLabelInputEl?.value.trim() || '',
+    secondaryLabel: maintenanceSecondaryLabelInputEl?.value.trim() || '',
+    secondaryUrl: maintenanceSecondaryUrlInputEl?.value.trim() || '',
+    imageUrl: maintenanceImageUrlInputEl?.value.trim() || '',
+  };
+}
+
+function setMaintenanceStatus(message, isError = false) {
+  if (!maintenanceStatusEl) return;
+  maintenanceStatusEl.textContent = message || '';
+  maintenanceStatusEl.classList.toggle('is-error', Boolean(isError));
+}
+
+function updateMaintenanceStateLabel() {
+  const enabled = Boolean(maintenanceEnabledInputEl?.checked);
+  if (maintenanceStateLabelEl) {
+    maintenanceStateLabelEl.textContent = enabled ? 'Включена' : 'Выключена';
+  }
+}
+
+function fillMaintenanceForm(config) {
+  const maintenance = normalizeDashboardRuntimeConfig(config).maintenance;
+  if (maintenanceEnabledInputEl) maintenanceEnabledInputEl.checked = Boolean(maintenance.enabled);
+  if (maintenanceTitleInputEl) maintenanceTitleInputEl.value = maintenance.title;
+  if (maintenanceBodyInputEl) maintenanceBodyInputEl.value = maintenance.body;
+  if (maintenanceNoteInputEl) maintenanceNoteInputEl.value = maintenance.note;
+  if (maintenancePrimaryLabelInputEl) maintenancePrimaryLabelInputEl.value = maintenance.primaryLabel;
+  if (maintenanceSecondaryLabelInputEl) maintenanceSecondaryLabelInputEl.value = maintenance.secondaryLabel;
+  if (maintenanceSecondaryUrlInputEl) maintenanceSecondaryUrlInputEl.value = maintenance.secondaryUrl;
+  if (maintenanceImageUrlInputEl) maintenanceImageUrlInputEl.value = maintenance.imageUrl;
+  if (maintenanceUpdatedAtEl) {
+    maintenanceUpdatedAtEl.textContent = maintenance.updatedAt ? `Обновлено: ${formatDateTime(maintenance.updatedAt)}` : '-';
+  }
+  updateMaintenanceStateLabel();
+  updateMaintenancePreview();
+}
+
+function updateMaintenancePreview() {
+  const config = normalizeDashboardRuntimeConfig({ maintenance: maintenanceFormValue() }).maintenance;
+  if (maintenancePreviewImageEl) maintenancePreviewImageEl.src = config.imageUrl;
+  if (maintenancePreviewTitleEl) maintenancePreviewTitleEl.textContent = config.title;
+  if (maintenancePreviewBodyEl) maintenancePreviewBodyEl.textContent = config.body;
+  if (maintenancePreviewNoteEl) maintenancePreviewNoteEl.textContent = config.note;
+  if (maintenancePreviewBookEl) maintenancePreviewBookEl.textContent = config.secondaryLabel;
+  const retryLabelEl = maintenancePreviewRetryEl?.querySelector('span:first-child');
+  if (retryLabelEl) retryLabelEl.textContent = config.primaryLabel;
+  updateMaintenanceStateLabel();
 }
 
 function renderTopPlayers(items = [], targetEl, mode = 'score') {
@@ -552,11 +649,13 @@ function setActiveTab(tab) {
   giftsTabEl?.classList.toggle('is-active', tab === 'gifts');
   messagesTabEl?.classList.toggle('is-active', tab === 'messages');
   promosTabEl?.classList.toggle('is-active', tab === 'promos');
+  maintenanceTabEl?.classList.toggle('is-active', tab === 'maintenance');
   analyticsPanelEl?.classList.toggle('is-active', tab === 'analytics');
   sessionsPanelEl?.classList.toggle('is-active', tab === 'sessions');
   giftsPanelEl?.classList.toggle('is-active', tab === 'gifts');
   messagesPanelEl?.classList.toggle('is-active', tab === 'messages');
   promosPanelEl?.classList.toggle('is-active', tab === 'promos');
+  maintenancePanelEl?.classList.toggle('is-active', tab === 'maintenance');
 }
 
 function setBroadcastResult(message, isError = false) {
@@ -706,6 +805,28 @@ async function fetchPromos() {
   renderPromoList(data?.popups || []);
 }
 
+async function fetchRuntimeConfig() {
+  if (!RUNTIME_CONFIG_ADMIN_URL) throw new Error('Не задан SUPABASE_URL.');
+  const data = await postDashboardJson(RUNTIME_CONFIG_ADMIN_URL, { action: 'get' });
+  fillMaintenanceForm(data?.config || null);
+  setMaintenanceStatus('Конфиг загружен.');
+}
+
+async function saveMaintenanceConfig() {
+  if (!RUNTIME_CONFIG_ADMIN_URL) throw new Error('Не задан SUPABASE_URL.');
+  if (maintenanceSaveBtnEl) maintenanceSaveBtnEl.disabled = true;
+  try {
+    const data = await postDashboardJson(RUNTIME_CONFIG_ADMIN_URL, {
+      action: 'save',
+      maintenance: maintenanceFormValue(),
+    });
+    fillMaintenanceForm(data?.config || null);
+    setMaintenanceStatus('Сохранено. Игроки увидят новое состояние при следующем входе или повторе.');
+  } finally {
+    if (maintenanceSaveBtnEl) maintenanceSaveBtnEl.disabled = false;
+  }
+}
+
 async function fetchGiftPurchases() {
   if (!GIFT_ADMIN_URL) throw new Error('Не задан SUPABASE_URL.');
   const data = await postDashboardJson(GIFT_ADMIN_URL, { action: 'list' });
@@ -813,7 +934,10 @@ async function fetchAllDashboardData() {
   }
   setLoading(true);
   try {
-    await Promise.all([fetchSummary(), fetchGiftPurchases(), fetchPromos(), fetchFeedback()]);
+    const runtimeConfigRequest = fetchRuntimeConfig().catch((error) => {
+      setMaintenanceStatus(error.message || 'Не удалось загрузить техпаузу.', true);
+    });
+    await Promise.all([fetchSummary(), fetchGiftPurchases(), fetchPromos(), fetchFeedback(), runtimeConfigRequest]);
     setStatus('');
     setSecretPanelCollapsed(true);
   } finally {
@@ -868,6 +992,7 @@ sessionsTabEl?.addEventListener('click', () => setActiveTab('sessions'));
 giftsTabEl?.addEventListener('click', () => setActiveTab('gifts'));
 messagesTabEl?.addEventListener('click', () => setActiveTab('messages'));
 promosTabEl?.addEventListener('click', () => setActiveTab('promos'));
+maintenanceTabEl?.addEventListener('click', () => setActiveTab('maintenance'));
 promoEditorSubtabEl?.addEventListener('click', () => setPromoSubtab('editor'));
 promoArchiveSubtabEl?.addEventListener('click', () => setPromoSubtab('archive'));
 connectBtnEl?.addEventListener('click', connectDashboard);
@@ -897,6 +1022,25 @@ promoListEl?.addEventListener('click', (event) => {
 promoImageFileInputEl?.addEventListener('change', () => {
   selectedPromoImageFile = promoImageFileInputEl.files?.[0] || null;
   updatePromoPreview();
+});
+maintenanceSaveBtnEl?.addEventListener('click', () => {
+  void saveMaintenanceConfig().catch((error) => setMaintenanceStatus(error.message || 'Не удалось сохранить техпаузу.', true));
+});
+maintenanceRefreshBtnEl?.addEventListener('click', () => {
+  void fetchRuntimeConfig().catch((error) => setMaintenanceStatus(error.message || 'Не удалось обновить техпаузу.', true));
+});
+[
+  maintenanceEnabledInputEl,
+  maintenanceTitleInputEl,
+  maintenanceBodyInputEl,
+  maintenanceNoteInputEl,
+  maintenancePrimaryLabelInputEl,
+  maintenanceSecondaryLabelInputEl,
+  maintenanceSecondaryUrlInputEl,
+  maintenanceImageUrlInputEl,
+].forEach((el) => {
+  el?.addEventListener('input', updateMaintenancePreview);
+  el?.addEventListener('change', updateMaintenancePreview);
 });
 periodSwitchEl?.addEventListener('click', (event) => {
   const button = event.target.closest('.period-btn');
@@ -967,6 +1111,7 @@ if (savedSecret && secretInputEl) {
   setSecretPanelCollapsed(false);
 }
 resetPromoEditor();
+fillMaintenanceForm(null);
 setPromoSubtab('editor');
 updateBroadcastScheduleMode();
 startAutoRefresh();

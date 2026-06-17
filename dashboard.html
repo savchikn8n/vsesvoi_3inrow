@@ -25,6 +25,7 @@
           <button id="tab-gifts" class="dashboard-tab" type="button">Подарки</button>
           <button id="tab-messages" class="dashboard-tab" type="button">Сообщения</button>
           <button id="tab-promos" class="dashboard-tab" type="button">Попапы</button>
+          <button id="tab-maintenance" class="dashboard-tab" type="button">Техпауза</button>
         </nav>
 
         <div class="dashboard-header-tools">
@@ -385,11 +386,103 @@
           </article>
         </section>
       </section>
+
+      <section id="maintenance-panel" class="dashboard-panel maintenance-panel">
+        <div class="maintenance-dashboard-grid">
+          <article class="panel-card maintenance-editor-card">
+            <div class="panel-head">
+              <div>
+                <h2>Техническая пауза</h2>
+                <span class="panel-note">Экран, который временно закрывает вход в игру</span>
+              </div>
+              <span id="maintenance-updated-at" class="panel-note">-</span>
+            </div>
+            <div class="maintenance-editor-scroll">
+              <label class="maintenance-toggle-row">
+                <input id="maintenance-enabled-input" type="checkbox" />
+                <span>
+                  <strong id="maintenance-state-label">Выключена</strong>
+                  <small>При включении игроки увидят заглушку вместо входа в игру.</small>
+                </span>
+              </label>
+
+              <div class="promo-form-grid maintenance-form-grid">
+                <label class="promo-field">
+                  <span>Заголовок</span>
+                  <input id="maintenance-title-input" type="text" maxlength="80" />
+                </label>
+                <label class="promo-field">
+                  <span>Текст под заголовком</span>
+                  <input id="maintenance-body-input" type="text" maxlength="160" />
+                </label>
+                <label class="promo-field promo-field-full">
+                  <span>Извинение</span>
+                  <input id="maintenance-note-input" type="text" maxlength="160" />
+                </label>
+                <label class="promo-field">
+                  <span>Кнопка повтора</span>
+                  <input id="maintenance-primary-label-input" type="text" maxlength="32" />
+                </label>
+                <label class="promo-field">
+                  <span>Кнопка брони</span>
+                  <input id="maintenance-secondary-label-input" type="text" maxlength="40" />
+                </label>
+                <label class="promo-field promo-field-full">
+                  <span>Ссылка брони</span>
+                  <input id="maintenance-secondary-url-input" type="url" />
+                </label>
+                <label class="promo-field promo-field-full">
+                  <span>Иконка</span>
+                  <input id="maintenance-image-url-input" type="text" />
+                </label>
+              </div>
+
+              <div class="runtime-actions">
+                <button id="maintenance-save" type="button">Сохранить</button>
+                <button id="maintenance-refresh" type="button" class="dashboard-ghost-btn">Обновить</button>
+              </div>
+              <p id="maintenance-status" class="maintenance-status empty-state">Конфиг ещё не загружен.</p>
+            </div>
+          </article>
+
+          <article class="panel-card maintenance-preview-card">
+            <div class="panel-head">
+              <div>
+                <h2>Превью</h2>
+                <span class="panel-note">Приближенно к экрану Mini-app</span>
+              </div>
+            </div>
+            <div class="maintenance-preview-scroll">
+              <div class="maintenance-phone-preview">
+                <img id="maintenance-preview-image" src="./assets/maintenance-claps.svg" alt="" />
+                <div class="maintenance-preview-copy">
+                  <h3 id="maintenance-preview-title">Техническая пауза</h3>
+                  <p id="maintenance-preview-body">Мы делаем игру чуточку лучше</p>
+                  <p id="maintenance-preview-note">Приносим извинения за доставленные неудобства</p>
+                </div>
+                <div class="maintenance-preview-actions">
+                  <button id="maintenance-preview-book" type="button">Забронировать столик</button>
+                  <button id="maintenance-preview-retry" type="button">
+                    <span>Повторить</span>
+                    <span class="maintenance-preview-retry-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M20 7.5v5h-5" />
+                        <path d="M19.1 12.4A7.2 7.2 0 1 1 17 7.3L20 10" />
+                      </svg>
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
     </main>
 
     <script>
       window.__SUPABASE_URL__ = window.__SUPABASE_URL__ || 'https://tnngitplssufqeqpxuib.supabase.co';
     </script>
+    <script src="./maintenance-config.js"></script>
     <script src="./dashboard.js"></script>
   </body>
 </html>

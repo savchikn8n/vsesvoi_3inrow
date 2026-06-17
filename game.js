@@ -101,6 +101,14 @@ const shopOwnedBtn = document.getElementById('shop-owned-btn');
 const shopOwnedModalEl = document.getElementById('shop-owned-modal');
 const shopOwnedListEl = document.getElementById('shop-owned-list');
 const shopOwnedCloseBtn = document.getElementById('shop-owned-close');
+const maintenanceScreenEl = document.getElementById('maintenance-screen');
+const maintenanceImageEl = document.getElementById('maintenance-image');
+const maintenanceTitleEl = document.getElementById('maintenance-title');
+const maintenanceBodyEl = document.getElementById('maintenance-body');
+const maintenanceNoteEl = document.getElementById('maintenance-note');
+const maintenanceBookBtn = document.getElementById('maintenance-book');
+const maintenanceRetryBtn = document.getElementById('maintenance-retry');
+const maintenanceRetryLabelEl = document.getElementById('maintenance-retry-label');
 const feedbackModalEl = document.getElementById('feedback-modal');
 const feedbackInputEl = document.getElementById('feedback-input');
 const feedbackCancelBtn = document.getElementById('feedback-cancel');
@@ -160,6 +168,8 @@ const CLAPS_BALANCE_KEY = 'gold_match_claps_balance';
 const PROFILE_KEY = 'gold_match_profile';
 const LEADERBOARD_CACHE_KEY = 'gold_match_leaderboard_cache_v1';
 const LEADERBOARD_CACHE_TTL_MS = 60 * 1000;
+const RUNTIME_CONFIG_CACHE_KEY = 'gold_match_runtime_config_cache_v1';
+const RUNTIME_CONFIG_CACHE_TTL_MS = 120 * 1000;
 const SEEN_PROMO_IDS_KEY = 'gold_match_seen_promo_ids_v1';
 const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUPABASE_FUNCTIONS_BASE = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '';
@@ -1147,6 +1157,159 @@ function saveLeaderboardCache(items) {
   localStorage.setItem(LEADERBOARD_CACHE_KEY, JSON.stringify(payload));
 }
 
+function normalizeAppRuntimeConfig(value) {
+  if (window.VSRuntimeConfig?.normalizeRuntimeConfig) {
+    return window.VSRuntimeConfig.normalizeRuntimeConfig(value);
+  }
+  return {
+    maintenance: {
+      enabled: false,
+      title: 'Техническая пауза',
+      body: 'Мы делаем игру чуточку лучше',
+      note: 'Приносим извинения за доставленные неудобства',
+      primaryLabel: 'Повторить',
+      secondaryLabel: 'Забронировать столик',
+      secondaryUrl: 'https://t.me/+Ew4VcHco7XBjNDU6',
+      imageUrl: './assets/maintenance-claps.svg',
+      updatedAt: '',
+    },
+  };
+}
+
+function loadRuntimeConfigCache() {
+  try {
+    const raw = localStorage.getItem(RUNTIME_CONFIG_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed;
+  } catch (_) {
+    return null;
+  }
+}
+
+function saveRuntimeConfigCache(config) {
+  try {
+    localStorage.setItem(
+      RUNTIME_CONFIG_CACHE_KEY,
+      JSON.stringify({
+        cachedAt: Date.now(),
+        config: normalizeAppRuntimeConfig(config),
+      }),
+    );
+  } catch (_) {
+    // Runtime config cache is best-effort and must never block the game.
+  }
+}
+
+function shouldUseCachedRuntimeMaintenance(cacheEntry) {
+  if (window.VSRuntimeConfig?.shouldUseCachedMaintenance) {
+    return window.VSRuntimeConfig.shouldUseCachedMaintenance(
+      cacheEntry,
+      Date.now(),
+      RUNTIME_CONFIG_CACHE_TTL_MS,
+    );
+  }
+  return false;
+}
+
+async function resolveRuntimeConfig() {
+  try {
+    const result = await postJsonWithOptions('runtime-config', {}, { timeoutMs: 5000, retries: 0 });
+    const config = normalizeAppRuntimeConfig(result?.config);
+    saveRuntimeConfigCache(config);
+    return config;
+  } catch (_) {
+    const cache = loadRuntimeConfigCache();
+    if (shouldUseCachedRuntimeMaintenance(cache)) {
+      return normalizeAppRuntimeConfig(cache.config);
+    }
+    return normalizeAppRuntimeConfig(null);
+  }
+}
+
+function applyMaintenanceCopy(config) {
+  const maintenance = normalizeAppRuntimeConfig(config).maintenance;
+  if (maintenanceImageEl) {
+    maintenanceImageEl.src = maintenance.imageUrl;
+  }
+  if (maintenanceTitleEl) maintenanceTitleEl.textContent = maintenance.title;
+  if (maintenanceBodyEl) maintenanceBodyEl.textContent = maintenance.body;
+  if (maintenanceNoteEl) maintenanceNoteEl.textContent = maintenance.note;
+  if (maintenanceBookBtn) {
+    maintenanceBookBtn.textContent = maintenance.secondaryLabel;
+    maintenanceBookBtn.dataset.url = maintenance.secondaryUrl;
+  }
+  if (maintenanceRetryLabelEl) maintenanceRetryLabelEl.textContent = maintenance.primaryLabel;
+}
+
+function showMaintenanceScreen(config) {
+  applyMaintenanceCopy(config);
+  stopTurnTimer();
+  locked = true;
+  selected = null;
+  clearHint();
+  closeAllModals();
+  startScreenEl?.classList.add('hidden');
+  shopScreenEl?.classList.add('hidden');
+  maintenanceScreenEl?.classList.remove('hidden');
+  maintenanceScreenEl?.setAttribute('aria-hidden', 'false');
+  refreshAmbientLayers();
+  syncAmbientGameMask();
+}
+
+function hideMaintenanceScreen() {
+  maintenanceScreenEl?.classList.add('hidden');
+  maintenanceScreenEl?.setAttribute('aria-hidden', 'true');
+  refreshAmbientLayers();
+  syncAmbientGameMask();
+}
+
+function openMaintenanceBooking() {
+  const url = maintenanceBookBtn?.dataset.url || normalizeAppRuntimeConfig(null).maintenance.secondaryUrl;
+  const tg = window.Telegram?.WebApp;
+  try {
+    if (tg?.openTelegramLink && url.startsWith('https://t.me')) {
+      tg.openTelegramLink(url);
+      return;
+    }
+    if (tg?.openLink && /^https?:\/\//i.test(url)) {
+      tg.openLink(url);
+      return;
+    }
+  } catch (_) {
+    // Fall back to a regular browser link below.
+  }
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+async function retryMaintenanceEntry() {
+  if (maintenanceRetryBtn) maintenanceRetryBtn.disabled = true;
+  if (maintenanceRetryLabelEl) maintenanceRetryLabelEl.textContent = 'Проверяем';
+  try {
+    const config = await resolveRuntimeConfig();
+    if (config.maintenance.enabled) {
+      showMaintenanceScreen(config);
+      return;
+    }
+    hideMaintenanceScreen();
+    await ensureAuthFlow();
+  } finally {
+    if (maintenanceRetryBtn) maintenanceRetryBtn.disabled = false;
+  }
+}
+
+async function prepareAppEntry() {
+  const config = await resolveRuntimeConfig();
+  document.body.classList.remove('app-booting');
+  if (config.maintenance.enabled) {
+    showMaintenanceScreen(config);
+    return;
+  }
+  hideMaintenanceScreen();
+  await ensureAuthFlow();
+}
+
 
 function loadSeenPromoIds() {
   try {
@@ -1169,6 +1332,7 @@ function markPromoSeen(popupId) {
 }
 
 function showAuthModal() {
+  hideMaintenanceScreen();
   hideStartScreen();
   closeAllModals();
   setAuthStatus('');
@@ -1486,6 +1650,7 @@ function showStartScreen() {
   locked = true;
   selected = null;
   clearHint();
+  hideMaintenanceScreen();
   closeAllModals();
   if (!isProfileComplete(profile || loadProfile())) {
     showAuthModal();
@@ -3415,6 +3580,10 @@ shopConfirmAcceptBtn?.addEventListener('click', () => {
 });
 shopCodeCloseBtn?.addEventListener('click', closeShopCodeModal);
 shopOwnedCloseBtn?.addEventListener('click', closeOwnedGiftsModal);
+maintenanceBookBtn?.addEventListener('click', openMaintenanceBooking);
+maintenanceRetryBtn?.addEventListener('click', () => {
+  void retryMaintenanceEntry();
+});
 feedbackCancelBtn?.addEventListener('click', closeFeedbackModal);
 feedbackSendBtn?.addEventListener('click', () => {
   void sendFeedbackMessage();
@@ -3471,4 +3640,4 @@ setupMenuHeroCarousel();
 setupAmbientLayers();
 createBoard();
 drawBoard();
-ensureAuthFlow();
+void prepareAppEntry();

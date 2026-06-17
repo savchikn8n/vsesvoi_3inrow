@@ -18,6 +18,24 @@
   --radius-sm: 4px;
 }
 
+@font-face {
+  font-family: "MuseoCyrlTitle";
+  src:
+    url("./assets/MuseoCyrl-900.woff2") format("woff2"),
+    url("./assets/MuseoCyrl-900.woff") format("woff");
+  font-weight: 900;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Muller";
+  src: url("./assets/fonts/Muller-Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -334,7 +352,8 @@ textarea {
 .behavior-card,
 .messages-impact-card,
 .messages-panel .panel-card,
-.gifts-panel .panel-card {
+.gifts-panel .panel-card,
+.maintenance-panel .panel-card {
   min-height: 0;
 }
 
@@ -1019,6 +1038,199 @@ textarea {
   overflow: auto;
 }
 
+.maintenance-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(520px, 1fr) minmax(320px, 420px);
+  gap: 14px;
+  height: 100%;
+  min-height: 0;
+}
+
+.maintenance-editor-scroll,
+.maintenance-preview-scroll {
+  padding: 0 14px 14px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.maintenance-toggle-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.025);
+  box-shadow: inset 0 0 0 1px rgba(247, 200, 62, 0.14);
+}
+
+.maintenance-toggle-row input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 56px;
+  height: 32px;
+  border-radius: 999px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(247, 200, 62, 0.2);
+  cursor: pointer;
+}
+
+.maintenance-toggle-row input::before {
+  content: "";
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--text-dim);
+  transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.maintenance-toggle-row input:checked {
+  background: rgba(247, 200, 62, 0.18);
+  border-color: rgba(247, 200, 62, 0.68);
+}
+
+.maintenance-toggle-row input:checked::before {
+  transform: translateX(23px);
+  background: var(--accent);
+}
+
+.maintenance-toggle-row span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.maintenance-toggle-row strong {
+  color: var(--accent);
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.maintenance-toggle-row small {
+  color: var(--text-dim);
+  line-height: 1.35;
+}
+
+.maintenance-form-grid {
+  margin-top: 8px;
+}
+
+.runtime-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.runtime-actions button {
+  min-height: 40px;
+  padding: 10px 14px;
+}
+
+.maintenance-status {
+  margin: 14px 0 0;
+}
+
+.maintenance-status.is-error {
+  color: var(--danger);
+}
+
+.maintenance-preview-scroll {
+  display: grid;
+  place-items: start center;
+}
+
+.maintenance-phone-preview {
+  width: min(100%, 360px);
+  min-height: 680px;
+  border-radius: 24px;
+  padding: 84px 24px 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #000000;
+  box-shadow:
+    inset 0 0 0 1px rgba(247, 200, 62, 0.18),
+    0 24px 60px rgba(0, 0, 0, 0.36);
+}
+
+.maintenance-phone-preview img {
+  width: 172px;
+  height: 172px;
+  object-fit: contain;
+  display: block;
+  margin-bottom: 44px;
+}
+
+.maintenance-preview-copy {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 64px;
+}
+
+.maintenance-preview-copy h3 {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
+  font-size: 31px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.maintenance-preview-copy p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.46);
+  font-family: "Muller", "Manrope", sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.maintenance-preview-actions {
+  width: 100%;
+  display: grid;
+  gap: 24px;
+}
+
+.maintenance-preview-actions button {
+  min-height: 64px;
+  padding: 0 10px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #000000;
+  background: var(--accent);
+  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
+  font-size: 23px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+  text-align: center;
+  box-shadow: none;
+}
+
+.maintenance-preview-retry-icon {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+}
+
+.maintenance-preview-retry-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .sessions-table td:nth-child(2),
 .sessions-table th:nth-child(2) {
   white-space: nowrap;
@@ -1031,7 +1243,8 @@ textarea {
 
   .analytics-top-grid,
   .analytics-bottom-grid,
-  .messages-grid {
+  .messages-grid,
+  .maintenance-dashboard-grid {
     grid-template-columns: 1fr;
     height: auto;
   }
@@ -1048,7 +1261,9 @@ textarea {
 
   .promo-editor-card,
   .promo-preview-card,
-  .promo-list-card {
+  .promo-list-card,
+  .maintenance-editor-card,
+  .maintenance-preview-card {
     grid-column: auto;
     grid-row: auto;
   }
@@ -1122,7 +1337,45 @@ textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .maintenance-phone-preview {
+    min-height: 640px;
+  }
+
   .metrics-grid-compact {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .maintenance-toggle-row {
+    grid-template-columns: 1fr;
+  }
+
+  .maintenance-phone-preview {
+    min-height: 580px;
+    padding: 54px 18px 24px;
+  }
+
+  .maintenance-phone-preview img {
+    width: 142px;
+    height: 142px;
+    margin-bottom: 30px;
+  }
+
+  .maintenance-preview-copy {
+    margin-bottom: 42px;
+  }
+
+  .maintenance-preview-copy h3 {
+    font-size: 28px;
+  }
+
+  .maintenance-preview-actions {
+    gap: 16px;
+  }
+
+  .maintenance-preview-actions button {
+    min-height: 58px;
+    font-size: 20px;
   }
 }
