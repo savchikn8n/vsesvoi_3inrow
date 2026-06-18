@@ -49,7 +49,6 @@
 
       <footer class="controls">
         <div class="control-row">
-          <button id="restart" type="button">Новая игра</button>
           <button id="exit-to-menu" class="exit-to-menu" type="button">Выйти</button>
         </div>
         <p id="status" class="status-hidden" aria-live="polite">Собирайте комбинации по 3+ в ряд.</p>
@@ -79,7 +78,7 @@
           </button>
           <button id="profile-entry" class="profile-entry panel" type="button" aria-label="Профиль">
             <span class="profile-entry-avatar-wrap">
-              <img id="profile-entry-avatar" class="profile-entry-avatar" src="./assets/gold.png" alt="Аватар профиля" />
+              <img id="profile-entry-avatar" class="profile-entry-avatar" src="./assets/clapblock.svg" alt="Аватар профиля" />
             </span>
             <span id="profile-entry-name" class="profile-entry-name">Игрок</span>
           </button>
@@ -320,6 +319,18 @@
       </div>
     </div>
 
+    <div id="exit-confirm-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card exit-confirm-card">
+        <h2>Выйти?</h2>
+        <p>Партия поставлена на паузу. Вернуться бесплатно можно первые 7 секунд.</p>
+        <p id="exit-confirm-status" class="auth-status" aria-live="polite"></p>
+        <div class="modal-actions exit-confirm-actions">
+          <button id="exit-confirm-cancel" type="button">Отмена</button>
+          <button id="exit-confirm-accept" type="button" class="exit-confirm-accept">Да</button>
+        </div>
+      </div>
+    </div>
+
     <div id="settings-modal" class="modal hidden" aria-hidden="true">
       <div class="modal-card">
         <h2>Настройки</h2>
@@ -395,7 +406,7 @@
         </div>
         <div id="avatar-picker" class="avatar-picker">
           <button class="avatar-option" type="button" data-avatar="gold">
-            <img src="./assets/gold.png" alt="Аватар gold" />
+            <img src="./assets/clapblock.svg" alt="Аватар gold" />
           </button>
           <button class="avatar-option" type="button" data-avatar="hookah">
             <img src="./assets/hookah1.png" alt="Аватар hookah" />

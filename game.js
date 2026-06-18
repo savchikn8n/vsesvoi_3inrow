@@ -22,7 +22,6 @@ const shopAmbientLayerEl = document.getElementById('shop-ambient-layer');
 const scoreEl = document.getElementById('score');
 const hudClapsEl = document.getElementById('hud-claps');
 const timerEl = document.getElementById('timer');
-const restartBtn = document.getElementById('restart');
 const exitToMenuBtn = document.getElementById('exit-to-menu');
 const statusEl = document.getElementById('status');
 const tileTpl = document.getElementById('tile-template');
@@ -46,6 +45,10 @@ const menuHeroEl = document.getElementById('menu-hero');
 const menuHeroTrackEl = document.getElementById('menu-hero-track');
 const menuHeroDots = Array.from(document.querySelectorAll('.menu-hero-dot'));
 const gameOverModalEl = document.getElementById('game-over-modal');
+const exitConfirmModalEl = document.getElementById('exit-confirm-modal');
+const exitConfirmCancelBtn = document.getElementById('exit-confirm-cancel');
+const exitConfirmAcceptBtn = document.getElementById('exit-confirm-accept');
+const exitConfirmStatusEl = document.getElementById('exit-confirm-status');
 const settingsModalEl = document.getElementById('settings-modal');
 const leaderboardModalEl = document.getElementById('leaderboard-modal');
 const leaderboardStatusEl = document.getElementById('leaderboard-status');
@@ -148,6 +151,9 @@ let clapsAwardedThisRun = 0;
 let pendingBestScoreSync = false;
 let pendingClapBalanceSync = false;
 let profile = null;
+let exitConfirmOpenedAt = 0;
+let exitConfirmTimerId = null;
+let exitConfirmBusy = false;
 let selectedAvatar = 'gold';
 let authBusy = false;
 let avatarPicked = false;
@@ -190,6 +196,8 @@ const SUPABASE_FUNCTIONS_BASE = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : 
 const SHARE_GAME_URL = 'https://t.me/vsesvoi3inrow_bot';
 const SHARE_RECORD_TEXT = 'Заходи и побей мой рекорд во «Все свои: 3 в ряд»';
 const CONTINUE_RUN_CLAPS_COST = 5;
+const EXIT_CANCEL_FREE_MS = 7000;
+const EXIT_CANCEL_CLAPS_COST = CONTINUE_RUN_CLAPS_COST;
 const SHOP_ITEMS = window.VSShopCatalog?.SHOP_ITEMS || [];
 const SHOP_ITEM_MAP = new Map(SHOP_ITEMS.map((item) => [item.id, item]));
 const AMBIENT_ICON_SOURCES = [
@@ -199,7 +207,7 @@ const AMBIENT_ICON_SOURCES = [
   { key: 'teapot', src: './assets/teapot.png' },
   { key: 'hookah-2', src: './assets/hookah_2.png' },
 ];
-const AVATAR_ASSET_URLS = ['./assets/gold.png', './assets/hookah1.png', './assets/steam.png', './assets/cole.png'];
+const AVATAR_ASSET_URLS = ['./assets/clapblock.svg', './assets/hookah1.png', './assets/steam.png', './assets/cole.png'];
 const avatarAssetCache = new Map();
 
 const ambientState = {
@@ -596,6 +604,7 @@ function updateHud() {
   maybeUpdateBestScore();
   maybeAwardClapsFromScore();
   updateContinueRunButton();
+  updateExitConfirmCancelState();
 }
 
 function loadBestScore() {
@@ -2031,6 +2040,7 @@ function hideModal(el) {
 
 function closeAllModals() {
   hideModal(gameOverModalEl);
+  closeExitConfirmModal();
   hideModal(settingsModalEl);
   hideModal(leaderboardModalEl);
   hideModal(titlesModalEl);
@@ -2286,7 +2296,7 @@ function spawnRocketEffect(index, special) {
 
   effectsLayerEl.appendChild(beam);
   spawnFlashEffect(cx, cy);
-  setTimeout(() => beam.remove(), 360);
+  setTimeout(() => beam.remove(), 500);
 }
 
 function spawnBombEffect(index) {
@@ -2308,7 +2318,7 @@ function spawnBombEffect(index) {
   wave.style.height = `${waveSize}px`;
   effectsLayerEl.appendChild(wave);
   spawnFlashEffect(cx, cy);
-  setTimeout(() => wave.remove(), 460);
+  setTimeout(() => wave.remove(), 560);
 }
 
 function getTileCenter(index) {
@@ -3050,7 +3060,7 @@ function startTurnTimer() {
   resetTurnTimer();
 
   turnTimerId = setInterval(() => {
-    if (locked) {
+    if (locked || isExitConfirmOpen()) {
       updateHud();
       return;
     }
@@ -3142,6 +3152,124 @@ async function continueRunWithClaps() {
   }
 }
 
+function isExitConfirmOpen() {
+  return Boolean(exitConfirmModalEl && !exitConfirmModalEl.classList.contains('hidden'));
+}
+
+function exitConfirmElapsedMs() {
+  return exitConfirmOpenedAt ? Date.now() - exitConfirmOpenedAt : 0;
+}
+
+function stopExitConfirmTicker() {
+  if (exitConfirmTimerId) {
+    clearInterval(exitConfirmTimerId);
+    exitConfirmTimerId = null;
+  }
+}
+
+function updateExitConfirmCancelState() {
+  if (!exitConfirmCancelBtn || !isExitConfirmOpen()) return;
+
+  const isPaid = exitConfirmElapsedMs() >= EXIT_CANCEL_FREE_MS;
+  const canPay = Boolean(profile?.telegram_id) && clapBalance >= EXIT_CANCEL_CLAPS_COST;
+
+  exitConfirmCancelBtn.textContent = isPaid ? `Отмена ${EXIT_CANCEL_CLAPS_COST}🙏` : 'Отмена';
+  exitConfirmCancelBtn.classList.toggle('exit-confirm-cancel-paid', isPaid);
+  exitConfirmCancelBtn.disabled = exitConfirmBusy || (isPaid && !canPay);
+  if (exitConfirmAcceptBtn) exitConfirmAcceptBtn.disabled = exitConfirmBusy;
+
+  if (!exitConfirmStatusEl) return;
+  if (exitConfirmBusy) {
+    exitConfirmStatusEl.textContent = 'Возвращаемся в игру...';
+  } else if (isPaid && !profile?.telegram_id) {
+    exitConfirmStatusEl.textContent = 'Для платного возврата нужна Telegram-сессия.';
+  } else if (isPaid && clapBalance < EXIT_CANCEL_CLAPS_COST) {
+    exitConfirmStatusEl.textContent = 'Не хватает ладошек для возврата.';
+  } else {
+    exitConfirmStatusEl.textContent = '';
+  }
+}
+
+function startExitConfirmTicker() {
+  stopExitConfirmTicker();
+  updateExitConfirmCancelState();
+  exitConfirmTimerId = window.setInterval(updateExitConfirmCancelState, 250);
+}
+
+function closeExitConfirmModal() {
+  stopExitConfirmTicker();
+  exitConfirmOpenedAt = 0;
+  exitConfirmBusy = false;
+  if (exitConfirmStatusEl) exitConfirmStatusEl.textContent = '';
+  if (exitConfirmModalEl) hideModal(exitConfirmModalEl);
+}
+
+function openExitConfirmModal() {
+  if (!exitConfirmModalEl || isExitConfirmOpen()) return;
+  selected = null;
+  clearHint();
+  exitConfirmOpenedAt = Date.now();
+  exitConfirmBusy = false;
+  showModal(exitConfirmModalEl);
+  startExitConfirmTicker();
+  updateHud();
+}
+
+async function cancelExitConfirm() {
+  if (!isExitConfirmOpen() || exitConfirmBusy) return;
+
+  if (exitConfirmElapsedMs() < EXIT_CANCEL_FREE_MS) {
+    closeExitConfirmModal();
+    statusEl.textContent = 'Игра продолжена.';
+    drawBoard();
+    return;
+  }
+
+  if (!profile?.telegram_id || clapBalance < EXIT_CANCEL_CLAPS_COST) {
+    updateExitConfirmCancelState();
+    return;
+  }
+
+  exitConfirmBusy = true;
+  updateExitConfirmCancelState();
+
+  try {
+    const initData = telegramInitData();
+    if (!initData) {
+      throw new Error('Нет Telegram-сессии для списания ладошек.');
+    }
+
+    const result = await postJson('spend-claps', {
+      initData,
+      amount: EXIT_CANCEL_CLAPS_COST,
+      reason: 'exit_cancel',
+    });
+
+    if (!result?.profile) {
+      throw new Error('Сервер не вернул обновлённый профиль.');
+    }
+
+    saveProfile(result.profile, { forceClapBalance: true, synced: true });
+    sessionClapsSpent += EXIT_CANCEL_CLAPS_COST;
+    flushSessionSnapshot({ reason: 'exit_cancel_spend' });
+    closeExitConfirmModal();
+    statusEl.textContent = 'Игра продолжена.';
+    drawBoard();
+  } catch (error) {
+    if (exitConfirmStatusEl) {
+      exitConfirmStatusEl.textContent = error.message || 'Не удалось вернуться в игру.';
+    }
+  } finally {
+    exitConfirmBusy = false;
+    updateExitConfirmCancelState();
+  }
+}
+
+function confirmExitToMenu() {
+  closeExitConfirmModal();
+  exitToMenu();
+}
+
 function exitToMenu() {
   endAnalyticsSession('menu_exit');
   syncProgressIfNeeded();
@@ -3175,7 +3303,7 @@ function closeSettings() {
 
 function avatarChoiceToUrl(avatarChoice) {
   const map = {
-    gold: './assets/gold.png',
+    gold: './assets/clapblock.svg',
     hookah: './assets/hookah1.png',
     steam: './assets/steam.png',
     cole: './assets/cole.png',
@@ -3360,7 +3488,11 @@ async function activateSpecialMove(a, b) {
           scoreMultiplier: a !== b && activations.length === 2 && bombCount === 2 ? 1.5 : 1,
         });
   drawBoard(new Set(), blastCells);
-  await delay(a !== b && activations.length === 2 && bombCount === 2 ? 430 : 340);
+  await delay(
+    a !== b && activations.length === 2 && bombCount === 2
+      ? ANIMATION_TIMINGS.megaBombMs
+      : ANIMATION_TIMINGS.specialBlastMs,
+  );
   if (actionSession !== cascadeSession) return;
   applyGravity();
   drawBoard();
@@ -3478,8 +3610,9 @@ function resetGame() {
   syncAmbientGameMask();
 }
 
-restartBtn.addEventListener('click', resetGame);
-exitToMenuBtn.addEventListener('click', exitToMenu);
+exitToMenuBtn?.addEventListener('click', openExitConfirmModal);
+exitConfirmCancelBtn?.addEventListener('click', () => { void cancelExitConfirm(); });
+exitConfirmAcceptBtn?.addEventListener('click', confirmExitToMenu);
 menuShareRecordBtn?.addEventListener('click', () => { void shareTopRecord(); });
 startShareRecordBtn?.addEventListener('click', () => { void shareTopRecord(); });
 startRecordTriggerEl?.addEventListener('click', handleStartRecordTrigger);

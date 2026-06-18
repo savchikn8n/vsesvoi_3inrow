@@ -6,7 +6,7 @@
   --gold-2: #f3b315;
   --tile-a: #000000;
   --tile-b: #000000;
-  --cell: 72px;
+  --cell: 76px;
   --gap: 4px;
   --tg-ui-offset: 0px;
   --app-outer-gap: 10px;
@@ -381,7 +381,7 @@ h1 {
 }
 
 .board-wrap.shake-mega {
-  animation: board-shake-mega 180ms ease-out;
+  animation: board-shake-mega 260ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .board {
@@ -428,27 +428,33 @@ h1 {
 .effect-rocket {
   position: absolute;
   border-radius: 999px;
-  background: linear-gradient(90deg, #fff2c0, #ffd25f 40%, #ffb524 75%, #fff2c0);
-  box-shadow: 0 0 10px #ffd35f, 0 0 22px #ffbe44aa;
+  background:
+    linear-gradient(90deg, rgba(255, 242, 192, 0), #fff2c0 12%, #ffd25f 42%, #ffb524 72%, rgba(255, 242, 192, 0)),
+    linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0));
+  box-shadow: 0 0 8px rgba(255, 211, 95, 0.76), 0 0 18px rgba(255, 190, 68, 0.5);
+  will-change: transform, opacity, filter;
 }
 
 .effect-rocket.h {
   transform-origin: 50% 50%;
-  animation: rocket-h 340ms ease-out forwards;
+  animation: rocket-h 460ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .effect-rocket.v {
   transform-origin: 50% 50%;
-  animation: rocket-v 340ms ease-out forwards;
+  animation: rocket-v 460ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .effect-bomb {
   position: absolute;
   border-radius: 999px;
-  border: 2px solid #ffd977;
-  background: radial-gradient(circle, #ffe9aa66 0%, #ffc84d2e 45%, transparent 72%);
+  border: 1px solid rgba(255, 217, 119, 0.78);
+  background:
+    radial-gradient(circle, rgba(255, 249, 218, 0.44) 0%, rgba(255, 210, 95, 0.22) 38%, transparent 66%),
+    radial-gradient(circle, rgba(247, 200, 62, 0.18), transparent 72%);
   transform: translate(-50%, -50%);
-  animation: bomb-wave 420ms ease-out forwards;
+  animation: bomb-wave 520ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity, filter;
 }
 
 .effect-smoke {
@@ -510,45 +516,67 @@ h1 {
 
 @keyframes rocket-h {
   0% {
-    transform: scaleX(0.2);
-    opacity: 0.15;
+    transform: scaleX(0.04);
+    opacity: 0;
+    filter: blur(2px);
   }
-  35% {
-    transform: scaleX(1.02);
-    opacity: 1;
+  24% {
+    transform: scaleX(0.86);
+    opacity: 0.96;
+    filter: blur(0.2px);
+  }
+  58% {
+    transform: scaleX(1);
+    opacity: 0.84;
+    filter: blur(0);
   }
   100% {
     transform: scaleX(1);
     opacity: 0;
+    filter: blur(2.4px);
   }
 }
 
 @keyframes rocket-v {
   0% {
-    transform: scaleY(0.2);
-    opacity: 0.15;
+    transform: scaleY(0.04);
+    opacity: 0;
+    filter: blur(2px);
   }
-  35% {
-    transform: scaleY(1.02);
-    opacity: 1;
+  24% {
+    transform: scaleY(0.86);
+    opacity: 0.96;
+    filter: blur(0.2px);
+  }
+  58% {
+    transform: scaleY(1);
+    opacity: 0.84;
+    filter: blur(0);
   }
   100% {
     transform: scaleY(1);
     opacity: 0;
+    filter: blur(2.4px);
   }
 }
 
 @keyframes bomb-wave {
   0% {
-    transform: translate(-50%, -50%) scale(0.25);
-    opacity: 0.2;
+    transform: translate(-50%, -50%) scale(0.18);
+    opacity: 0;
+    filter: blur(2px);
   }
-  35% {
-    opacity: 0.95;
+  26% {
+    opacity: 0.92;
+    filter: blur(0);
+  }
+  62% {
+    opacity: 0.58;
   }
   100% {
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate(-50%, -50%) scale(1.08);
     opacity: 0;
+    filter: blur(3px);
   }
 }
 
@@ -646,10 +674,10 @@ h1 {
 
 @keyframes board-shake-mega {
   0% { transform: translate3d(0, 0, 0); }
-  18% { transform: translate3d(-4px, 1px, 0); }
-  34% { transform: translate3d(4px, -1px, 0); }
-  52% { transform: translate3d(-3px, 1px, 0); }
-  70% { transform: translate3d(3px, -1px, 0); }
+  18% { transform: translate3d(-2px, 1px, 0); }
+  34% { transform: translate3d(2px, -1px, 0); }
+  52% { transform: translate3d(-1px, 1px, 0); }
+  70% { transform: translate3d(1px, -1px, 0); }
   100% { transform: translate3d(0, 0, 0); }
 }
 
@@ -875,7 +903,7 @@ h1 {
 }
 
 .type-3 .gem {
-  background-image: url("./assets/gold.png");
+  background-image: url("./assets/clapblock.svg");
   filter: none;
 }
 
@@ -966,20 +994,8 @@ h1 {
 .control-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
-}
-
-#restart {
-  border: 2px solid #f3b315;
-  background: #f3b315;
-  color: #000000;
-  font-weight: 700;
-  font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
-  letter-spacing: 0.04em;
-  padding: 8px 16px;
-  cursor: pointer;
-  border-radius: var(--ui-radius);
 }
 
 #status {
@@ -1261,6 +1277,8 @@ h1 {
 }
 
 .shop-segmented {
+  position: relative;
+  isolation: isolate;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
@@ -1268,9 +1286,29 @@ h1 {
   padding: 8px;
   border-radius: 18px;
   background: #f3b315;
+  overflow: hidden;
+}
+
+.shop-segmented::before {
+  content: "";
+  position: absolute;
+  inset: 8px auto 8px 8px;
+  z-index: 0;
+  width: calc((100% - 16px) / 2);
+  border-radius: 12px;
+  background: #000000;
+  transform: translateX(0);
+  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.shop-screen[data-active-shop-tab="discounts"] .shop-segmented::before {
+  transform: translateX(100%);
 }
 
 .shop-tab {
+  position: relative;
+  z-index: 1;
   min-height: 58px;
   border: 0;
   border-radius: 12px;
@@ -1293,7 +1331,7 @@ h1 {
 }
 
 .shop-tab.is-active {
-  background: #000000;
+  background: transparent;
   color: #f3b315;
 }
 
@@ -2220,6 +2258,29 @@ h1 {
   border-radius: var(--ui-radius);
 }
 
+.modal-actions button:disabled,
+.settings-row button:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
+.exit-confirm-card {
+  text-align: center;
+}
+
+.exit-confirm-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.exit-confirm-accept {
+  background: #000000 !important;
+  color: #f3b315 !important;
+}
+
+.exit-confirm-cancel-paid {
+  animation: continue-claps-shake 1.8s ease-in-out infinite;
+}
+
 .feedback-input {
   width: 100%;
   min-height: 132px;
@@ -2548,7 +2609,7 @@ h1 {
   }
 
   :root {
-    --cell: calc((100vw - 82px) / 7);
+    --cell: calc((100vw - 62px) / 7);
     --gap: 3px;
   }
 
@@ -2639,8 +2700,8 @@ h1 {
   }
 
   .shop-buy-btn {
-    min-width: 88px;
-    padding: 9px 10px;
+    min-width: 94px;
+    padding: 10px 12px;
   }
 }
 
@@ -2748,6 +2809,7 @@ h1 {
   .tile.invalid,
   .tile.selected .gem,
   .ghost-tile .gem,
+  .shop-segmented::before,
   .shop-panel,
   .tile.hint-source,
   .ambient-item,
