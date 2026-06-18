@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import { SHOP_ITEMS, type ShopItem, type ShopItemId } from '../_shared/shop-catalog.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,15 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Content-Type': 'application/json',
 };
-
-const SHOP_ITEMS = {
-  hookah: { id: 'hookah', price: 350, title: 'Бесплатный покур кальяна' },
-  tea: { id: 'tea', price: 200, title: 'Чайник китайского чая, любого на ваш выбор' },
-  mundshtuk: { id: 'mundshtuk', price: 75, title: 'Фирменный мундштук' },
-  tshirt: { id: 'tshirt', price: 500, title: 'Эксклюзивная футболка' },
-} as const;
-
-type ShopGiftId = keyof typeof SHOP_ITEMS;
 
 function toHex(buffer: ArrayBuffer) {
   return [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -54,19 +46,37 @@ async function verifyTelegramInitData(initData: string, botToken: string) {
   return user;
 }
 
-function randomCode() {
+function randomCodeBody() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const bytes = crypto.getRandomValues(new Uint8Array(8));
   let body = '';
   for (const byte of bytes) {
     body += alphabet[byte % alphabet.length];
   }
+  return body;
+}
+
+function randomGiftCode() {
+  const body = randomCodeBody();
   return `VS-${body.slice(0, 4)}-${body.slice(4, 8)}`;
 }
 
-async function makeUniqueCode(admin: ReturnType<typeof createClient>) {
+function randomDiscountCode(discountPercent: number | null) {
+  const percent = Number(discountPercent || 0);
+  if (!Number.isInteger(percent) || percent <= 0) throw new Error('Invalid discount percent');
+  const body = randomCodeBody();
+  return `%${percent}B-${body.slice(0, 4)}-${body.slice(4, 8)}`;
+}
+
+function randomCodeForItem(shopItem: ShopItem) {
+  return shopItem.item_type === 'discount'
+    ? randomDiscountCode(shopItem.discount_percent)
+    : randomGiftCode();
+}
+
+async function makeUniqueCode(admin: ReturnType<typeof createClient>, shopItem: ShopItem) {
   for (let attempt = 0; attempt < 12; attempt += 1) {
-    const code = randomCode();
+    const code = randomCodeForItem(shopItem);
     const { data, error } = await admin.from('shop_purchases').select('id').eq('code', code).maybeSingle();
     if (error) throw new Error(error.message);
     if (!data?.id) return code;
@@ -90,15 +100,19 @@ async function sendPurchaseNotification(
   botToken: string,
   chatId: string,
   playerName: string,
-  giftTitle: string,
+  shopItem: ShopItem,
   code: string,
 ) {
+  const text = shopItem.item_type === 'discount'
+    ? `Игрок приобрёл скидку: ${shopItem.title}🔥\nКод скидки: ${code}\nИгрок: ${playerName}`
+    : `Игрок приобрёл подарок: ${shopItem.title}!🎁\nКод подарка: ${code}\nИгрок: ${playerName}`;
+
   const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       chat_id: chatId,
-      text: `Игрок приобрёл подарок: ${giftTitle}!🎁\nКод подарка: ${code}\nИгрок: ${playerName}`,
+      text,
       disable_web_page_preview: true,
     }),
   });
@@ -143,7 +157,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const normalizedGiftId = typeof giftId === 'string' ? giftId.trim().toLowerCase() as ShopGiftId : '' as ShopGiftId;
+    const normalizedGiftId = typeof giftId === 'string' ? giftId.trim() as ShopItemId : '' as ShopItemId;
     const shopItem = SHOP_ITEMS[normalizedGiftId];
     if (!shopItem) {
       return new Response(JSON.stringify({ error: 'giftId is invalid' }), {
@@ -171,7 +185,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const code = await makeUniqueCode(admin);
+    const code = await makeUniqueCode(admin, shopItem);
     const nextClaps = currentClaps - shopItem.price;
     const nowIso = new Date().toISOString();
 
@@ -198,6 +212,8 @@ Deno.serve(async (req) => {
       gift_id: shopItem.id,
       code,
       claps_spent: shopItem.price,
+      item_type: shopItem.item_type,
+      discount_percent: shopItem.discount_percent || null,
       display_name_snapshot: existing.display_name || null,
       telegram_username_snapshot: user.username || existing.telegram_username || null,
       telegram_first_name_snapshot: user.first_name || existing.telegram_first_name || null,
@@ -221,7 +237,7 @@ Deno.serve(async (req) => {
           ADMIN_GIFTS_BOT_TOKEN,
           ADMIN_GIFTS_CHAT_ID,
           buyerName(existing),
-          shopItem.title,
+          shopItem,
           code,
         );
         botNotificationStatus = 'sent';
@@ -236,6 +252,8 @@ Deno.serve(async (req) => {
       profile: profileData,
       purchase: {
         gift_id: shopItem.id,
+        item_type: shopItem.item_type,
+        discount_percent: shopItem.discount_percent || null,
         code,
         claps_spent: shopItem.price,
       },
