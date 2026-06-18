@@ -164,12 +164,21 @@
           </div>
           <div class="gifts-toolbar">
             <input id="gift-search" type="search" placeholder="Поиск по игроку или коду" />
+            <select id="gift-filter-type">
+              <option value="">Все типы</option>
+              <option value="gift">Подарки</option>
+              <option value="discount">Скидки</option>
+            </select>
             <select id="gift-filter-item">
-              <option value="">Все подарки</option>
+              <option value="">Все позиции</option>
               <option value="hookah">hookah</option>
               <option value="tea">tea</option>
               <option value="mundshtuk">mundshtuk</option>
               <option value="tshirt">tshirt</option>
+              <option value="discount40">discount40</option>
+              <option value="discount30">discount30</option>
+              <option value="discount20">discount20</option>
+              <option value="discount10">discount10</option>
             </select>
             <select id="gift-filter-status">
               <option value="">Все статусы</option>
@@ -182,7 +191,8 @@
               <thead>
                 <tr>
                   <th>Игрок</th>
-                  <th>Подарок</th>
+                  <th>Тип</th>
+                  <th>Позиция</th>
                   <th>Код</th>
                   <th>Покупка</th>
                   <th>Статус</th>
