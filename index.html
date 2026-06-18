@@ -152,76 +152,128 @@
             </div>
           </header>
 
-          <section class="shop-copy">
-            <h2>Подарки</h2>
-            <p>Обменивайте ладошки на реальные штуки в «Своих».</p>
-          </section>
+          <div class="shop-segmented" role="tablist" aria-label="Раздел подарков">
+            <button id="shop-tab-gifts" class="shop-tab is-active" type="button" role="tab" aria-selected="true" data-shop-tab="gifts">
+              Подарки
+            </button>
+            <button id="shop-tab-discounts" class="shop-tab" type="button" role="tab" aria-selected="false" data-shop-tab="discounts">
+              Скидки
+            </button>
+          </div>
 
-          <section class="shop-list" aria-label="Каталог подарков">
-            <article class="shop-item">
-              <div class="shop-item-visual">
-                <img src="./assets/Shop/hookah.png" alt="Бесплатный покур кальяна" />
-              </div>
-              <div class="shop-item-details">
-                <h3>Бесплатный покур кальяна</h3>
-                <div class="shop-item-meta">
-                  <p>Да-да, прям вот приходите и курите бесплатный кальян.</p>
-                  <button class="shop-buy-btn" type="button" data-gift-id="hookah" data-gift-price="350">
-                    <span>350</span>
-                    <img src="./assets/claps.svg" alt="Ладошки" />
-                  </button>
+          <div class="shop-panels">
+            <section class="shop-list shop-panel is-active" data-shop-panel="gifts" aria-label="Каталог подарков">
+              <article class="shop-item">
+                <div class="shop-item-visual">
+                  <img src="./assets/Shop/hookah.png" alt="Бесплатный покур кальяна" />
                 </div>
-              </div>
-            </article>
+                <div class="shop-item-details">
+                  <h3>Бесплатный покур кальяна</h3>
+                  <div class="shop-item-meta">
+                    <p>Да-да, прям вот приходите и курите бесплатный кальян.</p>
+                    <button class="shop-buy-btn" type="button" data-gift-id="hookah" data-gift-price="350">
+                      <span>350</span>
+                      <img src="./assets/claps.svg" alt="Ладошки" />
+                    </button>
+                  </div>
+                </div>
+              </article>
 
-            <article class="shop-item">
-              <div class="shop-item-visual">
-                <img src="./assets/Shop/tea.png" alt="Чайник китайского чая" />
-              </div>
-              <div class="shop-item-details">
-                <h3>Чайник китайского чая</h3>
-                <div class="shop-item-meta">
-                  <p>Любого на ваш выбор.</p>
-                  <button class="shop-buy-btn" type="button" data-gift-id="tea" data-gift-price="200">
-                    <span>200</span>
-                    <img src="./assets/claps.svg" alt="Ладошки" />
-                  </button>
+              <article class="shop-item">
+                <div class="shop-item-visual">
+                  <img src="./assets/Shop/tea.png" alt="Чайник китайского чая" />
                 </div>
-              </div>
-            </article>
+                <div class="shop-item-details">
+                  <h3>Чайник китайского чая</h3>
+                  <div class="shop-item-meta">
+                    <p>Любого на ваш выбор.</p>
+                    <button class="shop-buy-btn" type="button" data-gift-id="tea" data-gift-price="200">
+                      <span>200</span>
+                      <img src="./assets/claps.svg" alt="Ладошки" />
+                    </button>
+                  </div>
+                </div>
+              </article>
 
-            <article class="shop-item">
-              <div class="shop-item-visual">
-                <img src="./assets/Shop/mundshtuk.png" alt="Фирменный мундштук" />
-              </div>
-              <div class="shop-item-details">
-                <h3>Фирменный мундштук</h3>
-                <div class="shop-item-meta">
-                  <p>Фирменный персональный мундштук.</p>
-                  <button class="shop-buy-btn" type="button" data-gift-id="mundshtuk" data-gift-price="75">
-                    <span>75</span>
-                    <img src="./assets/claps.svg" alt="Ладошки" />
-                  </button>
+              <article class="shop-item">
+                <div class="shop-item-visual">
+                  <img src="./assets/Shop/mundshtuk.png" alt="Фирменный мундштук" />
                 </div>
-              </div>
-            </article>
+                <div class="shop-item-details">
+                  <h3>Фирменный мундштук</h3>
+                  <div class="shop-item-meta">
+                    <p>Фирменный персональный мундштук.</p>
+                    <button class="shop-buy-btn" type="button" data-gift-id="mundshtuk" data-gift-price="75">
+                      <span>75</span>
+                      <img src="./assets/claps.svg" alt="Ладошки" />
+                    </button>
+                  </div>
+                </div>
+              </article>
 
-            <article class="shop-item">
-              <div class="shop-item-visual">
-                <img src="./assets/Shop/tshirt.png" alt="Эксклюзивная футболка" />
-              </div>
-              <div class="shop-item-details">
-                <h3>Эксклюзивная футболка</h3>
-                <div class="shop-item-meta">
-                  <p>Такая будет буквально только у двух людей. Я серьёзно.</p>
-                  <button class="shop-buy-btn" type="button" data-gift-id="tshirt" data-gift-price="500">
-                    <span>500</span>
-                    <img src="./assets/claps.svg" alt="Ладошки" />
-                  </button>
+              <article class="shop-item">
+                <div class="shop-item-visual">
+                  <img src="./assets/Shop/tshirt.png" alt="Эксклюзивная футболка" />
                 </div>
-              </div>
-            </article>
-          </section>
+                <div class="shop-item-details">
+                  <h3>Эксклюзивная футболка</h3>
+                  <div class="shop-item-meta">
+                    <p>Такая будет буквально только у двух людей. Я серьёзно.</p>
+                    <button class="shop-buy-btn" type="button" data-gift-id="tshirt" data-gift-price="500">
+                      <span>500</span>
+                      <img src="./assets/claps.svg" alt="Ладошки" />
+                    </button>
+                  </div>
+                </div>
+              </article>
+            </section>
+
+            <section class="shop-list shop-panel shop-discount-list" data-shop-panel="discounts" aria-label="Каталог скидок" hidden>
+              <article class="shop-item shop-discount-item">
+                <div class="shop-discount-mark" aria-hidden="true"></div>
+                <div class="shop-item-details shop-discount-details">
+                  <h3>40% на кальян!</h3>
+                </div>
+                <button class="shop-buy-btn" type="button" data-gift-id="discount40" data-gift-price="60">
+                  <span>60</span>
+                  <img src="./assets/claps.svg" alt="Ладошки" />
+                </button>
+              </article>
+
+              <article class="shop-item shop-discount-item">
+                <div class="shop-discount-mark" aria-hidden="true"></div>
+                <div class="shop-item-details shop-discount-details">
+                  <h3>30% на кальян!</h3>
+                </div>
+                <button class="shop-buy-btn" type="button" data-gift-id="discount30" data-gift-price="45">
+                  <span>45</span>
+                  <img src="./assets/claps.svg" alt="Ладошки" />
+                </button>
+              </article>
+
+              <article class="shop-item shop-discount-item">
+                <div class="shop-discount-mark" aria-hidden="true"></div>
+                <div class="shop-item-details shop-discount-details">
+                  <h3>20% на кальян!</h3>
+                </div>
+                <button class="shop-buy-btn" type="button" data-gift-id="discount20" data-gift-price="30">
+                  <span>30</span>
+                  <img src="./assets/claps.svg" alt="Ладошки" />
+                </button>
+              </article>
+
+              <article class="shop-item shop-discount-item">
+                <div class="shop-discount-mark" aria-hidden="true"></div>
+                <div class="shop-item-details shop-discount-details">
+                  <h3>10% на кальян!</h3>
+                </div>
+                <button class="shop-buy-btn" type="button" data-gift-id="discount10" data-gift-price="15">
+                  <span>15</span>
+                  <img src="./assets/claps.svg" alt="Ладошки" />
+                </button>
+              </article>
+            </section>
+          </div>
         </div>
       </section>
 
@@ -476,6 +528,7 @@
     <script src="src/game/core/resolution-core.js"></script>
     <script src="src/game/runtime/progress-adapter.js"></script>
     <script src="src/game/runtime/board-renderer.js"></script>
+    <script src="src/shop/catalog.js"></script>
     <script src="game.js"></script>
   </body>
 </html>

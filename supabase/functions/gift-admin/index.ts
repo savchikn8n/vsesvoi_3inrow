@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
 
     const { data, error } = await admin
       .from('shop_purchases')
-      .select('telegram_id, gift_id, code, display_name_snapshot, telegram_username_snapshot, telegram_first_name_snapshot, created_at, issued_at')
+      .select('telegram_id, gift_id, code, item_type, discount_percent, display_name_snapshot, telegram_username_snapshot, telegram_first_name_snapshot, created_at, issued_at')
       .order('created_at', { ascending: false })
       .limit(500);
 
@@ -87,6 +87,8 @@ Deno.serve(async (req) => {
       player_label: playerLabel(row),
       gift_id: row.gift_id,
       code: row.code,
+      item_type: row.item_type || 'gift',
+      discount_percent: row.discount_percent || null,
       status: row.issued_at ? 'issued' : 'pending',
       issued_at: row.issued_at,
       created_at: row.created_at,
