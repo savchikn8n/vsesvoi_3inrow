@@ -60,7 +60,19 @@ test('shop html includes segmented gifts-discounts surface', () => {
   assert.match(html, /data-shop-panel="gifts"/);
   assert.match(html, /data-shop-panel="discounts"/);
   assert.match(html, /data-gift-id="discount40"/);
-  assert.match(html, /40% на кальян!/);
+  assert.match(html, /class="shop-discount-percent">40%<\/span>/);
+  assert.match(html, /class="shop-discount-percent">30%<\/span>/);
+  assert.match(html, /class="shop-discount-percent">20%<\/span>/);
+  assert.match(html, /class="shop-discount-percent">10%<\/span>/);
+});
+
+test('discount cards keep the normal shop button sizing and one-row layout', () => {
+  const css = readRepoFile('styles.css');
+
+  assert.match(css, /\.shop-discount-item\s*{[^}]*grid-template-columns:\s*12px minmax\(0,\s*1fr\) auto/s);
+  assert.match(css, /@media\s*\(max-width:\s*620px\)[\s\S]*\.shop-discount-item\s*{[^}]*grid-template-columns:\s*12px minmax\(0,\s*1fr\) auto/s);
+  assert.doesNotMatch(css, /\.shop-discount-item\s+\.shop-buy-btn\s*{/);
+  assert.match(css, /\.shop-discount-percent\s*{[^}]*color:\s*#f3b315/s);
 });
 
 test('browser wiring loads shop catalog before game.js', () => {

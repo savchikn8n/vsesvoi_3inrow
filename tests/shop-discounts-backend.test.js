@@ -51,3 +51,15 @@ test('dashboard can filter and label gift versus discount purchases', () => {
   assert.match(js, /shopPurchaseTypeLabel/);
   assert.match(js, /item\.item_type/);
 });
+
+test('shop functions are configured as public Telegram endpoints', () => {
+  const config = readRepoFile('supabase/config.toml');
+
+  for (const functionName of ['purchase-gift', 'my-gifts', 'gift-admin']) {
+    assert.match(
+      config,
+      new RegExp(`\\[functions\\.${functionName}\\][\\s\\S]*?verify_jwt\\s*=\\s*false`),
+      `${functionName} must deploy with verify_jwt=false`,
+    );
+  }
+});
