@@ -41,6 +41,7 @@ const broadcastHistoryBodyEl = document.getElementById('broadcast-history-body')
 const feedbackHistoryBodyEl = document.getElementById('feedback-history-body');
 
 const giftSearchEl = document.getElementById('gift-search');
+const giftFilterTypeEl = document.getElementById('gift-filter-type');
 const giftFilterItemEl = document.getElementById('gift-filter-item');
 const giftFilterStatusEl = document.getElementById('gift-filter-status');
 const giftPurchasesBodyEl = document.getElementById('gift-purchases-body');
@@ -578,22 +579,32 @@ function renderTopEventsList(items = []) {
   }
 }
 
+function shopPurchaseTypeLabel(item = {}) {
+  if ((item.item_type || 'gift') === 'discount') {
+    return item.discount_percent ? `Скидка ${item.discount_percent}%` : 'Скидка';
+  }
+  return 'Подарок';
+}
+
 function renderGiftPurchases(items = []) {
   if (!giftPurchasesBodyEl) return;
   giftPurchasesBodyEl.replaceChildren();
   const search = giftSearchEl?.value.trim().toLowerCase() || '';
+  const typeFilter = giftFilterTypeEl?.value || '';
   const giftFilter = giftFilterItemEl?.value || '';
   const statusFilter = giftFilterStatusEl?.value || '';
   const filteredItems = items.filter((item) => {
-    const haystack = `${item.player_label || ''} ${item.code || ''}`.toLowerCase();
+    const itemType = item.item_type || 'gift';
+    const haystack = `${item.player_label || ''} ${item.code || ''} ${item.gift_id || ''} ${shopPurchaseTypeLabel(item)}`.toLowerCase();
     if (search && !haystack.includes(search)) return false;
+    if (typeFilter && itemType !== typeFilter) return false;
     if (giftFilter && item.gift_id !== giftFilter) return false;
     if (statusFilter && item.status !== statusFilter) return false;
     return true;
   });
   if (!filteredItems.length) {
     const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="7" class="empty-state">Пока нет покупок.</td>';
+    row.innerHTML = '<td colspan="8" class="empty-state">Пока нет покупок.</td>';
     giftPurchasesBodyEl.appendChild(row);
     return;
   }
@@ -601,6 +612,7 @@ function renderGiftPurchases(items = []) {
     const row = document.createElement('tr');
     row.innerHTML = `
       <td>${item.player_label || 'Игрок'}</td>
+      <td>${shopPurchaseTypeLabel(item)}</td>
       <td>${item.gift_id}</td>
       <td>${item.code}</td>
       <td>${formatDateTime(item.created_at)}</td>
@@ -1052,7 +1064,7 @@ periodSwitchEl?.addEventListener('click', (event) => {
   });
   void fetchSummary().catch((error) => setStatus(error.message || 'Не удалось обновить аналитику'));
 });
-[giftSearchEl, giftFilterItemEl, giftFilterStatusEl].forEach((el) => {
+[giftSearchEl, giftFilterTypeEl, giftFilterItemEl, giftFilterStatusEl].forEach((el) => {
   el?.addEventListener('input', () => renderGiftPurchases(lastGiftPurchases));
   el?.addEventListener('change', () => renderGiftPurchases(lastGiftPurchases));
 });

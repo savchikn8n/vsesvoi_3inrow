@@ -93,6 +93,10 @@ const launcherLinkVsesvoiBtn = document.getElementById('launcher-link-vsesvoi');
 const shopBackBtn = document.getElementById('shop-back');
 const shopClapsEl = document.getElementById('shop-claps');
 const shopListEl = document.querySelector('.shop-list');
+const shopTabGiftBtn = document.getElementById('shop-tab-gifts');
+const shopTabDiscountBtn = document.getElementById('shop-tab-discounts');
+const shopTabBtns = Array.from(document.querySelectorAll('[data-shop-tab]'));
+const shopPanels = Array.from(document.querySelectorAll('[data-shop-panel]'));
 const shopAlertModalEl = document.getElementById('shop-alert-modal');
 const shopAlertTitleEl = document.getElementById('shop-alert-title');
 const shopAlertBodyEl = document.getElementById('shop-alert-body');
@@ -171,6 +175,7 @@ let shopPurchaseBusy = false;
 let shopOwnedBusy = false;
 let feedbackSendBusy = false;
 let pendingShopItemId = null;
+let activeShopTab = 'gifts';
 
 const BEST_SCORE_KEY = 'gold_match_best_score';
 const CLAPS_BALANCE_KEY = 'gold_match_claps_balance';
@@ -185,32 +190,7 @@ const SUPABASE_FUNCTIONS_BASE = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : 
 const SHARE_GAME_URL = 'https://t.me/vsesvoi3inrow_bot';
 const SHARE_RECORD_TEXT = 'Заходи и побей мой рекорд во «Все свои: 3 в ряд»';
 const CONTINUE_RUN_CLAPS_COST = 5;
-const SHOP_ITEMS = [
-  {
-    id: 'hookah',
-    title: 'Бесплатный покур кальяна',
-    description: 'Да-да, прям вот приходите и курите бесплатный кальян.',
-    price: 350,
-  },
-  {
-    id: 'tea',
-    title: 'Чайник китайского чая',
-    description: 'Любого на ваш выбор.',
-    price: 200,
-  },
-  {
-    id: 'mundshtuk',
-    title: 'Фирменный мундштук',
-    description: 'Фирменный персональный мундштук.',
-    price: 75,
-  },
-  {
-    id: 'tshirt',
-    title: 'Эксклюзивная футболка',
-    description: 'Такая будет буквально только у двух людей. Я серьёзно.',
-    price: 500,
-  },
-];
+const SHOP_ITEMS = window.VSShopCatalog?.SHOP_ITEMS || [];
 const SHOP_ITEM_MAP = new Map(SHOP_ITEMS.map((item) => [item.id, item]));
 const AMBIENT_ICON_SOURCES = [
   { key: 'dualsence', src: './assets/dualsence.png' },
@@ -682,8 +662,8 @@ function updateBestScoreUi() {
 }
 
 function updateShopButtons() {
-  if (!shopListEl) return;
-  shopListEl.querySelectorAll('.shop-buy-btn').forEach((button) => {
+  if (!shopScreenEl) return;
+  shopScreenEl.querySelectorAll('.shop-buy-btn').forEach((button) => {
     const price = Math.max(0, Number(button.dataset.giftPrice || 0));
     button.disabled = shopPurchaseBusy;
     button.classList.toggle('is-unaffordable', clapBalance < price);
@@ -691,7 +671,15 @@ function updateShopButtons() {
 }
 
 function shopGiftTitle(giftId) {
-  return SHOP_ITEM_MAP.get(giftId)?.title || giftId || 'Подарок';
+  return window.VSShopCatalog?.shopItemTitle?.(giftId) || SHOP_ITEM_MAP.get(giftId)?.title || giftId || 'Подарок';
+}
+
+function shopItemTypeLabel(item) {
+  return item?.itemType === 'discount' || item?.item_type === 'discount' ? 'Скидка' : 'Подарок';
+}
+
+function shopItemCodeCopy(item) {
+  return item?.itemType === 'discount' || item?.item_type === 'discount' ? 'скидку' : 'подарок';
 }
 
 function formatGiftPurchaseDate(iso) {
@@ -1436,6 +1424,7 @@ function closeProfileEditor() {
 function openShopScreen() {
   void trackAnalytics('gifts_opened', { sessionId: activeSessionId });
   closeAllModals();
+  setShopTab('gifts');
   shopScreenEl?.classList.remove('hidden');
   updateBestScoreUi();
   syncAmbientGameMask();
@@ -1447,6 +1436,24 @@ function closeShopScreen() {
   updateBestScoreUi();
   updateProfileEntry();
   syncAmbientGameMask();
+}
+
+function setShopTab(tab) {
+  const nextTab = tab === 'discounts' ? 'discounts' : 'gifts';
+  activeShopTab = nextTab;
+  shopScreenEl?.setAttribute('data-active-shop-tab', nextTab);
+
+  shopTabBtns.forEach((button) => {
+    const isActive = button.dataset.shopTab === nextTab;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-selected', String(isActive));
+  });
+
+  shopPanels.forEach((panel) => {
+    const isActive = panel.dataset.shopPanel === nextTab;
+    panel.classList.toggle('is-active', isActive);
+    panel.hidden = !isActive;
+  });
 }
 
 function openShopAlert(title, body) {
@@ -1464,7 +1471,8 @@ function openShopConfirm(item) {
   pendingShopItemId = item?.id || null;
   if (shopConfirmTitleEl) shopConfirmTitleEl.textContent = 'Покупаем?';
   if (shopConfirmBodyEl) {
-    shopConfirmBodyEl.textContent = `${item.title} за ${item.price} ладошек. Спишем баланс и сразу покажем уникальный код.`;
+    const purchaseType = shopItemTypeLabel(item).toLowerCase();
+    shopConfirmBodyEl.textContent = `${purchaseType} «${item.title}» за ${item.price} ладошек. Спишем баланс и сразу покажем уникальный код.`;
   }
   closeAllModals();
   showModal(shopConfirmModalEl);
@@ -1477,7 +1485,7 @@ function closeShopConfirm() {
 
 function openShopCodeModal(item, code) {
   if (shopCodeBodyEl) {
-    shopCodeBodyEl.textContent = `Покажите этот код в «Своих», чтобы забрать подарок «${item.title}».`;
+    shopCodeBodyEl.textContent = `Покажите этот код в «Своих», чтобы получить ${shopItemCodeCopy(item)} «${item.title}».`;
   }
   if (shopCodeValueEl) {
     shopCodeValueEl.textContent = code || 'VS-000000';
@@ -1499,7 +1507,7 @@ function renderOwnedGifts(items = []) {
     empty.className = 'shop-owned-item';
     empty.innerHTML = `
       <div class="shop-owned-title">Пока пусто</div>
-      <div class="shop-owned-meta">Здесь появятся ваши купленные подарки и коды для получения.</div>
+      <div class="shop-owned-meta">Здесь появятся ваши купленные подарки, скидки и коды для получения.</div>
     `;
     shopOwnedListEl.appendChild(empty);
     return;
@@ -1510,9 +1518,10 @@ function renderOwnedGifts(items = []) {
     row.className = 'shop-owned-item';
     const title = shopGiftTitle(item.gift_id);
     const createdAt = formatGiftPurchaseDate(item.created_at);
+    const typeLabel = item.item_type === 'discount' ? `Скидка ${item.discount_percent || ''}%` : 'Подарок';
     row.innerHTML = `
       <div class="shop-owned-title">${title}</div>
-      <div class="shop-owned-meta">${createdAt ? `Покупка от ${createdAt}` : 'Подарок оформлен'}</div>
+      <div class="shop-owned-meta">${typeLabel}${createdAt ? ` от ${createdAt}` : ' оформлен'}</div>
       <div class="shop-owned-code">${item.code || 'VS-0000-0000'}</div>
     `;
     shopOwnedListEl.appendChild(row);
@@ -1591,7 +1600,7 @@ async function buyShopItem(itemId) {
 
   const initData = telegramInitData();
   if (!initData || !profile?.telegram_id) {
-    openShopAlert('Нужен вход', 'Сначала авторизуйтесь через Telegram, чтобы покупать подарки.');
+    openShopAlert('Нужен вход', 'Сначала авторизуйтесь через Telegram, чтобы покупать подарки и скидки.');
     return;
   }
 
@@ -1612,6 +1621,8 @@ async function buyShopItem(itemId) {
     void trackAnalytics('gift_purchased', {
       sessionId: activeSessionId,
       giftId: item.id,
+      itemType: item.itemType || 'gift',
+      discountPercent: item.discountPercent || null,
       clapsSpent: item.price,
       purchaseCode: result?.purchase?.code || '',
     });
@@ -1633,7 +1644,7 @@ function handleShopBuyRequest(itemId) {
   if (!item) return;
 
   if (clapBalance < item.price) {
-    openShopAlert('Надо ещё чуть-чуть поиграть😉', 'На этот подарок ладошек пока не хватает.');
+    openShopAlert('Надо ещё чуть-чуть поиграть😉', `На ${shopItemCodeCopy(item)} «${item.title}» ладошек пока не хватает.`);
     return;
   }
 
@@ -3505,6 +3516,8 @@ profileNameEl?.addEventListener('input', handleProfileNameInput);
 startGiftsBtn?.addEventListener('click', openShopScreen);
 giftEntryBtn?.addEventListener('click', openShopScreen);
 shopBackBtn?.addEventListener('click', closeShopScreen);
+shopTabGiftBtn?.addEventListener('click', () => setShopTab('gifts'));
+shopTabDiscountBtn?.addEventListener('click', () => setShopTab('discounts'));
 shopOwnedBtn?.addEventListener('click', () => {
   void openOwnedGiftsModal();
 });
@@ -3524,7 +3537,7 @@ feedbackCancelBtn?.addEventListener('click', closeFeedbackModal);
 feedbackSendBtn?.addEventListener('click', () => {
   void sendFeedbackMessage();
 });
-shopListEl?.addEventListener('click', (e) => {
+shopScreenEl?.addEventListener('click', (e) => {
   const button = e.target.closest('.shop-buy-btn');
   if (!button) return;
   handleShopBuyRequest(button.dataset.giftId || '');

@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
 
     const { data, error } = await admin
       .from('shop_purchases')
-      .select('gift_id, code, created_at')
+      .select('gift_id, code, created_at, item_type, discount_percent')
       .eq('telegram_id', user.id)
       .order('created_at', { ascending: false })
       .limit(200);
