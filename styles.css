@@ -1231,17 +1231,25 @@ h1 {
 }
 
 .shop-owned-btn {
-  width: 46px;
+  width: auto;
+  min-width: 82px;
   height: 46px;
-  display: inline-grid;
-  place-items: center;
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
   border: 2px solid #f3b315;
   background: #f3b315;
   color: #000000;
   font-family: "MuseoCyrlTitle", "Manrope", sans-serif;
   font-weight: 700;
   border-radius: var(--ui-radius);
+}
+
+.shop-owned-btn-label {
+  display: block;
+  line-height: 1;
 }
 
 .shop-feedback-btn {
@@ -1259,11 +1267,9 @@ h1 {
 .shop-owned-btn-icon {
   width: 20px;
   height: 20px;
+  flex: 0 0 20px;
   display: block;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M5 9.5h14v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-10Z' fill='%23000'/%3E%3Cpath d='M12 9.5v12M5 13h14' stroke='%23f3b315' stroke-width='0'/%3E%3Cpath d='M4 7.5a2 2 0 0 1 2-2h12a2 2 0 1 1 0 4H6a2 2 0 0 1-2-2Zm6.2-2.1c-.94-.74-1.53-1.44-1.42-2.18.12-.79 1-1.33 1.97-1.09 1.09.26 1.75 1.55 1.25 3.27H10.2Zm3.6 0c.94-.74 1.53-1.44 1.42-2.18-.12-.79-1-1.33-1.97-1.09-1.09.26-1.75 1.55-1.25 3.27h1.8Z' fill='%23000'/%3E%3Cpath d='M12 5.5v16' stroke='%23000' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+  object-fit: contain;
 }
 
 .shop-feedback-btn-icon {

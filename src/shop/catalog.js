@@ -47,14 +47,16 @@
   ]);
 
   const SHOP_DISCOUNT_ITEMS = Object.freeze([
-    { id: 'discount40', itemType: 'discount', title: '40% на кальян!', price: 60, discountPercent: 40 },
-    { id: 'discount30', itemType: 'discount', title: '30% на кальян!', price: 45, discountPercent: 30 },
-    { id: 'discount20', itemType: 'discount', title: '20% на кальян!', price: 30, discountPercent: 20 },
-    { id: 'discount10', itemType: 'discount', title: '10% на кальян!', price: 15, discountPercent: 10 },
+    { id: 'discount30', itemType: 'discount', title: '30% на кальян', price: 45, discountPercent: 30 },
+    { id: 'discount20', itemType: 'discount', title: '20% на кальян', price: 30, discountPercent: 20 },
+    { id: 'discount10', itemType: 'discount', title: '10% на кальян', price: 15, discountPercent: 10 },
   ]);
 
   const SHOP_ITEMS = Object.freeze([...SHOP_GIFT_ITEMS, ...SHOP_DISCOUNT_ITEMS]);
   const SHOP_ITEM_MAP = new Map(SHOP_ITEMS.map((item) => [item.id, item]));
+  const LEGACY_SHOP_ITEM_TITLES = Object.freeze({
+    discount40: '40% на кальян',
+  });
 
   function shopItemById(itemId) {
     if (typeof itemId !== 'string') return null;
@@ -62,7 +64,8 @@
   }
 
   function shopItemTitle(itemId) {
-    return shopItemById(itemId)?.title || 'Подарок';
+    const normalizedItemId = typeof itemId === 'string' ? itemId.trim() : '';
+    return shopItemById(normalizedItemId)?.title || LEGACY_SHOP_ITEM_TITLES[normalizedItemId] || 'Подарок';
   }
 
   function buildDiscountCode(discountPercent, codeBody) {
