@@ -31,16 +31,16 @@ test('shop catalog exposes gifts and hookah discounts with stable prices', () =>
   assert.deepEqual(
     SHOP_DISCOUNT_ITEMS.map((item) => [item.id, item.price, item.discountPercent, item.itemType]),
     [
-      ['discount40', 60, 40, 'discount'],
       ['discount30', 45, 30, 'discount'],
       ['discount20', 30, 20, 'discount'],
       ['discount10', 15, 10, 'discount'],
     ],
   );
 
-  assert.equal(SHOP_ITEMS.length, 8);
-  assert.equal(shopItemById('discount40')?.title, '40% на кальян!');
-  assert.equal(shopItemTitle('discount30'), '30% на кальян!');
+  assert.equal(SHOP_ITEMS.length, 7);
+  assert.equal(shopItemById('discount40'), null);
+  assert.equal(shopItemTitle('discount40'), '40% на кальян');
+  assert.equal(shopItemTitle('discount30'), '30% на кальян');
   assert.equal(shopItemTitle('unknown'), 'Подарок');
 });
 
@@ -59,11 +59,23 @@ test('shop html includes segmented gifts-discounts surface', () => {
   assert.match(html, /id="shop-tab-discounts"/);
   assert.match(html, /data-shop-panel="gifts"/);
   assert.match(html, /data-shop-panel="discounts"/);
-  assert.match(html, /data-gift-id="discount40"/);
-  assert.match(html, /class="shop-discount-percent">40%<\/span>/);
+  assert.doesNotMatch(html, /data-gift-id="discount40"/);
+  assert.doesNotMatch(html, /class="shop-discount-percent">40%<\/span>/);
+  assert.doesNotMatch(html, /на кальян!/);
   assert.match(html, /class="shop-discount-percent">30%<\/span>/);
   assert.match(html, /class="shop-discount-percent">20%<\/span>/);
   assert.match(html, /class="shop-discount-percent">10%<\/span>/);
+});
+
+test('shop owned gifts button uses text plus the provided gift asset without changing height', () => {
+  const html = readRepoFile('index.html');
+  const css = readRepoFile('styles.css');
+
+  assert.match(html, /id="shop-owned-btn"[\s\S]*<span class="shop-owned-btn-label">Мои<\/span>/);
+  assert.match(html, /<img class="shop-owned-btn-icon" src="\.\/assets\/gift-box-with-a-bow\.png" alt="" \/>/);
+  assert.match(css, /\.shop-owned-btn\s*{[^}]*width:\s*auto[^}]*min-width:\s*82px[^}]*height:\s*46px/s);
+  assert.match(css, /\.shop-owned-btn\s*{[^}]*display:\s*inline-flex[^}]*gap:\s*6px/s);
+  assert.match(css, /\.shop-owned-btn-icon\s*{[^}]*width:\s*20px[^}]*height:\s*20px/s);
 });
 
 test('discount cards keep the normal shop button sizing and one-row layout', () => {

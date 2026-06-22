@@ -8,6 +8,9 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
+const DISCOUNT_COOLDOWN_DAYS = 5;
+const DISCOUNT_COOLDOWN_MS = DISCOUNT_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+
 function toHex(buffer: ArrayBuffer) {
   return [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
@@ -185,10 +188,37 @@ Deno.serve(async (req) => {
       });
     }
 
+    const now = new Date();
+    const nowIso = now.toISOString();
+
+    if (shopItem.item_type === 'discount') {
+      const cooldownCutoffIso = new Date(now.getTime() - DISCOUNT_COOLDOWN_MS).toISOString();
+      const { data: recentDiscount, error: cooldownError } = await admin
+        .from('shop_purchases')
+        .select('id, created_at')
+        .eq('telegram_id', user.id)
+        .eq('item_type', 'discount')
+        .gte('created_at', cooldownCutoffIso)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (cooldownError) throw new Error(cooldownError.message);
+      if (recentDiscount?.id) {
+        return new Response(JSON.stringify({
+          error: `Скидку можно покупать раз в ${DISCOUNT_COOLDOWN_DAYS} дней.`,
+          code: 'discount_cooldown',
+          retry_after_days: DISCOUNT_COOLDOWN_DAYS,
+          last_discount_purchase_at: recentDiscount.created_at,
+        }), {
+          status: 429,
+          headers: corsHeaders,
+        });
+      }
+    }
+
     const code = await makeUniqueCode(admin, shopItem);
     const nextClaps = currentClaps - shopItem.price;
-    const nowIso = new Date().toISOString();
-
     const { data: profileData, error: updateError } = await admin
       .from('profiles')
       .update({
