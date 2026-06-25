@@ -42,6 +42,18 @@ test('browser loads tested game modules before game.js', () => {
   assert.ok(progressAdapterIndex < gameIndex);
 });
 
+test('dashboard declares a lightweight favicon asset', () => {
+  const dashboardHtml = readRepoFile('dashboard.html');
+  const faviconPath = path.join(repoRoot, 'assets', 'dashboard-favicon.png');
+
+  assert.match(
+    dashboardHtml,
+    /<link rel="icon" type="image\/png" href="\.\/assets\/dashboard-favicon\.png" \/>/,
+  );
+  assert.ok(fs.existsSync(faviconPath), 'dashboard favicon asset should exist');
+  assert.ok(fs.statSync(faviconPath).size < 100 * 1024, 'dashboard favicon should stay under 100KB');
+});
+
 test('low-risk board wrappers delegate to VSGameCore', () => {
   const game = readRepoFile('game.js');
 
