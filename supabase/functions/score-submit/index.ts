@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import { verifyTelegramInitData } from '../_shared/telegram-auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,53 +8,34 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
-function toHex(buffer: ArrayBuffer) {
-  return [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, '0')).join('');
+function toNonNegativeInt(value: unknown) {
+  const normalized = Math.floor(Number(value ?? 0));
+  return Number.isFinite(normalized) && normalized >= 0 ? normalized : null;
 }
 
-async function hmacSha256Hex(keyRaw: Uint8Array, data: string): Promise<string> {
-  const key = await crypto.subtle.importKey('raw', keyRaw, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
-  return toHex(signature);
+function normalizeSessionId(value: unknown) {
+  const sessionId = typeof value === 'string' ? value.trim() : '';
+  if (!sessionId || sessionId.length > 128) return null;
+  return sessionId;
 }
 
-async function hmacSha256Raw(keyRaw: Uint8Array, data: string): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey('raw', keyRaw, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
-  return new Uint8Array(signature);
-}
-
-async function verifyTelegramInitData(initData: string, botToken: string) {
-  const params = new URLSearchParams(initData);
-  const hash = params.get('hash');
-  if (!hash) {
-    throw new Error('Missing hash in initData');
-  }
-
-  params.delete('hash');
-  const dataCheckString = [...params.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => `${key}=${value}`)
-    .join('\n');
-
-  const secretRaw = await hmacSha256Raw(new TextEncoder().encode('WebAppData'), botToken);
-  const calculated = await hmacSha256Hex(secretRaw, dataCheckString);
-
-  if (calculated !== hash) {
-    throw new Error('Invalid Telegram signature');
-  }
-
-  const userRaw = params.get('user');
-  if (!userRaw) {
-    throw new Error('Missing Telegram user data');
-  }
-
-  const user = JSON.parse(userRaw);
-  if (!user?.id) {
-    throw new Error('Invalid Telegram user payload');
-  }
-
-  return user;
+async function insertScoreSubmissionAudit(
+  admin: ReturnType<typeof createClient>,
+  payload: {
+    telegram_id: number;
+    session_id: string | null;
+    incoming_best_score: number;
+    incoming_clap_balance: number;
+    previous_best_score: number;
+    previous_clap_balance: number;
+    recent_session_best_score: number | null;
+    recent_session_claps_earned: number | null;
+    accepted: boolean;
+    reject_reason: string | null;
+  },
+) {
+  const { error } = await admin.from('score_submissions').insert(payload);
+  if (error) throw new Error(error.message);
 }
 
 Deno.serve(async (req) => {
@@ -80,7 +62,7 @@ Deno.serve(async (req) => {
       auth: { persistSession: false },
     });
 
-    const { initData, bestScore, clapBalance } = await req.json();
+    const { initData, bestScore, clapBalance, sessionId: rawSessionId } = await req.json();
     if (!initData || typeof initData !== 'string') {
       return new Response(JSON.stringify({ error: 'initData is required' }), {
         status: 400,
@@ -88,16 +70,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const incoming = Number(bestScore);
-    if (!Number.isFinite(incoming) || incoming < 0) {
+    const incomingBestScore = toNonNegativeInt(bestScore);
+    if (incomingBestScore === null) {
       return new Response(JSON.stringify({ error: 'bestScore must be a positive number' }), {
         status: 400,
         headers: corsHeaders,
       });
     }
 
-    const incomingClaps = Number(clapBalance ?? 0);
-    if (!Number.isFinite(incomingClaps) || incomingClaps < 0) {
+    const incomingClapBalance = toNonNegativeInt(clapBalance);
+    if (incomingClapBalance === null) {
       return new Response(JSON.stringify({ error: 'clapBalance must be a positive number' }), {
         status: 400,
         headers: corsHeaders,
@@ -105,6 +87,7 @@ Deno.serve(async (req) => {
     }
 
     const user = await verifyTelegramInitData(initData, BOT_TOKEN);
+    const sessionId = normalizeSessionId(rawSessionId);
 
     const { data: existing, error: readError } = await admin
       .from('profiles')
@@ -117,8 +100,72 @@ Deno.serve(async (req) => {
     }
 
     const previousBest = Math.max(0, Number(existing?.best_score || 0));
-    const nextBest = Math.max(previousBest, Math.floor(incoming));
-    const nextClaps = Math.max(Number(existing?.clap_balance || 0), Math.floor(incomingClaps));
+    const previousClaps = Math.max(0, Number(existing?.clap_balance || 0));
+    const bestWouldIncrease = incomingBestScore > previousBest;
+    const clapsWouldIncrease = incomingClapBalance > previousClaps;
+    let recentSessionBestScore: number | null = null;
+    let recentSessionClapsEarned: number | null = null;
+    let rejectReason: string | null = null;
+
+    if (bestWouldIncrease || clapsWouldIncrease) {
+      if (!sessionId) {
+        rejectReason = 'missing_session';
+      } else {
+        const { data: session, error: sessionError } = await admin
+          .from('analytics_sessions')
+          .select('session_id, best_score, claps_earned, session_started_at')
+          .eq('telegram_id', user.id)
+          .eq('session_id', sessionId)
+          .maybeSingle();
+
+        if (sessionError) {
+          throw new Error(sessionError.message);
+        }
+
+        if (!session?.session_id) {
+          rejectReason = 'missing_session';
+        } else {
+          recentSessionBestScore = Math.max(0, Number(session.best_score || 0));
+          recentSessionClapsEarned = Math.max(0, Number(session.claps_earned || 0));
+          const incomingBestExceedsSession = bestWouldIncrease && incomingBestScore > recentSessionBestScore;
+          const incomingClapGain = Math.max(0, incomingClapBalance - previousClaps);
+          const incomingClapsExceedSession = clapsWouldIncrease && incomingClapGain > recentSessionClapsEarned;
+
+          if (incomingBestExceedsSession) {
+            rejectReason = 'score_rejected';
+          } else if (incomingClapsExceedSession) {
+            rejectReason = 'claps_rejected';
+          }
+        }
+      }
+    }
+
+    if (rejectReason) {
+      await insertScoreSubmissionAudit(admin, {
+        telegram_id: user.id,
+        session_id: sessionId,
+        incoming_best_score: incomingBestScore,
+        incoming_clap_balance: incomingClapBalance,
+        previous_best_score: previousBest,
+        previous_clap_balance: previousClaps,
+        recent_session_best_score: recentSessionBestScore,
+        recent_session_claps_earned: recentSessionClapsEarned,
+        accepted: false,
+        reject_reason: rejectReason,
+      });
+
+      return new Response(JSON.stringify({
+        error: 'Score submission rejected',
+        code: rejectReason,
+        profile: existing || null,
+      }), {
+        status: 409,
+        headers: corsHeaders,
+      });
+    }
+
+    const nextBest = Math.max(previousBest, incomingBestScore);
+    const nextClaps = Math.max(previousClaps, incomingClapBalance);
 
     const { data, error } = await admin
       .from('profiles')
@@ -141,6 +188,19 @@ Deno.serve(async (req) => {
       throw new Error(error.message);
     }
 
+    await insertScoreSubmissionAudit(admin, {
+      telegram_id: user.id,
+      session_id: sessionId,
+      incoming_best_score: incomingBestScore,
+      incoming_clap_balance: incomingClapBalance,
+      previous_best_score: previousBest,
+      previous_clap_balance: previousClaps,
+      recent_session_best_score: recentSessionBestScore,
+      recent_session_claps_earned: recentSessionClapsEarned,
+      accepted: true,
+      reject_reason: null,
+    });
+
     const { data: leader, error: leaderError } = await admin
       .from('profiles')
       .select('telegram_id, best_score')
@@ -153,11 +213,11 @@ Deno.serve(async (req) => {
       throw new Error(leaderError.message);
     }
 
-    const improvedThisRun = Math.floor(incoming) > previousBest;
+    const improvedThisRun = incomingBestScore > previousBest;
     const shareRecordAvailable = Boolean(
       improvedThisRun &&
-      Math.floor(incoming) > 0 &&
-      Number(data?.best_score || 0) === Math.floor(incoming),
+      incomingBestScore > 0 &&
+      Number(data?.best_score || 0) === incomingBestScore,
     );
 
     return new Response(JSON.stringify({
@@ -165,7 +225,7 @@ Deno.serve(async (req) => {
       is_global_top: leader?.telegram_id === user.id,
       global_top_score: Number(leader?.best_score || 0),
       share_record_available: shareRecordAvailable,
-      share_record_score: shareRecordAvailable ? Math.floor(incoming) : null,
+      share_record_score: shareRecordAvailable ? incomingBestScore : null,
     }), {
       status: 200,
       headers: corsHeaders,

@@ -3,3 +3,4 @@ supabase/.temp/
 .worktrees/
 .DS_Store
 .vercel
+backups/

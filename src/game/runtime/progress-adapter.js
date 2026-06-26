@@ -96,7 +96,12 @@
     };
   }
 
-  function buildScoreSubmitPayload(initData, bestScore, clapBalance) {
+  function normalizeSessionId(sessionId) {
+    const value = typeof sessionId === 'string' ? sessionId.trim() : '';
+    return value || null;
+  }
+
+  function buildScoreSubmitPayload(initData, bestScore, clapBalance, sessionId = null) {
     if (typeof initData !== 'string' || initData.trim().length === 0) {
       return null;
     }
@@ -105,6 +110,7 @@
       initData,
       bestScore: toNonNegativeInt(bestScore),
       clapBalance: toNonNegativeInt(clapBalance),
+      sessionId: normalizeSessionId(sessionId),
     };
   }
 
