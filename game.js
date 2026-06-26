@@ -1003,6 +1003,12 @@ function flushSessionSnapshot(options = {}) {
   return true;
 }
 
+async function ensureSessionSnapshotBeforeProgressSync() {
+  const payload = buildSessionAnalyticsPayload('score_submit');
+  if (!payload) return;
+  await trackAnalytics('session_progress', payload);
+}
+
 function scheduleSessionSnapshot() {
   if (!activeSessionId) return;
   if (sessionSnapshotTimerId) clearTimeout(sessionSnapshotTimerId);
@@ -1025,6 +1031,7 @@ function flushProgressLifecycleIfNeeded() {
     initData: telegramInitData(),
     bestScore: localBest,
     clapBalance: localClaps,
+    sessionId: activeSessionId || null,
   });
 }
 
@@ -3040,11 +3047,13 @@ async function syncProgressIfNeeded() {
   try {
     const initData = telegramInitData();
     if (!initData) return null;
+    await ensureSessionSnapshotBeforeProgressSync();
 
     const result = await postJson('score-submit', {
       initData,
       bestScore: localBest,
       clapBalance: localClaps,
+      sessionId: activeSessionId || null,
     });
     if (result?.profile) {
       saveProfile(result.profile, { forceClapBalance: true, synced: true });
@@ -3690,21 +3699,21 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('pagehide', () => {
-  flushProgressLifecycleIfNeeded();
   flushSessionSnapshot({ reason: 'pagehide', useLifecycleTransport: true });
+  flushProgressLifecycleIfNeeded();
   endAnalyticsSession('pagehide', { useLifecycleTransport: true });
 });
 
 window.addEventListener('beforeunload', () => {
-  flushProgressLifecycleIfNeeded();
   flushSessionSnapshot({ reason: 'beforeunload', useLifecycleTransport: true });
+  flushProgressLifecycleIfNeeded();
   endAnalyticsSession('beforeunload', { useLifecycleTransport: true });
 });
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
-    flushProgressLifecycleIfNeeded();
     flushSessionSnapshot({ reason: 'hidden', useLifecycleTransport: true });
+    flushProgressLifecycleIfNeeded();
     endAnalyticsSession('hidden', { useLifecycleTransport: true });
   }
 });

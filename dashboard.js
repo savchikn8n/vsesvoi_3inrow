@@ -12,6 +12,7 @@ const statusEl = document.getElementById('dashboard-status');
 const loadingEl = document.getElementById('dashboard-loading');
 const secretInputEl = document.getElementById('dashboard-secret');
 const connectBtnEl = document.getElementById('connect-dashboard');
+const refreshDashboardBtnEl = document.getElementById('refresh-dashboard');
 const toggleSecretBtnEl = document.getElementById('toggle-secret');
 const authPanelEl = document.getElementById('auth-panel');
 
@@ -120,7 +121,6 @@ const metricEls = {
   menuExitShare: document.getElementById('metric-menu-exit-share'),
 };
 
-let refreshTimerId = null;
 let currentDashboardTab = 'analytics';
 let currentAnalyticsPeriod = '24h';
 let currentPromoSubtab = 'editor';
@@ -132,6 +132,7 @@ let promoPreviewObjectUrl = '';
 let currentSessionsClapsMode = 'earned';
 let lastSessionHistory = [];
 let isScheduleMode = false;
+let lastDashboardFetchAt = 0;
 
 const EVENT_COLORS = ['#f7c83e', '#f3a620', '#ffdf7b', '#d9a83a', '#8cd18f', '#78a5ff', '#f98080', '#b58cff', '#63d6d6', '#f7edc0'];
 const EVENT_LABELS = {
@@ -950,6 +951,7 @@ async function fetchAllDashboardData() {
       setMaintenanceStatus(error.message || 'Не удалось загрузить техпаузу.', true);
     });
     await Promise.all([fetchSummary(), fetchGiftPurchases(), fetchPromos(), fetchFeedback(), runtimeConfigRequest]);
+    lastDashboardFetchAt = Date.now();
     setStatus('');
     setSecretPanelCollapsed(true);
   } finally {
@@ -990,13 +992,8 @@ function connectDashboard() {
   void fetchAllDashboardData().catch((error) => setStatus(error.message || 'Не удалось загрузить dashboard'));
 }
 
-function startAutoRefresh() {
-  if (refreshTimerId) clearInterval(refreshTimerId);
-  refreshTimerId = setInterval(() => {
-    if (loadDashboardSecret()) {
-      void fetchAllDashboardData().catch(() => {});
-    }
-  }, 30000);
+function refreshDashboard() {
+  void fetchAllDashboardData().catch((error) => setStatus(error.message || 'Не удалось обновить dashboard'));
 }
 
 analyticsTabEl?.addEventListener('click', () => setActiveTab('analytics'));
@@ -1008,6 +1005,7 @@ maintenanceTabEl?.addEventListener('click', () => setActiveTab('maintenance'));
 promoEditorSubtabEl?.addEventListener('click', () => setPromoSubtab('editor'));
 promoArchiveSubtabEl?.addEventListener('click', () => setPromoSubtab('archive'));
 connectBtnEl?.addEventListener('click', connectDashboard);
+refreshDashboardBtnEl?.addEventListener('click', refreshDashboard);
 toggleSecretBtnEl?.addEventListener('click', () => {
   const collapsed = authPanelEl?.classList.contains('is-collapsed');
   setSecretPanelCollapsed(!collapsed);
@@ -1114,6 +1112,11 @@ broadcastScheduleSendBtnEl?.addEventListener('click', () => {
     setBroadcastResult(error.message || 'Не удалось запланировать сообщение', true),
   );
 });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !loadDashboardSecret()) return;
+  if (Date.now() - lastDashboardFetchAt < 60 * 1000) return;
+  refreshDashboard();
+});
 
 const savedSecret = loadDashboardSecret();
 if (savedSecret && secretInputEl) {
@@ -1126,4 +1129,3 @@ resetPromoEditor();
 fillMaintenanceForm(null);
 setPromoSubtab('editor');
 updateBroadcastScheduleMode();
-startAutoRefresh();

@@ -113,9 +113,10 @@ test('shouldSyncProgress returns sanitized payload values only when progress cha
 
 test('buildScoreSubmitPayload refuses missing initData and sanitizes numbers', () => {
   assert.equal(buildScoreSubmitPayload('', 100, 20), null);
-  assert.deepEqual(buildScoreSubmitPayload('tg-init', '100.9', '-20'), {
+  assert.deepEqual(buildScoreSubmitPayload('tg-init', '100.9', '-20', ' session-1 '), {
     initData: 'tg-init',
     bestScore: 100,
     clapBalance: 0,
+    sessionId: 'session-1',
   });
 });
