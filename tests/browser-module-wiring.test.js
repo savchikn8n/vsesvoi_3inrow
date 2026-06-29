@@ -108,6 +108,9 @@ test('game runtime prepares replay move tracking for server validation', () => {
 
   assert.match(game, /window\.VSGameRules/);
   assert.match(game, /createInitialState/);
+  assert.match(game, /game-session-start/);
+  assert.match(game, /game-session-submit/);
+  assert.match(game, /serverGameSession/);
   assert.match(game, /sessionReplayMoves/);
   assert.match(game, /recordReplayMove/);
 });

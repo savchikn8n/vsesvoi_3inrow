@@ -171,6 +171,7 @@ let sessionClapsSpent = 0;
 let sessionSnapshotTimerId = null;
 let sessionReplayMoves = [];
 let replayInitialState = null;
+let serverGameSession = null;
 let activePromoPopup = null;
 let promoFetchPromise = null;
 let bonusFetchPromise = null;
@@ -1043,7 +1044,7 @@ function resetReplayTracking() {
 
   if (!window.VSGameRules?.createInitialState) return;
   replayInitialState = window.VSGameRules.createInitialState({
-    seed: activeSessionId || 'local-preview',
+    seed: serverGameSession?.seed || activeSessionId || 'local-preview',
     size: SIZE,
     colorCount: COLORS,
   });
@@ -1056,7 +1057,50 @@ function recordReplayMove(from, to) {
   sessionReplayMoves.push({ from: normalizedFrom, to: normalizedTo });
 }
 
-function startAnalyticsSession(origin = 'menu') {
+async function startServerGameSession() {
+  const initData = telegramInitData();
+  if (!initData || !profile?.telegram_id) return null;
+
+  try {
+    const result = await Promise.race([
+      postJson('game-session-start', { initData }),
+      delay(1200).then(() => null),
+    ]);
+    if (!result?.sessionId || !result?.seed) return null;
+    return {
+      sessionId: result.sessionId,
+      seed: result.seed,
+      rulesVersion: result.rulesVersion || 'match3-v1',
+      submitted: false,
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+function flushServerGameSession(options = {}) {
+  if (!serverGameSession?.sessionId || serverGameSession.submitted) return false;
+  const initData = telegramInitData();
+  if (!initData) return false;
+
+  const payload = {
+    initData,
+    sessionId: serverGameSession.sessionId,
+    moves: [...sessionReplayMoves],
+    clientFinalScore: Math.max(0, Math.floor(Number(score || 0))),
+    clientClapsEarned: Math.max(0, clapBalance - sessionClapsBaseline),
+  };
+
+  serverGameSession.submitted = true;
+  if (options.useLifecycleTransport) {
+    return postLifecycleJson('game-session-submit', payload);
+  }
+
+  void postJson('game-session-submit', payload).catch(() => {});
+  return true;
+}
+
+function startAnalyticsSession(origin = 'menu', gameSession = null) {
   if (activeSessionId) {
     endAnalyticsSession('restart');
   }
@@ -1065,7 +1109,8 @@ function startAnalyticsSession(origin = 'menu') {
     sessionSnapshotTimerId = null;
   }
 
-  activeSessionId = makeSessionId();
+  serverGameSession = gameSession;
+  activeSessionId = gameSession?.sessionId || makeSessionId();
   sessionStartedAtMs = Date.now();
   sessionMovesCount = 0;
   sessionClapsBaseline = clapBalance;
@@ -1086,6 +1131,7 @@ function endAnalyticsSession(reason = 'menu_exit', options = {}) {
   const payload = buildSessionAnalyticsPayload(reason);
   if (!payload) return;
 
+  flushServerGameSession({ useLifecycleTransport: options?.useLifecycleTransport });
   activeSessionId = null;
   sessionStartedAtMs = 0;
   sessionMovesCount = 0;
@@ -1093,6 +1139,7 @@ function endAnalyticsSession(reason = 'menu_exit', options = {}) {
   sessionClapsSpent = 0;
   sessionReplayMoves = [];
   replayInitialState = null;
+  serverGameSession = null;
 
   if (options?.useLifecycleTransport) {
     trackAnalyticsLifecycle('session_end', payload);
@@ -1896,7 +1943,7 @@ function openLauncherLink(url) {
 
 function startNewGameFromHome() {
   hideStartScreen();
-  resetGame();
+  void resetGame();
 }
 
 function ensureAudioContext() {
@@ -3626,9 +3673,11 @@ function interruptibleDelay(ms, sessionId) {
   });
 }
 
-function resetGame() {
+async function resetGame() {
   setShareRecordState(null);
-  startAnalyticsSession(startScreenEl?.classList.contains('hidden') ? 'restart' : 'menu');
+  const origin = startScreenEl?.classList.contains('hidden') ? 'restart' : 'menu';
+  const gameSession = await startServerGameSession();
+  startAnalyticsSession(origin, gameSession);
   score = 0;
   clapsAwardedThisRun = 0;
   selected = null;
@@ -3639,7 +3688,11 @@ function resetGame() {
   hideStartScreen();
   closeAllModals();
   statusEl.textContent = 'Собирайте комбинации по 3+ в ряд.';
-  createBoard();
+  if (gameSession && replayInitialState?.board) {
+    board = cloneBoard(replayInitialState.board);
+  } else {
+    createBoard();
+  }
   drawBoard();
   startTurnTimer();
   refreshAmbientLayers();
@@ -3653,7 +3706,7 @@ menuShareRecordBtn?.addEventListener('click', () => { void shareTopRecord(); });
 startShareRecordBtn?.addEventListener('click', () => { void shareTopRecord(); });
 startRecordTriggerEl?.addEventListener('click', handleStartRecordTrigger);
 menuContinueClapsBtn?.addEventListener('click', () => { void continueRunWithClaps(); });
-menuNewGameBtn.addEventListener('click', resetGame);
+menuNewGameBtn.addEventListener('click', () => { void resetGame(); });
 menuExitMenuBtn.addEventListener('click', exitToMenu);
 menuSettingsBtn.addEventListener('click', openSettingsFromMenu);
 startNewGameBtn.addEventListener('click', startNewGameFromHome);
