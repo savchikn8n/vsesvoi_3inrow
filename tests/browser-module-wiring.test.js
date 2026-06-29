@@ -102,3 +102,12 @@ test('drawBoard delegates DOM rendering to VSBoardRenderer', () => {
   assert.match(game, /syncEffectsLayer\(\);/);
   assert.match(game, /updateHud\(\);/);
 });
+
+test('game runtime prepares replay move tracking for server validation', () => {
+  const game = readRepoFile('game.js');
+
+  assert.match(game, /window\.VSGameRules/);
+  assert.match(game, /createInitialState/);
+  assert.match(game, /sessionReplayMoves/);
+  assert.match(game, /recordReplayMove/);
+});
