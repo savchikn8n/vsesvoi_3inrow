@@ -93,3 +93,17 @@ test('analytics-track rejects impossible session progress before it can verify s
   assert.match(scoreSubmit, /validateSessionProgress/);
   assert.match(scoreSubmit, /invalid_session_progress/);
 });
+
+test('game session migration is additive and protects existing profile data', () => {
+  const sql = readRepoFile('supabase/sql/017_game_sessions.sql');
+  const migration = readRepoFile('supabase/migrations/20260629130000_game_sessions.sql');
+
+  assert.equal(sql, migration);
+  assert.match(sql, /create table if not exists public\.game_sessions/i);
+  assert.match(sql, /create table if not exists public\.game_session_moves/i);
+  assert.match(sql, /create table if not exists public\.game_session_validations/i);
+  assert.match(sql, /alter table public\.game_sessions enable row level security/i);
+  assert.match(sql, /alter table public\.game_session_moves enable row level security/i);
+  assert.match(sql, /alter table public\.game_session_validations enable row level security/i);
+  assert.doesNotMatch(sql, /drop table|truncate|delete from public\.|update public\.profiles/i);
+});
