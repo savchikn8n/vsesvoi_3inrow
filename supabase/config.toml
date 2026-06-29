@@ -21,6 +21,9 @@ verify_jwt = false
 [functions.game-session-start]
 verify_jwt = false
 
+[functions.game-session-submit]
+verify_jwt = false
+
 [functions.purchase-gift]
 verify_jwt = false
 
