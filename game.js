@@ -169,6 +169,8 @@ let sessionMovesCount = 0;
 let sessionClapsBaseline = 0;
 let sessionClapsSpent = 0;
 let sessionSnapshotTimerId = null;
+let sessionReplayMoves = [];
+let replayInitialState = null;
 let activePromoPopup = null;
 let promoFetchPromise = null;
 let bonusFetchPromise = null;
@@ -1035,6 +1037,25 @@ function flushProgressLifecycleIfNeeded() {
   });
 }
 
+function resetReplayTracking() {
+  sessionReplayMoves = [];
+  replayInitialState = null;
+
+  if (!window.VSGameRules?.createInitialState) return;
+  replayInitialState = window.VSGameRules.createInitialState({
+    seed: activeSessionId || 'local-preview',
+    size: SIZE,
+    colorCount: COLORS,
+  });
+}
+
+function recordReplayMove(from, to) {
+  const normalizedFrom = Math.floor(Number(from));
+  const normalizedTo = Math.floor(Number(to));
+  if (!Number.isInteger(normalizedFrom) || !Number.isInteger(normalizedTo)) return;
+  sessionReplayMoves.push({ from: normalizedFrom, to: normalizedTo });
+}
+
 function startAnalyticsSession(origin = 'menu') {
   if (activeSessionId) {
     endAnalyticsSession('restart');
@@ -1049,6 +1070,7 @@ function startAnalyticsSession(origin = 'menu') {
   sessionMovesCount = 0;
   sessionClapsBaseline = clapBalance;
   sessionClapsSpent = 0;
+  resetReplayTracking();
 
   void trackAnalytics('session_start', { sessionId: activeSessionId });
   void trackAnalytics('game_started', { sessionId: activeSessionId, origin });
@@ -1069,6 +1091,8 @@ function endAnalyticsSession(reason = 'menu_exit', options = {}) {
   sessionMovesCount = 0;
   sessionClapsBaseline = clapBalance;
   sessionClapsSpent = 0;
+  sessionReplayMoves = [];
+  replayInitialState = null;
 
   if (options?.useLifecycleTransport) {
     trackAnalyticsLifecycle('session_end', payload);
@@ -3095,8 +3119,11 @@ function startTurnTimer() {
   }, 1000);
 }
 
-function registerSuccessfulMove() {
+function registerSuccessfulMove(from = null, to = null) {
   sessionMovesCount += 1;
+  if (from !== null && to !== null) {
+    recordReplayMove(from, to);
+  }
   scheduleSessionSnapshot();
   resetTurnTimer();
 }
@@ -3521,7 +3548,7 @@ async function activateSpecialMove(a, b) {
     statusEl.textContent = 'Спец-фишка активирована!';
   }
 
-  registerSuccessfulMove();
+  registerSuccessfulMove(a, b);
   drawBoard();
   locked = false;
 }
@@ -3570,7 +3597,7 @@ async function trySwap(a, b) {
     statusEl.textContent = 'Отличный ход.';
   }
 
-  registerSuccessfulMove();
+  registerSuccessfulMove(a, b);
   drawBoard();
   locked = false;
 }
