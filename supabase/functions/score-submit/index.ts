@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import { validateSessionProgress } from '../_shared/session-validation.ts';
 import { verifyTelegramInitData } from '../_shared/telegram-auth.ts';
 
 const corsHeaders = {
@@ -113,7 +114,7 @@ Deno.serve(async (req) => {
       } else {
         const { data: session, error: sessionError } = await admin
           .from('analytics_sessions')
-          .select('session_id, best_score, claps_earned, session_started_at')
+          .select('session_id, best_score, claps_earned, moves_count, session_started_at')
           .eq('telegram_id', user.id)
           .eq('session_id', sessionId)
           .maybeSingle();
@@ -127,11 +128,19 @@ Deno.serve(async (req) => {
         } else {
           recentSessionBestScore = Math.max(0, Number(session.best_score || 0));
           recentSessionClapsEarned = Math.max(0, Number(session.claps_earned || 0));
+          const recentSessionMovesCount = Math.max(0, Number(session.moves_count || 0));
           const incomingBestExceedsSession = bestWouldIncrease && incomingBestScore > recentSessionBestScore;
           const incomingClapGain = Math.max(0, incomingClapBalance - previousClaps);
           const incomingClapsExceedSession = clapsWouldIncrease && incomingClapGain > recentSessionClapsEarned;
+          const progressError = validateSessionProgress({
+            bestScore: recentSessionBestScore,
+            clapsEarned: recentSessionClapsEarned,
+            movesCount: recentSessionMovesCount,
+          });
 
-          if (incomingBestExceedsSession) {
+          if (progressError) {
+            rejectReason = 'invalid_session_progress';
+          } else if (incomingBestExceedsSession) {
             rejectReason = 'score_rejected';
           } else if (incomingClapsExceedSession) {
             rejectReason = 'claps_rejected';

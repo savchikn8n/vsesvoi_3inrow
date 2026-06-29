@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import { validateSessionProgress } from '../_shared/session-validation.ts';
 import { verifyTelegramInitData } from '../_shared/telegram-auth.ts';
 
 const corsHeaders = {
@@ -81,6 +82,14 @@ Deno.serve(async (req) => {
       const movesCount = Math.max(0, Math.floor(Number(payload.movesCount || 0)));
       const endReason =
         typeof payload.endReason === 'string' && payload.endReason.trim() ? payload.endReason.trim().slice(0, 32) : null;
+      const progressError = validateSessionProgress({ bestScore, clapsEarned, movesCount });
+
+      if (progressError) {
+        return new Response(JSON.stringify({ error: 'Invalid session progress', code: 'invalid_session_progress' }), {
+          status: 400,
+          headers: corsHeaders,
+        });
+      }
 
       const sessionRow: Record<string, unknown> = {
         session_id: sessionId,
