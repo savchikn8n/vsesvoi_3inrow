@@ -22,6 +22,7 @@ function functionBody(source, functionName) {
 test('browser loads tested game modules before game.js', () => {
   const scripts = scriptSources(readRepoFile('index.html'));
   const maintenanceIndex = scripts.indexOf('maintenance-config.js');
+  const rngIndex = scripts.indexOf('src/game/core/rng.js');
   const boardCoreIndex = scripts.indexOf('src/game/core/board-core.js');
   const resolutionCoreIndex = scripts.indexOf('src/game/core/resolution-core.js');
   const progressAdapterIndex = scripts.indexOf('src/game/runtime/progress-adapter.js');
@@ -29,12 +30,15 @@ test('browser loads tested game modules before game.js', () => {
   const gameIndex = scripts.indexOf('game.js');
 
   assert.notEqual(maintenanceIndex, -1);
+  assert.notEqual(rngIndex, -1);
   assert.notEqual(boardCoreIndex, -1);
   assert.notEqual(resolutionCoreIndex, -1);
   assert.notEqual(progressAdapterIndex, -1);
   assert.notEqual(boardRendererIndex, -1);
   assert.notEqual(gameIndex, -1);
   assert.ok(maintenanceIndex < boardCoreIndex);
+  assert.ok(maintenanceIndex < rngIndex);
+  assert.ok(rngIndex < boardCoreIndex);
   assert.ok(boardCoreIndex < resolutionCoreIndex);
   assert.ok(resolutionCoreIndex < progressAdapterIndex);
   assert.ok(progressAdapterIndex < boardRendererIndex);
