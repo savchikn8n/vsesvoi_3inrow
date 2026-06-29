@@ -25,6 +25,7 @@ test('browser loads tested game modules before game.js', () => {
   const rngIndex = scripts.indexOf('src/game/core/rng.js');
   const boardCoreIndex = scripts.indexOf('src/game/core/board-core.js');
   const resolutionCoreIndex = scripts.indexOf('src/game/core/resolution-core.js');
+  const rulesEngineIndex = scripts.indexOf('src/game/core/rules-engine.js');
   const progressAdapterIndex = scripts.indexOf('src/game/runtime/progress-adapter.js');
   const boardRendererIndex = scripts.indexOf('src/game/runtime/board-renderer.js');
   const gameIndex = scripts.indexOf('game.js');
@@ -33,6 +34,7 @@ test('browser loads tested game modules before game.js', () => {
   assert.notEqual(rngIndex, -1);
   assert.notEqual(boardCoreIndex, -1);
   assert.notEqual(resolutionCoreIndex, -1);
+  assert.notEqual(rulesEngineIndex, -1);
   assert.notEqual(progressAdapterIndex, -1);
   assert.notEqual(boardRendererIndex, -1);
   assert.notEqual(gameIndex, -1);
@@ -40,7 +42,8 @@ test('browser loads tested game modules before game.js', () => {
   assert.ok(maintenanceIndex < rngIndex);
   assert.ok(rngIndex < boardCoreIndex);
   assert.ok(boardCoreIndex < resolutionCoreIndex);
-  assert.ok(resolutionCoreIndex < progressAdapterIndex);
+  assert.ok(resolutionCoreIndex < rulesEngineIndex);
+  assert.ok(rulesEngineIndex < progressAdapterIndex);
   assert.ok(progressAdapterIndex < boardRendererIndex);
   assert.ok(boardRendererIndex < gameIndex);
   assert.ok(progressAdapterIndex < gameIndex);
