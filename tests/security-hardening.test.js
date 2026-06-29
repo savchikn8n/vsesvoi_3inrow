@@ -76,3 +76,20 @@ test('score-submit requires session evidence for progress increases and audits e
   assert.match(purchaseGift, /function randomDiscountCode/);
   assert.match(purchaseGift, /async function sendPurchaseNotification/);
 });
+
+test('analytics-track rejects impossible session progress before it can verify score-submit', () => {
+  const source = readRepoFile('supabase/functions/analytics-track/index.ts');
+  const scoreSubmit = readRepoFile('supabase/functions/score-submit/index.ts');
+  const sharedValidation = readRepoFile('supabase/functions/_shared/session-validation.ts');
+
+  assert.match(sharedValidation, /MAX_SCORE_PER_MOVE/);
+  assert.match(sharedValidation, /MAX_CLAPS_FROM_SCORE_BUFFER/);
+  assert.match(sharedValidation, /export function validateSessionProgress/);
+  assert.match(sharedValidation, /bestScore > movesCount \* MAX_SCORE_PER_MOVE/);
+  assert.match(sharedValidation, /clapsEarned > Math\.floor\(bestScore \/ 10000\) \+ MAX_CLAPS_FROM_SCORE_BUFFER/);
+
+  assert.match(source, /validateSessionProgress/);
+  assert.match(source, /invalid_session_progress/);
+  assert.match(scoreSubmit, /validateSessionProgress/);
+  assert.match(scoreSubmit, /invalid_session_progress/);
+});
