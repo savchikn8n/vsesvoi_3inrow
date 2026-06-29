@@ -107,3 +107,16 @@ test('game session migration is additive and protects existing profile data', ()
   assert.match(sql, /alter table public\.game_session_validations enable row level security/i);
   assert.doesNotMatch(sql, /drop table|truncate|delete from public\.|update public\.profiles/i);
 });
+
+test('game-session-start verifies Telegram auth and does not write profiles', () => {
+  const source = readRepoFile('supabase/functions/game-session-start/index.ts');
+  const config = readRepoFile('supabase/config.toml');
+
+  assert.match(source, /verifyTelegramInitData/);
+  assert.match(source, /\.from\('game_sessions'\)\.insert/);
+  assert.match(source, /crypto\.randomUUID/);
+  assert.match(source, /seed/);
+  assert.doesNotMatch(source, /\.from\('profiles'\)/);
+  assert.match(config, /\[functions\.game-session-start\]/);
+  assert.match(config, /verify_jwt = false/);
+});
