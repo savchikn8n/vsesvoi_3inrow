@@ -120,3 +120,18 @@ test('game-session-start verifies Telegram auth and does not write profiles', ()
   assert.match(config, /\[functions\.game-session-start\]/);
   assert.match(config, /verify_jwt = false/);
 });
+
+test('game-session-submit records shadow validation without writing profiles', () => {
+  const source = readRepoFile('supabase/functions/game-session-submit/index.ts');
+  const config = readRepoFile('supabase/config.toml');
+
+  assert.match(source, /verifyTelegramInitData/);
+  assert.match(source, /\.from\('game_sessions'\)/);
+  assert.match(source, /\.from\('game_session_moves'\)/);
+  assert.match(source, /\.from\('game_session_validations'\)/);
+  assert.match(source, /replayMoves/);
+  assert.match(source, /validation_status/);
+  assert.doesNotMatch(source, /\.from\('profiles'\)\.(update|upsert|insert)/);
+  assert.match(config, /\[functions\.game-session-submit\]/);
+  assert.match(config, /verify_jwt = false/);
+});
