@@ -181,6 +181,205 @@ function canSwapMakeMatch(board: Array<GameCell | null>, a: number, b: number, s
   return findMatchGroups(test, size).length > 0;
 }
 
+function chooseSpecialIndex(cells: number[], swappedPair: [number, number] | null) {
+  if (!swappedPair) return cells[Math.floor(cells.length / 2)];
+  const [a, b] = swappedPair;
+  if (cells.includes(b)) return b;
+  if (cells.includes(a)) return a;
+  return cells[Math.floor(cells.length / 2)];
+}
+
+function upsertSpecialCreate(map: Map<number, { special: string; color: number }>, idx: number, special: string, color: number) {
+  const existing = map.get(idx);
+  if (!existing || (existing.special !== 'bomb' && special === 'bomb')) {
+    map.set(idx, { special, color });
+  }
+}
+
+function getMatchedComponents(board: Array<GameCell | null>, groups: Array<{ cells: number[] }>, size: number) {
+  const matchedSet = new Set<number>();
+  groups.forEach((group) => group.cells.forEach((idx) => matchedSet.add(idx)));
+
+  const visited = new Set<number>();
+  const components: Array<{ color: number; cells: number[] }> = [];
+  matchedSet.forEach((start) => {
+    if (visited.has(start)) return;
+    const color = board[start]?.color;
+    if (color === undefined) return;
+
+    const queue = [start];
+    const cells: number[] = [];
+    visited.add(start);
+    while (queue.length > 0) {
+      const idx = queue.shift();
+      if (idx === undefined) continue;
+      cells.push(idx);
+      const [row, col] = idxToPos(idx, size);
+      const neighbors = [
+        [row - 1, col],
+        [row + 1, col],
+        [row, col - 1],
+        [row, col + 1],
+      ];
+      neighbors.forEach(([nextRow, nextCol]) => {
+        if (nextRow < 0 || nextRow >= size || nextCol < 0 || nextCol >= size) return;
+        const nextIdx = posToIdx(nextRow, nextCol, size);
+        if (visited.has(nextIdx) || !matchedSet.has(nextIdx)) return;
+        if (board[nextIdx]?.color !== color) return;
+        visited.add(nextIdx);
+        queue.push(nextIdx);
+      });
+    }
+    components.push({ color, cells });
+  });
+  return components;
+}
+
+function isHorizontalSwap(swappedPair: [number, number] | null, size: number) {
+  if (!swappedPair) return false;
+  const [a, b] = swappedPair;
+  const [ar, ac] = idxToPos(a, size);
+  const [br, bc] = idxToPos(b, size);
+  return ar === br && Math.abs(ac - bc) === 1;
+}
+
+function buildMatchResolution(
+  board: Array<GameCell | null>,
+  groups: Array<{ cells: number[]; orientation: 'h' | 'v' }>,
+  swappedPair: [number, number] | null = null,
+  preserveIndices = new Set<number>(),
+  size = DEFAULT_SIZE,
+) {
+  const removals = new Set<number>();
+  const specialCreates = new Map<number, { special: string; color: number }>();
+
+  groups.forEach((group) => group.cells.forEach((idx) => removals.add(idx)));
+  preserveIndices.forEach((idx) => removals.delete(idx));
+
+  groups.forEach((group) => {
+    if (group.cells.length !== 4) return;
+    const pivot = chooseSpecialIndex(group.cells, swappedPair);
+    const pivotCell = board[pivot];
+    if (!pivotCell) return;
+    removals.delete(pivot);
+    const rocketType = swappedPair
+      ? isHorizontalSwap(swappedPair, size) ? 'rocket-h' : 'rocket-v'
+      : group.orientation === 'h' ? 'rocket-h' : 'rocket-v';
+    upsertSpecialCreate(specialCreates, pivot, rocketType, pivotCell.color);
+  });
+
+  getMatchedComponents(board, groups, size).forEach((component) => {
+    if (component.cells.length <= 4) return;
+    const pivot = chooseSpecialIndex(component.cells, swappedPair);
+    removals.delete(pivot);
+    upsertSpecialCreate(specialCreates, pivot, 'bomb', component.color);
+  });
+
+  return { removals, specialCreates };
+}
+
+function getBlastArea(center: number, special: string, size = DEFAULT_SIZE) {
+  const [row, col] = idxToPos(center, size);
+  const targets = new Set<number>([center]);
+
+  if (special === 'rocket-h') {
+    for (let x = 0; x < size; x++) targets.add(posToIdx(row, x, size));
+  } else if (special === 'rocket-v') {
+    for (let y = 0; y < size; y++) targets.add(posToIdx(y, col, size));
+  } else if (special === 'bomb') {
+    for (let rowDelta = -2; rowDelta <= 2; rowDelta++) {
+      for (let colDelta = -2; colDelta <= 2; colDelta++) {
+        const nextRow = row + rowDelta;
+        const nextCol = col + colDelta;
+        if (nextRow >= 0 && nextRow < size && nextCol >= 0 && nextCol < size) {
+          targets.add(posToIdx(nextRow, nextCol, size));
+        }
+      }
+    }
+  }
+
+  return targets;
+}
+
+function getBombRocketComboArea(center: number, size = DEFAULT_SIZE) {
+  const [row, col] = idxToPos(center, size);
+  const targets = new Set<number>();
+  for (let nextRow = row - 1; nextRow <= row + 1; nextRow++) {
+    if (nextRow < 0 || nextRow >= size) continue;
+    for (let x = 0; x < size; x++) targets.add(posToIdx(nextRow, x, size));
+  }
+  for (let nextCol = col - 1; nextCol <= col + 1; nextCol++) {
+    if (nextCol < 0 || nextCol >= size) continue;
+    for (let y = 0; y < size; y++) targets.add(posToIdx(y, nextCol, size));
+  }
+  return targets;
+}
+
+function getRocketRocketComboArea(center: number, size = DEFAULT_SIZE) {
+  const [row, col] = idxToPos(center, size);
+  const targets = new Set<number>();
+  for (let x = 0; x < size; x++) targets.add(posToIdx(row, x, size));
+  for (let y = 0; y < size; y++) targets.add(posToIdx(y, col, size));
+  return targets;
+}
+
+function collectSpecialBlast(board: Array<GameCell | null>, start: number, resultSet: Set<number>, size: number) {
+  const queue = [start];
+  const visited = new Set<number>();
+
+  while (queue.length > 0) {
+    const idx = queue.shift();
+    if (idx === undefined || visited.has(idx)) continue;
+    visited.add(idx);
+
+    const cell = board[idx];
+    if (!cell?.special) continue;
+
+    getBlastArea(idx, cell.special, size).forEach((next) => {
+      if (!resultSet.has(next)) resultSet.add(next);
+      if (board[next]?.special && !visited.has(next)) queue.push(next);
+    });
+  }
+}
+
+function applyRemoval(
+  state: GameState,
+  removals: Set<number>,
+  specialCreates = new Map<number, { special: string; color: number }>(),
+  options: { chainSpecials?: boolean; scoreMultiplier?: number } = {},
+) {
+  const chainSpecials = options.chainSpecials !== false;
+  const scoreMultiplier = Math.max(0, Number(options.scoreMultiplier) || 1);
+  const blastSet = new Set(removals);
+  let preservedMatchedCells = 0;
+
+  if (chainSpecials) {
+    removals.forEach((idx) => {
+      if (state.board[idx]?.special) collectSpecialBlast(state.board, idx, blastSet, state.size);
+    });
+  }
+
+  specialCreates.forEach((_, idx) => {
+    if (removals.has(idx)) preservedMatchedCells++;
+    blastSet.delete(idx);
+  });
+
+  blastSet.forEach((idx) => {
+    state.board[idx] = null;
+  });
+  specialCreates.forEach(({ special, color }, idx) => {
+    state.board[idx] = { color, special };
+  });
+
+  const scoredCells = blastSet.size + preservedMatchedCells;
+  state.score += Math.round(scoredCells * 10 * scoreMultiplier);
+  updateClaps(state);
+}
+
+function applyGravityToState(state: GameState) {
+  state.board = applyGravity(state.board, state.size, state.colorCount, makeRefillRng(state));
+}
+
 function findPotentialMove(board: Array<GameCell | null>, size = DEFAULT_SIZE) {
   for (let i = 0; i < board.length; i++) {
     const [row, col] = idxToPos(i, size);
@@ -243,22 +442,65 @@ function makeRefillRng(state: GameState) {
   return createSeededRng(`${state.seed}:${state.movesCount}:${state.score}`);
 }
 
-function resolveCascades(state: GameState) {
+function resolveCascades(state: GameState, swappedPair: [number, number] | null = null) {
   let combo = 0;
+  let pair = swappedPair;
   while (true) {
     const groups = findMatchGroups(state.board, state.size);
     if (groups.length === 0) break;
     combo++;
-    const removals = new Set<number>();
-    groups.forEach((group) => group.cells.forEach((idx) => removals.add(idx)));
-    removals.forEach((idx) => {
-      state.board[idx] = null;
-    });
-    state.score += removals.size * 10;
-    state.board = applyGravity(state.board, state.size, state.colorCount, makeRefillRng(state));
+    const firstSwap = pair && combo === 1 ? pair : null;
+    const { removals, specialCreates } = buildMatchResolution(state.board, groups, firstSwap, new Set(), state.size);
+    applyRemoval(state, removals, specialCreates);
+    applyGravityToState(state);
+    pair = null;
   }
   if (combo > 1) state.score += combo * 20;
   updateClaps(state);
+}
+
+function applySpecialMove(state: GameState, a: number, b: number) {
+  if (a !== b) [state.board[a], state.board[b]] = [state.board[b], state.board[a]];
+
+  const preserveIndices = new Set<number>();
+  if (state.board[a]?.special) preserveIndices.add(a);
+  if (b !== a && state.board[b]?.special) preserveIndices.add(b);
+
+  const preGroups = findMatchGroups(state.board, state.size);
+  if (preGroups.length > 0) {
+    const { removals, specialCreates } = buildMatchResolution(state.board, preGroups, [a, b], preserveIndices, state.size);
+    applyRemoval(state, removals, specialCreates, { chainSpecials: false });
+  }
+
+  const activations: Array<{ idx: number; special: string }> = [];
+  if (state.board[a]?.special) activations.push({ idx: a, special: String(state.board[a]?.special) });
+  if (b !== a && state.board[b]?.special) activations.push({ idx: b, special: String(state.board[b]?.special) });
+  if (activations.length === 0) return;
+
+  const hasBomb = activations.some((item) => item.special === 'bomb');
+  const hasRocket = activations.some((item) => item.special === 'rocket-h' || item.special === 'rocket-v');
+  const rocketCount = activations.filter((item) => item.special === 'rocket-h' || item.special === 'rocket-v').length;
+  const bombCount = activations.filter((item) => item.special === 'bomb').length;
+
+  let blast = new Set<number>();
+  if (a !== b && activations.length === 2 && bombCount === 2) {
+    for (let idx = 0; idx < state.size * state.size; idx++) blast.add(idx);
+  } else if (a !== b && activations.length === 2 && rocketCount === 2) {
+    blast = getRocketRocketComboArea(b, state.size);
+  } else if (a !== b && activations.length === 2 && hasBomb && hasRocket) {
+    blast = getBombRocketComboArea(b, state.size);
+  } else {
+    activations.forEach(({ idx, special }) => {
+      getBlastArea(idx, special, state.size).forEach((target) => blast.add(target));
+    });
+  }
+
+  applyRemoval(state, blast, new Map(), {
+    chainSpecials: true,
+    scoreMultiplier: a !== b && activations.length === 2 && bombCount === 2 ? 1.5 : 1,
+  });
+  applyGravityToState(state);
+  resolveCascades(state);
 }
 
 function isOutOfRange(index: number, size: number) {
@@ -271,10 +513,18 @@ export function applyMove(inputState: GameState, move: GameMove): { accepted: bo
   const to = Math.floor(Number(move?.to));
   if (isOutOfRange(from, state.size) || isOutOfRange(to, state.size)) return { accepted: false, reason: 'out_of_range', state };
   if (!areAdjacent(from, to, state.size)) return { accepted: false, reason: 'non_adjacent', state };
+
+  if (state.board[from]?.special || state.board[to]?.special) {
+    applySpecialMove(state, from, to);
+    state.movesCount++;
+    updateClaps(state);
+    return { accepted: true, reason: null, state };
+  }
+
   if (!canSwapMakeMatch(state.board, from, to, state.size)) return { accepted: false, reason: 'no_match', state };
 
   [state.board[from], state.board[to]] = [state.board[to], state.board[from]];
-  resolveCascades(state);
+  resolveCascades(state, [from, to]);
   state.movesCount++;
   updateClaps(state);
   return { accepted: true, reason: null, state };
