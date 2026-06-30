@@ -52,7 +52,7 @@ test('Telegram initData verification is shared and rejects stale auth data', () 
   }
 });
 
-test('score-submit requires session evidence for progress increases and audits every attempt', () => {
+test('score-submit requires server validated game session evidence for progress increases', () => {
   const source = readRepoFile('supabase/functions/score-submit/index.ts');
   const analyticsTrack = readRepoFile('supabase/functions/analytics-track/index.ts');
   const purchaseGift = readRepoFile('supabase/functions/purchase-gift/index.ts');
@@ -66,7 +66,11 @@ test('score-submit requires session evidence for progress increases and audits e
 
   assert.match(source, /sessionId/);
   assert.match(source, /normalizeSessionId/);
-  assert.match(source, /\.from\('analytics_sessions'\)[\s\S]*\.eq\('session_id', sessionId\)/);
+  assert.doesNotMatch(source, /\.from\('analytics_sessions'\)/);
+  assert.match(source, /\.from\('game_session_validations'\)[\s\S]*\.eq\('session_id', sessionId\)/);
+  assert.match(source, /accepted', true/);
+  assert.match(source, /server_score/);
+  assert.match(source, /server_claps_earned/);
   assert.match(source, /incomingBestExceedsSession/);
   assert.match(source, /insertScoreSubmissionAudit/);
   assert.match(source, /score_rejected/);
@@ -77,7 +81,16 @@ test('score-submit requires session evidence for progress increases and audits e
   assert.match(purchaseGift, /async function sendPurchaseNotification/);
 });
 
-test('analytics-track rejects impossible session progress before it can verify score-submit', () => {
+test('client final progress submits server validation before score-submit', () => {
+  const source = readRepoFile('game.js');
+
+  assert.match(source, /async function submitFinalProgressAndEnd/);
+  assert.match(source, /await flushServerGameSession/);
+  assert.match(source, /syncProgressIfNeeded\(\{[\s\S]*submitServerSession: true/);
+  assert.match(source, /endAnalyticsSession\(reason, \{ skipServerSubmit: true/);
+});
+
+test('analytics-track rejects impossible session progress but cannot verify score-submit', () => {
   const source = readRepoFile('supabase/functions/analytics-track/index.ts');
   const scoreSubmit = readRepoFile('supabase/functions/score-submit/index.ts');
   const sharedValidation = readRepoFile('supabase/functions/_shared/session-validation.ts');
@@ -90,8 +103,7 @@ test('analytics-track rejects impossible session progress before it can verify s
 
   assert.match(source, /validateSessionProgress/);
   assert.match(source, /invalid_session_progress/);
-  assert.match(scoreSubmit, /validateSessionProgress/);
-  assert.match(scoreSubmit, /invalid_session_progress/);
+  assert.doesNotMatch(scoreSubmit, /validateSessionProgress/);
 });
 
 test('game session migration is additive and protects existing profile data', () => {

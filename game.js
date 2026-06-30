@@ -1079,9 +1079,13 @@ async function startServerGameSession() {
 }
 
 function flushServerGameSession(options = {}) {
-  if (!serverGameSession?.sessionId || serverGameSession.submitted) return false;
+  if (!serverGameSession?.sessionId || serverGameSession.submitted) {
+    return options.useLifecycleTransport ? false : Promise.resolve(null);
+  }
   const initData = telegramInitData();
-  if (!initData) return false;
+  if (!initData) {
+    return options.useLifecycleTransport ? false : Promise.resolve(null);
+  }
 
   const payload = {
     initData,
@@ -1096,8 +1100,7 @@ function flushServerGameSession(options = {}) {
     return postLifecycleJson('game-session-submit', payload);
   }
 
-  void postJson('game-session-submit', payload).catch(() => {});
-  return true;
+  return postJson('game-session-submit', payload).catch(() => null);
 }
 
 function startAnalyticsSession(origin = 'menu', gameSession = null) {
@@ -1131,7 +1134,9 @@ function endAnalyticsSession(reason = 'menu_exit', options = {}) {
   const payload = buildSessionAnalyticsPayload(reason);
   if (!payload) return;
 
-  flushServerGameSession({ useLifecycleTransport: options?.useLifecycleTransport });
+  if (!options?.skipServerSubmit) {
+    flushServerGameSession({ useLifecycleTransport: options?.useLifecycleTransport });
+  }
   activeSessionId = null;
   sessionStartedAtMs = 0;
   sessionMovesCount = 0;
@@ -3103,8 +3108,9 @@ function handleTurnTimeout() {
   endGameByTimeout();
 }
 
-async function syncProgressIfNeeded() {
+async function syncProgressIfNeeded(options = {}) {
   if (!profile?.telegram_id) return null;
+  const submissionSessionId = options.sessionId || activeSessionId || null;
   const localBest = Math.max(Number(profile.best_score || 0), score);
   const localClaps = Math.max(Number(profile.clap_balance || 0), clapBalance);
   const bestChanged = pendingBestScoreSync || localBest > Number(profile.best_score || 0);
@@ -3118,13 +3124,18 @@ async function syncProgressIfNeeded() {
   try {
     const initData = telegramInitData();
     if (!initData) return null;
-    await ensureSessionSnapshotBeforeProgressSync();
+    if (options.submitServerSession) {
+      await flushServerGameSession();
+    }
+    if (!options.skipSessionSnapshot) {
+      await ensureSessionSnapshotBeforeProgressSync();
+    }
 
     const result = await postJson('score-submit', {
       initData,
       bestScore: localBest,
       clapBalance: localClaps,
-      sessionId: activeSessionId || null,
+      sessionId: submissionSessionId,
     });
     if (result?.profile) {
       saveProfile(result.profile, { forceClapBalance: true, synced: true });
@@ -3133,6 +3144,16 @@ async function syncProgressIfNeeded() {
   } catch (_) {
     return null;
   }
+}
+
+async function submitFinalProgressAndEnd(reason) {
+  const sessionId = activeSessionId || null;
+  const result = await syncProgressIfNeeded({
+    sessionId,
+    submitServerSession: true,
+  });
+  endAnalyticsSession(reason, { skipServerSubmit: true });
+  return result;
 }
 
 function startTurnTimer() {
@@ -3176,7 +3197,6 @@ function registerSuccessfulMove(from = null, to = null) {
 }
 
 function endGameByTimeout() {
-  endAnalyticsSession('timeout');
   stopTurnTimer();
   locked = true;
   selected = null;
@@ -3187,7 +3207,7 @@ function endGameByTimeout() {
   updateContinueRunButton();
   drawBoard();
   showModal(gameOverModalEl);
-  void syncProgressIfNeeded().then((result) => {
+  void submitFinalProgressAndEnd('timeout').then((result) => {
     if (result?.share_record_available) {
       setShareRecordState({ enabled: true, score: result.share_record_score || score });
     }
@@ -3354,8 +3374,7 @@ function confirmExitToMenu() {
 }
 
 function exitToMenu() {
-  endAnalyticsSession('menu_exit');
-  syncProgressIfNeeded();
+  void submitFinalProgressAndEnd('menu_exit');
   showStartScreen();
 }
 

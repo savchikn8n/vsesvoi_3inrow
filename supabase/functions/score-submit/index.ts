@@ -1,5 +1,4 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
-import { validateSessionProgress } from '../_shared/session-validation.ts';
 import { verifyTelegramInitData } from '../_shared/telegram-auth.ts';
 
 const corsHeaders = {
@@ -112,35 +111,30 @@ Deno.serve(async (req) => {
       if (!sessionId) {
         rejectReason = 'missing_session';
       } else {
-        const { data: session, error: sessionError } = await admin
-          .from('analytics_sessions')
-          .select('session_id, best_score, claps_earned, moves_count, session_started_at')
+        const { data: validation, error: validationError } = await admin
+          .from('game_session_validations')
+          .select('session_id, server_score, server_claps_earned, accepted, created_at')
           .eq('telegram_id', user.id)
           .eq('session_id', sessionId)
+          .eq('accepted', true)
+          .order('created_at', { ascending: false })
+          .limit(1)
           .maybeSingle();
 
-        if (sessionError) {
-          throw new Error(sessionError.message);
+        if (validationError) {
+          throw new Error(validationError.message);
         }
 
-        if (!session?.session_id) {
+        if (!validation?.session_id) {
           rejectReason = 'missing_session';
         } else {
-          recentSessionBestScore = Math.max(0, Number(session.best_score || 0));
-          recentSessionClapsEarned = Math.max(0, Number(session.claps_earned || 0));
-          const recentSessionMovesCount = Math.max(0, Number(session.moves_count || 0));
+          recentSessionBestScore = Math.max(0, Number(validation.server_score || 0));
+          recentSessionClapsEarned = Math.max(0, Number(validation.server_claps_earned || 0));
           const incomingBestExceedsSession = bestWouldIncrease && incomingBestScore > recentSessionBestScore;
           const incomingClapGain = Math.max(0, incomingClapBalance - previousClaps);
           const incomingClapsExceedSession = clapsWouldIncrease && incomingClapGain > recentSessionClapsEarned;
-          const progressError = validateSessionProgress({
-            bestScore: recentSessionBestScore,
-            clapsEarned: recentSessionClapsEarned,
-            movesCount: recentSessionMovesCount,
-          });
 
-          if (progressError) {
-            rejectReason = 'invalid_session_progress';
-          } else if (incomingBestExceedsSession) {
+          if (incomingBestExceedsSession) {
             rejectReason = 'score_rejected';
           } else if (incomingClapsExceedSession) {
             rejectReason = 'claps_rejected';
