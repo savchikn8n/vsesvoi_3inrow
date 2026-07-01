@@ -1065,12 +1065,22 @@ h1 {
   align-items: center;
 }
 
+.maintenance-dev-trigger {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0 0 48px;
+  display: block;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .maintenance-image {
   width: 196px;
   height: 196px;
   object-fit: contain;
   display: block;
-  margin: 0 0 48px;
+  margin: 0;
 }
 
 .maintenance-copy {
@@ -2244,6 +2254,40 @@ h1 {
 .modal-card p {
   margin: 0 0 14px 0;
   color: #ffffff;
+}
+
+.dev-password-card {
+  width: min(88vw, 360px);
+}
+
+.dev-password-input {
+  width: 100%;
+  min-height: 48px;
+  border: 2px solid #f3b315;
+  border-radius: var(--ui-radius);
+  background: #050505;
+  color: #ffffff;
+  font-family: "Muller", "Manrope", sans-serif;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 12px;
+  margin: 2px 0 10px;
+  outline: none;
+}
+
+.dev-password-input:focus {
+  box-shadow: 0 0 0 2px rgba(243, 179, 21, 0.22);
+}
+
+.dev-password-status {
+  min-height: 18px;
+  color: rgba(255, 255, 255, 0.62) !important;
+  font-family: "Muller", "Manrope", sans-serif;
+  font-size: 13px;
+}
+
+.dev-password-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .modal-actions {

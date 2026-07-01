@@ -125,6 +125,12 @@ const maintenanceNoteEl = document.getElementById('maintenance-note');
 const maintenanceBookBtn = document.getElementById('maintenance-book');
 const maintenanceRetryBtn = document.getElementById('maintenance-retry');
 const maintenanceRetryLabelEl = document.getElementById('maintenance-retry-label');
+const maintenanceDevTriggerBtn = document.getElementById('maintenance-dev-trigger');
+const maintenanceDevModalEl = document.getElementById('maintenance-dev-modal');
+const maintenanceDevPasswordEl = document.getElementById('maintenance-dev-password');
+const maintenanceDevStatusEl = document.getElementById('maintenance-dev-status');
+const maintenanceDevCancelBtn = document.getElementById('maintenance-dev-cancel');
+const maintenanceDevSubmitBtn = document.getElementById('maintenance-dev-submit');
 const feedbackModalEl = document.getElementById('feedback-modal');
 const feedbackInputEl = document.getElementById('feedback-input');
 const feedbackCancelBtn = document.getElementById('feedback-cancel');
@@ -183,6 +189,9 @@ let continueRunBusy = false;
 let shopPurchaseBusy = false;
 let shopOwnedBusy = false;
 let feedbackSendBusy = false;
+let maintenanceDevTapCount = 0;
+let maintenanceDevLastTapAt = 0;
+let maintenanceDevBusy = false;
 let pendingShopItemId = null;
 let activeShopTab = 'gifts';
 
@@ -193,6 +202,8 @@ const LEADERBOARD_CACHE_KEY = 'gold_match_leaderboard_cache_v1';
 const LEADERBOARD_CACHE_TTL_MS = 60 * 1000;
 const RUNTIME_CONFIG_CACHE_KEY = 'gold_match_runtime_config_cache_v1';
 const RUNTIME_CONFIG_CACHE_TTL_MS = 120 * 1000;
+const MAINTENANCE_DEV_BYPASS_KEY = 'gold_match_maintenance_dev_bypass_until';
+const MAINTENANCE_DEV_TAP_WINDOW_MS = 1200;
 const SEEN_PROMO_IDS_KEY = 'gold_match_seen_promo_ids_v1';
 const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUPABASE_FUNCTIONS_BASE = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '';
@@ -1300,6 +1311,26 @@ function shouldUseCachedRuntimeMaintenance(cacheEntry) {
   return false;
 }
 
+function isMaintenanceDevBypassActive() {
+  try {
+    const expiresAt = Number(sessionStorage.getItem(MAINTENANCE_DEV_BYPASS_KEY) || 0);
+    return Number.isFinite(expiresAt) && expiresAt > Date.now();
+  } catch (_) {
+    return false;
+  }
+}
+
+function storeMaintenanceDevBypass(expiresAt) {
+  const normalized = Math.floor(Number(expiresAt || 0));
+  if (!Number.isFinite(normalized) || normalized <= Date.now()) return false;
+  try {
+    sessionStorage.setItem(MAINTENANCE_DEV_BYPASS_KEY, String(normalized));
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 async function resolveRuntimeConfig() {
   try {
     const result = await postJsonWithOptions('runtime-config', {}, { timeoutMs: 5000, retries: 0 });
@@ -1352,6 +1383,64 @@ function hideMaintenanceScreen() {
   syncAmbientGameMask();
 }
 
+function openMaintenanceDevModal() {
+  if (!maintenanceDevModalEl) return;
+  maintenanceDevStatusEl.textContent = '';
+  if (maintenanceDevPasswordEl) maintenanceDevPasswordEl.value = '';
+  maintenanceDevModalEl.classList.remove('hidden');
+  maintenanceDevModalEl.setAttribute('aria-hidden', 'false');
+  setTimeout(() => maintenanceDevPasswordEl?.focus(), 20);
+}
+
+function closeMaintenanceDevModal() {
+  maintenanceDevModalEl?.classList.add('hidden');
+  maintenanceDevModalEl?.setAttribute('aria-hidden', 'true');
+  if (maintenanceDevPasswordEl) maintenanceDevPasswordEl.value = '';
+  if (maintenanceDevStatusEl) maintenanceDevStatusEl.textContent = '';
+}
+
+function handleMaintenanceDevTap() {
+  const now = Date.now();
+  maintenanceDevTapCount = now - maintenanceDevLastTapAt <= MAINTENANCE_DEV_TAP_WINDOW_MS
+    ? maintenanceDevTapCount + 1
+    : 1;
+  maintenanceDevLastTapAt = now;
+
+  if (maintenanceDevTapCount >= 3) {
+    maintenanceDevTapCount = 0;
+    openMaintenanceDevModal();
+  }
+}
+
+async function submitMaintenanceDevPassword() {
+  if (maintenanceDevBusy) return;
+  const password = maintenanceDevPasswordEl?.value || '';
+  if (!password.trim()) {
+    if (maintenanceDevStatusEl) maintenanceDevStatusEl.textContent = 'Введите пароль';
+    return;
+  }
+
+  maintenanceDevBusy = true;
+  if (maintenanceDevSubmitBtn) maintenanceDevSubmitBtn.disabled = true;
+  if (maintenanceDevStatusEl) maintenanceDevStatusEl.textContent = 'Проверяем';
+  try {
+    const result = await postJson('maintenance-dev-auth', { password });
+    if (!result?.ok || !storeMaintenanceDevBypass(result.expiresAt)) {
+      throw new Error('Неверный ответ сервера');
+    }
+    closeMaintenanceDevModal();
+    hideMaintenanceScreen();
+    await ensureAuthFlow();
+  } catch (error) {
+    if (maintenanceDevStatusEl) {
+      maintenanceDevStatusEl.textContent = error.message || 'Ошибка';
+    }
+  } finally {
+    maintenanceDevBusy = false;
+    if (maintenanceDevSubmitBtn) maintenanceDevSubmitBtn.disabled = false;
+  }
+}
+
 function openMaintenanceBooking() {
   const url = maintenanceBookBtn?.dataset.url || normalizeAppRuntimeConfig(null).maintenance.secondaryUrl;
   const tg = window.Telegram?.WebApp;
@@ -1375,7 +1464,7 @@ async function retryMaintenanceEntry() {
   if (maintenanceRetryLabelEl) maintenanceRetryLabelEl.textContent = 'Проверяем';
   try {
     const config = await resolveRuntimeConfig();
-    if (config.maintenance.enabled) {
+    if (config.maintenance.enabled && !isMaintenanceDevBypassActive()) {
       showMaintenanceScreen(config);
       return;
     }
@@ -1389,7 +1478,7 @@ async function retryMaintenanceEntry() {
 async function prepareAppEntry() {
   const config = await resolveRuntimeConfig();
   document.body.classList.remove('app-booting');
-  if (config.maintenance.enabled) {
+  if (config.maintenance.enabled && !isMaintenanceDevBypassActive()) {
     showMaintenanceScreen(config);
     return;
   }
@@ -3773,6 +3862,17 @@ shopOwnedCloseBtn?.addEventListener('click', closeOwnedGiftsModal);
 maintenanceBookBtn?.addEventListener('click', openMaintenanceBooking);
 maintenanceRetryBtn?.addEventListener('click', () => {
   void retryMaintenanceEntry();
+});
+maintenanceDevTriggerBtn?.addEventListener('click', handleMaintenanceDevTap);
+maintenanceDevCancelBtn?.addEventListener('click', closeMaintenanceDevModal);
+maintenanceDevSubmitBtn?.addEventListener('click', () => {
+  void submitMaintenanceDevPassword();
+});
+maintenanceDevPasswordEl?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    void submitMaintenanceDevPassword();
+  }
 });
 feedbackCancelBtn?.addEventListener('click', closeFeedbackModal);
 feedbackSendBtn?.addEventListener('click', () => {

@@ -36,6 +36,9 @@ verify_jwt = false
 [functions.leaderboard]
 verify_jwt = false
 
+[functions.maintenance-dev-auth]
+verify_jwt = false
+
 [functions.messages-admin]
 verify_jwt = false
 
