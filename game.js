@@ -178,6 +178,8 @@ let sessionSnapshotTimerId = null;
 let sessionReplayMoves = [];
 let replayInitialState = null;
 let serverGameSession = null;
+let gameStartInProgress = false;
+let gameStartRunId = 0;
 let activePromoPopup = null;
 let promoFetchPromise = null;
 let bonusFetchPromise = null;
@@ -2036,7 +2038,6 @@ function openLauncherLink(url) {
 }
 
 function startNewGameFromHome() {
-  hideStartScreen();
   void resetGame();
 }
 
@@ -3782,29 +3783,44 @@ function interruptibleDelay(ms, sessionId) {
 }
 
 async function resetGame() {
-  setShareRecordState(null);
-  const origin = startScreenEl?.classList.contains('hidden') ? 'restart' : 'menu';
-  const gameSession = await startServerGameSession();
-  startAnalyticsSession(origin, gameSession);
-  score = 0;
-  clapsAwardedThisRun = 0;
-  selected = null;
-  locked = false;
-  bufferedMove = null;
-  clearComboConstraint();
-  clearHint();
-  hideStartScreen();
-  closeAllModals();
-  statusEl.textContent = 'Собирайте комбинации по 3+ в ряд.';
-  if (gameSession && replayInitialState?.board) {
-    board = cloneBoard(replayInitialState.board);
-  } else {
-    createBoard();
+  if (gameStartInProgress) return;
+  gameStartInProgress = true;
+  const startRunId = ++gameStartRunId;
+
+  try {
+    setShareRecordState(null);
+    const origin = startScreenEl?.classList.contains('hidden') ? 'restart' : 'menu';
+    locked = true;
+    selected = null;
+    bufferedMove = null;
+    clearComboConstraint();
+    clearHint();
+    stopTurnTimer();
+
+    const gameSession = await startServerGameSession();
+    if (startRunId !== gameStartRunId) return;
+
+    startAnalyticsSession(origin, gameSession);
+    score = 0;
+    clapsAwardedThisRun = 0;
+    locked = false;
+    hideStartScreen();
+    closeAllModals();
+    statusEl.textContent = 'Собирайте комбинации по 3+ в ряд.';
+    if (gameSession && replayInitialState?.board) {
+      board = cloneBoard(replayInitialState.board);
+    } else {
+      createBoard();
+    }
+    drawBoard();
+    startTurnTimer();
+    refreshAmbientLayers();
+    syncAmbientGameMask();
+  } finally {
+    if (startRunId === gameStartRunId) {
+      gameStartInProgress = false;
+    }
   }
-  drawBoard();
-  startTurnTimer();
-  refreshAmbientLayers();
-  syncAmbientGameMask();
 }
 
 exitToMenuBtn?.addEventListener('click', openExitConfirmModal);
