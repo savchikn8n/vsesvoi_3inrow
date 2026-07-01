@@ -268,7 +268,9 @@
 
       <section id="maintenance-screen" class="maintenance-screen hidden" aria-label="Технические работы">
         <div class="maintenance-card">
-          <img id="maintenance-image" class="maintenance-image" src="./assets/maintenance-claps.svg" alt="" />
+          <button id="maintenance-dev-trigger" class="maintenance-dev-trigger" type="button" aria-label="Dev access">
+            <img id="maintenance-image" class="maintenance-image" src="./assets/maintenance-claps.svg" alt="" />
+          </button>
           <div class="maintenance-copy">
             <h1 id="maintenance-title">Техническая пауза</h1>
             <p id="maintenance-body">Мы делаем игру чуточку лучше</p>
@@ -291,6 +293,27 @@
         </div>
       </section>
     </main>
+
+    <div id="maintenance-dev-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card dev-password-card">
+        <h2>password</h2>
+        <input
+          id="maintenance-dev-password"
+          class="dev-password-input"
+          type="password"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          inputmode="text"
+          aria-label="password"
+        />
+        <p id="maintenance-dev-status" class="dev-password-status" aria-live="polite"></p>
+        <div class="modal-actions dev-password-actions">
+          <button id="maintenance-dev-cancel" type="button">Отмена</button>
+          <button id="maintenance-dev-submit" type="button">Войти</button>
+        </div>
+      </div>
+    </div>
 
     <div id="game-over-modal" class="modal hidden" aria-hidden="true">
       <div class="modal-card">
