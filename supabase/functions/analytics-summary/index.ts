@@ -83,6 +83,7 @@ Deno.serve(async (req) => {
       topPlayersRes,
       topClapPlayersRes,
       sessionsRes,
+      gameSessionsRes,
       eventsRes,
       purchasesRes,
       broadcastsRes,
@@ -109,6 +110,12 @@ Deno.serve(async (req) => {
         )
         .gte('session_started_at', sinceLookback)
         .order('session_started_at', { ascending: false })
+        .limit(10000),
+      admin
+        .from('game_sessions')
+        .select('session_id, client_final_score, client_claps_earned, validation_status')
+        .gte('created_at', sinceLookback)
+        .eq('validation_status', 'accepted')
         .limit(10000),
       admin
         .from('analytics_events')
@@ -142,21 +149,42 @@ Deno.serve(async (req) => {
     if (topPlayersRes.error) throw new Error(topPlayersRes.error.message);
     if (topClapPlayersRes.error) throw new Error(topClapPlayersRes.error.message);
     if (sessionsRes.error) throw new Error(sessionsRes.error.message);
+    if (gameSessionsRes.error) throw new Error(gameSessionsRes.error.message);
     if (eventsRes.error) throw new Error(eventsRes.error.message);
     if (purchasesRes.error) throw new Error(purchasesRes.error.message);
     if (broadcastsRes.error) throw new Error(broadcastsRes.error.message);
     if (recipientsRes.error) throw new Error(recipientsRes.error.message);
 
     const sessions = sessionsRes.data || [];
+    const gameSessions = gameSessionsRes.data || [];
     const events = eventsRes.data || [];
     const purchases = purchasesRes.data || [];
     const broadcasts = broadcastsRes.data || [];
     const broadcastRecipients = recipientsRes.data || [];
     const topPlayersRows = topPlayersRes.data || [];
     const topClapPlayersRows = topClapPlayersRes.data || [];
+    const gameSessionMap = new Map(
+      gameSessions.map((item) => [
+        String(item.session_id),
+        {
+          best_score: Number(item.client_final_score || 0),
+          claps_earned: Number(item.client_claps_earned || 0),
+        },
+      ]),
+    );
 
-    const currentSessions = sessions.filter((item) => item.session_started_at >= since);
-    const previousSessions = sessions.filter((item) => item.session_started_at < since);
+    const normalizeSession = (item: Record<string, unknown>) => {
+      const gameSession = gameSessionMap.get(String(item.session_id));
+      return {
+        ...item,
+        best_score: Math.max(Number(item.best_score || 0), Number(gameSession?.best_score || 0)),
+        claps_earned: Math.max(Number(item.claps_earned || 0), Number(gameSession?.claps_earned || 0)),
+      };
+    };
+    const normalizedSessions = sessions.map(normalizeSession);
+
+    const currentSessions = normalizedSessions.filter((item) => item.session_started_at >= since);
+    const previousSessions = normalizedSessions.filter((item) => item.session_started_at < since);
     const endedSessions = currentSessions.filter((item) => item.session_ended_at);
     const currentScores = currentSessions.map((item) => Number(item.best_score || 0));
     const currentClapsSpentFromSessions = currentSessions.map((item) => Number(item.claps_spent || 0));
@@ -171,7 +199,7 @@ Deno.serve(async (req) => {
 
     const recentSessionTelegramIds = [
       ...new Set(
-        sessions
+        normalizedSessions
           .slice(0, 1000)
           .map((item) => item.telegram_id)
           .filter((value) => value !== null && value !== undefined),
@@ -226,7 +254,7 @@ Deno.serve(async (req) => {
       .slice(0, 10)
       .map(([event_name, count]) => ({ event_name, count }));
 
-    const sessionHistory = sessions.map((item) => ({
+    const sessionHistory = normalizedSessions.map((item) => ({
       display_name: sessionProfileMap.get(String(item.telegram_id))?.display_name || 'Игрок',
       telegram_username: sessionProfileMap.get(String(item.telegram_id))?.telegram_username || '',
       telegram_id: item.telegram_id,
@@ -252,7 +280,7 @@ Deno.serve(async (req) => {
       const sentRecipients = recipients.filter((item) => item.status === 'sent');
       const returnedIds = new Set<string>();
       for (const recipient of sentRecipients) {
-        const returned = sessions.some(
+        const returned = normalizedSessions.some(
           (session) =>
             String(session.telegram_id) === String(recipient.telegram_id)
             && session.session_started_at > recipient.sent_at,

@@ -132,6 +132,18 @@ test('analytics-track rejects impossible session progress but cannot verify scor
   assert.doesNotMatch(scoreSubmit, /validateSessionProgress/);
 });
 
+test('analytics-summary prefers accepted game session claps over stale analytics rows', () => {
+  const source = readRepoFile('supabase/functions/analytics-summary/index.ts');
+
+  assert.match(source, /\.from\('game_sessions'\)/);
+  assert.match(source, /\.eq\('validation_status', 'accepted'\)/);
+  assert.match(source, /const gameSessionMap = new Map/);
+  assert.match(source, /const normalizedSessions = sessions\.map\(normalizeSession\)/);
+  assert.match(source, /claps_earned: Math\.max\(Number\(item\.claps_earned \|\| 0\), Number\(gameSession\?\.claps_earned \|\| 0\)\)/);
+  assert.match(source, /const currentSessions = normalizedSessions\.filter/);
+  assert.match(source, /const sessionHistory = normalizedSessions\.map/);
+});
+
 test('game session migration is additive and protects existing profile data', () => {
   const sql = readRepoFile('supabase/sql/017_game_sessions.sql');
   const migration = readRepoFile('supabase/migrations/20260629130000_game_sessions.sql');
