@@ -196,6 +196,10 @@
     return rng.createSeededRng(`${state.seed}:${state.movesCount}:${state.score}`);
   }
 
+  function makeShuffleRng(state) {
+    return rng.createSeededRng(`${state.seed}:shuffle:${state.movesCount}:${state.score}`);
+  }
+
   function applyRemoval(state, removals, specialCreates = new Map(), options = {}) {
     const { chainSpecials = true, scoreMultiplier = 1 } = options;
     const blastSet = new Set(removals);
@@ -258,6 +262,17 @@
     }
   }
 
+  function reshuffleIfNeeded(state) {
+    if (core.hasAnyMove(state.board, state.size)) return;
+    state.board = core
+      .createBoard({
+        size: state.size,
+        colorCount: state.colorCount,
+        rng: makeShuffleRng(state),
+      })
+      .map(cloneCell);
+  }
+
   function canSwapMakeMatch(board, a, b, size) {
     const test = cleanBoard(board);
     core.swapIn(test, a, b);
@@ -316,13 +331,16 @@
     if (isOutOfRange(from, state.size) || isOutOfRange(to, state.size)) {
       return { accepted: false, reason: 'out_of_range', state };
     }
-    if (!core.areAdjacent(from, to, state.size)) {
+
+    const specialMove = Boolean(state.board[from]?.special || state.board[to]?.special);
+    const specialSelfTap = from === to && Boolean(state.board[from]?.special);
+    if (!core.areAdjacent(from, to, state.size) && !specialSelfTap) {
       return { accepted: false, reason: 'non_adjacent', state };
     }
 
-    const specialMove = Boolean(state.board[from]?.special || state.board[to]?.special);
     if (specialMove) {
       applySpecialMove(state, from, to);
+      reshuffleIfNeeded(state);
       state.movesCount++;
       updateClaps(state);
       return { accepted: true, reason: null, state };
@@ -334,6 +352,7 @@
 
     core.swapIn(state.board, from, to);
     resolveCascades(state, [from, to]);
+    reshuffleIfNeeded(state);
     state.movesCount++;
     updateClaps(state);
     return { accepted: true, reason: null, state };

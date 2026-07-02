@@ -130,11 +130,60 @@ Deno.serve(async (req) => {
         } else {
           recentSessionBestScore = Math.max(0, Number(validation.server_score || 0));
           recentSessionClapsEarned = Math.max(0, Number(validation.server_claps_earned || 0));
-          const incomingBestExceedsSession = bestWouldIncrease && incomingBestScore > recentSessionBestScore;
-          const incomingClapGain = Math.max(0, incomingClapBalance - previousClaps);
-          const incomingClapsExceedSession = clapsWouldIncrease && incomingClapGain > recentSessionClapsEarned;
+          const { data: lastAcceptedSubmission, error: lastAcceptedError } = await admin
+            .from('score_submissions')
+            .select('created_at')
+            .eq('telegram_id', user.id)
+            .eq('accepted', true)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-          if (incomingBestExceedsSession) {
+          if (lastAcceptedError) {
+            throw new Error(lastAcceptedError.message);
+          }
+
+          const lastAcceptedAt = typeof lastAcceptedSubmission?.created_at === 'string'
+            ? lastAcceptedSubmission.created_at
+            : null;
+
+          const validationWindowQuery = admin
+            .from('game_session_validations')
+            .select('session_id, server_score, server_claps_earned, created_at')
+            .eq('telegram_id', user.id)
+            .eq('accepted', true);
+
+          const { data: validationWindow, error: validationWindowError } = lastAcceptedAt
+            ? await validationWindowQuery
+              .gt('created_at', lastAcceptedAt)
+              .order('created_at', { ascending: false })
+              .limit(50)
+            : await validationWindowQuery
+              .order('created_at', { ascending: false })
+              .limit(50);
+
+          if (validationWindowError) {
+            throw new Error(validationWindowError.message);
+          }
+
+          const acceptedValidations = validationWindow || [];
+          const sessionIsInUnsubmittedWindow = acceptedValidations.some((item) => item.session_id === sessionId);
+          const validatedBestScore = acceptedValidations.reduce(
+            (maxScore, item) => Math.max(maxScore, Number(item.server_score || 0)),
+            0,
+          );
+          const validatedClapsEarned = acceptedValidations.reduce(
+            (total, item) => total + Math.max(0, Number(item.server_claps_earned || 0)),
+            0,
+          );
+
+          const incomingBestExceedsSession = bestWouldIncrease && incomingBestScore > validatedBestScore;
+          const incomingClapGain = Math.max(0, incomingClapBalance - previousClaps);
+          const incomingClapsExceedSession = clapsWouldIncrease && incomingClapGain > validatedClapsEarned;
+
+          if (!sessionIsInUnsubmittedWindow) {
+            rejectReason = 'missing_session';
+          } else if (incomingBestExceedsSession) {
             rejectReason = 'score_rejected';
           } else if (incomingClapsExceedSession) {
             rejectReason = 'claps_rejected';

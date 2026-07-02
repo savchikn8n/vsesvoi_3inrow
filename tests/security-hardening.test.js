@@ -71,6 +71,10 @@ test('score-submit requires server validated game session evidence for progress 
   assert.match(source, /accepted', true/);
   assert.match(source, /server_score/);
   assert.match(source, /server_claps_earned/);
+  assert.match(source, /lastAcceptedSubmission/);
+  assert.match(source, /\.gt\('created_at', lastAcceptedAt\)/);
+  assert.match(source, /validatedClapsEarned/);
+  assert.match(source, /acceptedValidations\.reduce/);
   assert.match(source, /incomingBestExceedsSession/);
   assert.match(source, /insertScoreSubmissionAudit/);
   assert.match(source, /score_rejected/);
@@ -88,6 +92,28 @@ test('client final progress submits server validation before score-submit', () =
   assert.match(source, /await flushServerGameSession/);
   assert.match(source, /syncProgressIfNeeded\(\{[\s\S]*submitServerSession: true/);
   assert.match(source, /endAnalyticsSession\(reason, \{ skipServerSubmit: true/);
+});
+
+test('client lifecycle progress flush submits server validation before score-submit', () => {
+  const source = readRepoFile('game.js');
+  const match = source.match(/function flushProgressLifecycleIfNeeded\(\) \{([\s\S]*?)\n\}/);
+  assert.ok(match, 'flushProgressLifecycleIfNeeded should exist');
+  const body = match[1];
+
+  assert.match(body, /flushServerGameSession\(\{ useLifecycleTransport: true \}\)/);
+  assert.ok(
+    body.indexOf('flushServerGameSession({ useLifecycleTransport: true })')
+      < body.indexOf("postLifecycleJson('score-submit'"),
+    'lifecycle validation submit must happen before score-submit',
+  );
+});
+
+test('client does not buffer cascade-time moves that server replay cannot reproduce', () => {
+  const source = readRepoFile('game.js');
+
+  assert.doesNotMatch(source, /let bufferedMove/);
+  assert.doesNotMatch(source, /queueBufferedMove/);
+  assert.doesNotMatch(source, /if \(bufferedMove && canSwapMakeMatch/);
 });
 
 test('analytics-track rejects impossible session progress but cannot verify score-submit', () => {

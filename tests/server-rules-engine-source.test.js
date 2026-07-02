@@ -31,6 +31,8 @@ test('Deno rules engine exports the same replay contract as the browser engine',
   for (const name of [
     'buildMatchResolution',
     'applySpecialMove',
+    'reshuffleIfNeeded',
+    'makeShuffleRng',
     'getBlastArea',
     'getBombRocketComboArea',
     'getRocketRocketComboArea',
@@ -43,4 +45,7 @@ test('Deno rules engine exports the same replay contract as the browser engine',
     assert.match(browserSource, new RegExp(special));
     assert.match(denoSource, new RegExp(special));
   }
+
+  assert.match(browserSource, /specialSelfTap/);
+  assert.match(denoSource, /specialSelfTap/);
 });

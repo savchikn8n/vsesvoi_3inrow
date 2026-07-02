@@ -50,6 +50,16 @@ test('applyMove rejects non-adjacent moves without mutating state', () => {
   assert.equal(JSON.stringify(state.board), before);
 });
 
+test('applyMove accepts tapping a special tile on itself', () => {
+  const state = Rules.createInitialState({ seed: '0123456789abcdef' });
+  state.board[0] = { color: 1, special: 'bomb' };
+  const result = Rules.applyMove(state, { from: 0, to: 0 });
+
+  assert.equal(result.accepted, true);
+  assert.equal(result.reason, null);
+  assert.equal(result.state.movesCount, 1);
+});
+
 test('replayMoves returns deterministic result for the same seed and move list', () => {
   const initial = Rules.createInitialState({ seed: '0123456789abcdef' });
   const move = Core.findPotentialMove(initial.board, 7);

@@ -90,7 +90,7 @@
             <div class="menu-hero-slide is-active" data-slide="0" aria-hidden="false">
               <img src="./assets/ingamelogo.svg" alt="Все Свои 3 в ряд" />
             </div>
-            <div class="menu-hero-slide menu-hero-slide-upcoming" data-slide="1" aria-hidden="true">
+            <div class="menu-hero-slide menu-hero-slide-upcoming" data-slide="1" aria-hidden="true" data-gamehub-dev-trigger>
               <img src="./assets/coultower.png" alt="Все Свои: Угольная башня" />
               <div class="menu-hero-soon">
                 Скоро<span class="loading-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>
@@ -130,6 +130,18 @@
             </div>
           </div>
         </div>
+        </div>
+      </section>
+
+      <section id="alpha-gamehub-screen" class="alpha-gamehub-screen hidden" aria-label="Alpha GameHub" aria-hidden="true">
+        <div class="alpha-gamehub-card">
+          <div class="alpha-gamehub-kicker">Alpha GameHub</div>
+          <h1>Все Свои: Угольная башня</h1>
+          <p>Тестовый контур для второго игрового режима.</p>
+          <div class="alpha-gamehub-actions">
+            <button id="alpha-gamehub-coal-tower" type="button" disabled>Угольная башня</button>
+            <button id="alpha-gamehub-match3" type="button">Вернуться к 3 в ряд</button>
+          </div>
         </div>
       </section>
 
@@ -283,10 +295,7 @@
             <button id="maintenance-retry" class="maintenance-action maintenance-action-retry" type="button">
               <span id="maintenance-retry-label">Повторить</span>
               <span class="maintenance-retry-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" focusable="false">
-                  <path d="M20 7.5v5h-5" />
-                  <path d="M19.1 12.4A7.2 7.2 0 1 1 17 7.3L20 10" />
-                </svg>
+                <img src="./assets/retry-counterclockwise.png" alt="" />
               </span>
             </button>
           </div>
@@ -311,6 +320,27 @@
         <div class="modal-actions dev-password-actions">
           <button id="maintenance-dev-cancel" type="button">Отмена</button>
           <button id="maintenance-dev-submit" type="button">Войти</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="gamehub-dev-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card dev-password-card">
+        <h2>password</h2>
+        <input
+          id="gamehub-dev-password"
+          class="dev-password-input"
+          type="password"
+          inputmode="text"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          aria-label="password"
+        />
+        <p id="gamehub-dev-status" class="dev-password-status" aria-live="polite"></p>
+        <div class="modal-actions dev-password-actions">
+          <button id="gamehub-dev-cancel" type="button">Отмена</button>
+          <button id="gamehub-dev-submit" type="button">Войти</button>
         </div>
       </div>
     </div>

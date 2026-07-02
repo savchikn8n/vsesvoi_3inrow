@@ -44,6 +44,9 @@ const startBoostExitBtn = document.getElementById('start-boost-exit');
 const menuHeroEl = document.getElementById('menu-hero');
 const menuHeroTrackEl = document.getElementById('menu-hero-track');
 const menuHeroDots = Array.from(document.querySelectorAll('.menu-hero-dot'));
+const gamehubDevTriggerEl = document.querySelector('[data-gamehub-dev-trigger]');
+const alphaGamehubScreenEl = document.getElementById('alpha-gamehub-screen');
+const alphaGamehubMatch3Btn = document.getElementById('alpha-gamehub-match3');
 const gameOverModalEl = document.getElementById('game-over-modal');
 const exitConfirmModalEl = document.getElementById('exit-confirm-modal');
 const exitConfirmCancelBtn = document.getElementById('exit-confirm-cancel');
@@ -131,6 +134,11 @@ const maintenanceDevPasswordEl = document.getElementById('maintenance-dev-passwo
 const maintenanceDevStatusEl = document.getElementById('maintenance-dev-status');
 const maintenanceDevCancelBtn = document.getElementById('maintenance-dev-cancel');
 const maintenanceDevSubmitBtn = document.getElementById('maintenance-dev-submit');
+const gamehubDevModalEl = document.getElementById('gamehub-dev-modal');
+const gamehubDevPasswordEl = document.getElementById('gamehub-dev-password');
+const gamehubDevStatusEl = document.getElementById('gamehub-dev-status');
+const gamehubDevCancelBtn = document.getElementById('gamehub-dev-cancel');
+const gamehubDevSubmitBtn = document.getElementById('gamehub-dev-submit');
 const feedbackModalEl = document.getElementById('feedback-modal');
 const feedbackInputEl = document.getElementById('feedback-input');
 const feedbackCancelBtn = document.getElementById('feedback-cancel');
@@ -167,7 +175,6 @@ let leaderboardBusy = false;
 let touchSessionSent = false;
 let cascadeSession = 0;
 let activeComboConstraint = null;
-let bufferedMove = null;
 let giftsFlipTimer = null;
 let activeSessionId = null;
 let sessionStartedAtMs = 0;
@@ -187,6 +194,10 @@ let pendingBroadcastBonus = null;
 let shareRecordState = null;
 let menuHeroSlide = 0;
 let menuHeroGesture = null;
+let gamehubDevTapCount = 0;
+let gamehubDevLastTapAt = 0;
+let gamehubDevBusy = false;
+let gamehubDevModeActive = false;
 let continueRunBusy = false;
 let shopPurchaseBusy = false;
 let shopOwnedBusy = false;
@@ -194,6 +205,7 @@ let feedbackSendBusy = false;
 let maintenanceDevTapCount = 0;
 let maintenanceDevLastTapAt = 0;
 let maintenanceDevBusy = false;
+let maintenanceDevBypassActive = false;
 let pendingShopItemId = null;
 let activeShopTab = 'gifts';
 
@@ -204,7 +216,6 @@ const LEADERBOARD_CACHE_KEY = 'gold_match_leaderboard_cache_v1';
 const LEADERBOARD_CACHE_TTL_MS = 60 * 1000;
 const RUNTIME_CONFIG_CACHE_KEY = 'gold_match_runtime_config_cache_v1';
 const RUNTIME_CONFIG_CACHE_TTL_MS = 120 * 1000;
-const MAINTENANCE_DEV_BYPASS_KEY = 'gold_match_maintenance_dev_bypass_until';
 const MAINTENANCE_DEV_TAP_WINDOW_MS = 1200;
 const SEEN_PROMO_IDS_KEY = 'gold_match_seen_promo_ids_v1';
 const SUPABASE_URL = window.__SUPABASE_URL__ || '';
@@ -521,8 +532,27 @@ function syncAmbientGameMask() {
   ambientGameMaskEl.classList.add('hidden');
 }
 
-function randColor() {
-  return Math.floor(Math.random() * COLORS);
+function currentReplaySeed() {
+  return replayInitialState?.seed || serverGameSession?.seed || activeSessionId || 'local-preview';
+}
+
+function createSeededRng(seed) {
+  if (window.VSGameRng?.createSeededRng) {
+    return window.VSGameRng.createSeededRng(seed);
+  }
+  return Math.random;
+}
+
+function createRefillRng() {
+  return createSeededRng(`${currentReplaySeed()}:${sessionMovesCount}:${score}`);
+}
+
+function createShuffleRng() {
+  return createSeededRng(`${currentReplaySeed()}:shuffle:${sessionMovesCount}:${score}`);
+}
+
+function randColor(rng = Math.random) {
+  return Math.floor(rng() * COLORS);
 }
 
 function makeCell(color = randColor(), special = null) {
@@ -551,10 +581,10 @@ function causesImmediateMatchAt(r, c, color) {
   return horiz >= 2 || vert >= 2;
 }
 
-function makeStableCell(r, c) {
+function makeStableCell(r, c, rng = Math.random) {
   const pool = Array.from({ length: COLORS }, (_, i) => i);
   for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
 
@@ -598,8 +628,18 @@ function hasSpecial(index) {
 }
 
 function createBoard() {
+  if (window.VSGameCore?.createBoard) {
+    board = window.VSGameCore.createBoard({
+      size: SIZE,
+      colorCount: COLORS,
+      rng: createSeededRng(currentReplaySeed()),
+    });
+    return;
+  }
+
+  const rng = createSeededRng(currentReplaySeed());
   do {
-    board = Array.from({ length: SIZE * SIZE }, () => makeCell());
+    board = Array.from({ length: SIZE * SIZE }, () => makeCell(randColor(rng)));
   } while (findMatchGroups(board).length > 0 || !hasAnyMove(board));
 }
 
@@ -788,6 +828,85 @@ function setupMenuHeroCarousel() {
   menuHeroEl.addEventListener('pointercancel', () => {
     menuHeroGesture = null;
   });
+}
+
+function openGamehubDevModal() {
+  if (!gamehubDevModalEl) return;
+  if (gamehubDevStatusEl) gamehubDevStatusEl.textContent = '';
+  if (gamehubDevPasswordEl) gamehubDevPasswordEl.value = '';
+  gamehubDevModalEl.classList.remove('hidden');
+  gamehubDevModalEl.setAttribute('aria-hidden', 'false');
+  setTimeout(() => gamehubDevPasswordEl?.focus(), 20);
+}
+
+function closeGamehubDevModal() {
+  gamehubDevModalEl?.classList.add('hidden');
+  gamehubDevModalEl?.setAttribute('aria-hidden', 'true');
+  if (gamehubDevPasswordEl) gamehubDevPasswordEl.value = '';
+  if (gamehubDevStatusEl) gamehubDevStatusEl.textContent = '';
+}
+
+function showAlphaGamehub() {
+  gamehubDevModeActive = true;
+  stopTurnTimer();
+  locked = true;
+  selected = null;
+  clearHint();
+  closeAllModals();
+  startScreenEl?.classList.add('hidden');
+  shopScreenEl?.classList.add('hidden');
+  alphaGamehubScreenEl?.classList.remove('hidden');
+  alphaGamehubScreenEl?.setAttribute('aria-hidden', 'false');
+  refreshAmbientLayers();
+  syncAmbientGameMask();
+}
+
+function closeAlphaGamehub() {
+  alphaGamehubScreenEl?.classList.add('hidden');
+  alphaGamehubScreenEl?.setAttribute('aria-hidden', 'true');
+  showStartScreen();
+}
+
+function handleGamehubDevTap() {
+  if (menuHeroSlide !== 1) return;
+  const now = Date.now();
+  gamehubDevTapCount = now - gamehubDevLastTapAt <= MAINTENANCE_DEV_TAP_WINDOW_MS
+    ? gamehubDevTapCount + 1
+    : 1;
+  gamehubDevLastTapAt = now;
+
+  if (gamehubDevTapCount >= 5) {
+    gamehubDevTapCount = 0;
+    openGamehubDevModal();
+  }
+}
+
+async function submitGamehubDevPassword() {
+  if (gamehubDevBusy) return;
+  const password = gamehubDevPasswordEl?.value || '';
+  if (!password.trim()) {
+    if (gamehubDevStatusEl) gamehubDevStatusEl.textContent = 'Введите пароль';
+    return;
+  }
+
+  gamehubDevBusy = true;
+  if (gamehubDevSubmitBtn) gamehubDevSubmitBtn.disabled = true;
+  if (gamehubDevStatusEl) gamehubDevStatusEl.textContent = 'Проверяем';
+  try {
+    const result = await postJson('maintenance-dev-auth', { password });
+    if (!result?.ok) {
+      throw new Error('Неверный ответ сервера');
+    }
+    closeGamehubDevModal();
+    showAlphaGamehub();
+  } catch (error) {
+    if (gamehubDevStatusEl) {
+      gamehubDevStatusEl.textContent = error.message || 'Ошибка';
+    }
+  } finally {
+    gamehubDevBusy = false;
+    if (gamehubDevSubmitBtn) gamehubDevSubmitBtn.disabled = false;
+  }
 }
 
 function maybeUpdateBestScore() {
@@ -1043,6 +1162,7 @@ function flushProgressLifecycleIfNeeded() {
   if (!bestChanged && !clapsChanged) return false;
 
   saveProfile({ ...profile, best_score: localBest, clap_balance: localClaps });
+  flushServerGameSession({ useLifecycleTransport: true });
   return postLifecycleJson('score-submit', {
     initData: telegramInitData(),
     bestScore: localBest,
@@ -1314,23 +1434,12 @@ function shouldUseCachedRuntimeMaintenance(cacheEntry) {
 }
 
 function isMaintenanceDevBypassActive() {
-  try {
-    const expiresAt = Number(sessionStorage.getItem(MAINTENANCE_DEV_BYPASS_KEY) || 0);
-    return Number.isFinite(expiresAt) && expiresAt > Date.now();
-  } catch (_) {
-    return false;
-  }
+  return maintenanceDevBypassActive;
 }
 
-function storeMaintenanceDevBypass(expiresAt) {
-  const normalized = Math.floor(Number(expiresAt || 0));
-  if (!Number.isFinite(normalized) || normalized <= Date.now()) return false;
-  try {
-    sessionStorage.setItem(MAINTENANCE_DEV_BYPASS_KEY, String(normalized));
-    return true;
-  } catch (_) {
-    return false;
-  }
+function activateMaintenanceDevBypass() {
+  maintenanceDevBypassActive = true;
+  return true;
 }
 
 async function resolveRuntimeConfig() {
@@ -1427,7 +1536,7 @@ async function submitMaintenanceDevPassword() {
   if (maintenanceDevStatusEl) maintenanceDevStatusEl.textContent = 'Проверяем';
   try {
     const result = await postJson('maintenance-dev-auth', { password });
-    if (!result?.ok || !storeMaintenanceDevBypass(result.expiresAt)) {
+    if (!result?.ok || !activateMaintenanceDevBypass()) {
       throw new Error('Неверный ответ сервера');
     }
     closeMaintenanceDevModal();
@@ -1858,6 +1967,8 @@ function showStartScreen() {
     return;
   }
   shopScreenEl?.classList.add('hidden');
+  alphaGamehubScreenEl?.classList.add('hidden');
+  alphaGamehubScreenEl?.setAttribute('aria-hidden', 'true');
   startScreenEl?.classList.remove('hidden');
   if (menuShareRecordBtn) menuShareRecordBtn.classList.add('ui-hidden');
   if (startShareRecordBtn) {
@@ -1877,6 +1988,8 @@ function showStartScreen() {
 function hideStartScreen() {
   startScreenEl?.classList.add('hidden');
   shopScreenEl?.classList.add('hidden');
+  alphaGamehubScreenEl?.classList.add('hidden');
+  alphaGamehubScreenEl?.setAttribute('aria-hidden', 'true');
   refreshAmbientLayers();
   syncAmbientGameMask();
 }
@@ -2222,6 +2335,7 @@ function closeAllModals() {
   hideModal(promoModalEl);
   hideModal(bonusModalEl);
   hideModal(launcherLinksModalEl);
+  closeGamehubDevModal();
   hideModal(shopAlertModalEl);
   hideModal(shopConfirmModalEl);
   hideModal(shopCodeModalEl);
@@ -2362,13 +2476,6 @@ function canInteractIndex(index) {
 
 function canInteractPair(a, b) {
   return canInteractIndex(a) && canInteractIndex(b);
-}
-
-function queueBufferedMove(from, to) {
-  if (!canInteractPair(from, to)) return false;
-  bufferedMove = { from, to };
-  selected = null;
-  return true;
 }
 
 function drawBoard(highlight = new Set(), blast = new Set()) {
@@ -2720,9 +2827,6 @@ function handleTileTap(index, bypassSuppress = false) {
   }
 
   if (locked) {
-    if (areAdjacent(selected, index) && queueBufferedMove(selected, index)) {
-      drawBoard();
-    }
     return;
   }
 
@@ -2787,8 +2891,6 @@ function onTilePointerMove(e) {
   clearHint();
   drawBoard();
   if (locked) {
-    queueBufferedMove(swipeGesture.fromIndex, target);
-    drawBoard();
     return;
   }
   trySwap(swipeGesture.fromIndex, target);
@@ -2995,6 +3097,7 @@ function getRocketRocketComboArea(center) {
 }
 
 function applyGravity() {
+  const refillRng = createRefillRng();
   for (let c = 0; c < SIZE; c++) {
     let write = SIZE - 1;
 
@@ -3010,7 +3113,7 @@ function applyGravity() {
     }
 
     while (write >= 0) {
-      const spawned = makeStableCell(write, c);
+      const spawned = makeStableCell(write, c, refillRng);
       spawned._fall = write + 1;
       board[posToIdx(write, c)] = spawned;
       write--;
@@ -3100,16 +3203,6 @@ async function resolveCascades(swappedPair = null) {
     applyGravity();
     drawBoard();
     locked = false;
-    if (bufferedMove && canSwapMakeMatch(bufferedMove.from, bufferedMove.to)) {
-      const move = bufferedMove;
-      bufferedMove = null;
-      clearComboConstraint();
-      await trySwap(move.from, move.to);
-      return false;
-    }
-    if (bufferedMove && !canSwapMakeMatch(bufferedMove.from, bufferedMove.to)) {
-      bufferedMove = null;
-    }
     if (!(await interruptibleDelay(ANIMATION_TIMINGS.cascadePauseMs, sessionId))) return false;
     locked = true;
     clearComboConstraint();
@@ -3161,8 +3254,18 @@ function hasAnyMove(arr = board) {
 }
 
 function shuffleBoard() {
+  if (window.VSGameCore?.createBoard) {
+    board = window.VSGameCore.createBoard({
+      size: SIZE,
+      colorCount: COLORS,
+      rng: createShuffleRng(),
+    });
+    return;
+  }
+
+  const shuffleRng = createShuffleRng();
   do {
-    board = Array.from({ length: SIZE * SIZE }, () => makeCell());
+    board = Array.from({ length: SIZE * SIZE }, () => makeCell(randColor(shuffleRng)));
   } while (findMatchGroups(board).length > 0 || !hasAnyMove(board));
 }
 
@@ -3605,7 +3708,6 @@ async function activateSpecialMove(a, b) {
   locked = true;
   selected = null;
   clearHint();
-  bufferedMove = null;
   clearComboConstraint();
 
   if (a !== b) {
@@ -3712,7 +3814,6 @@ async function activateSpecialMove(a, b) {
 async function trySwap(a, b) {
   if (locked || !canInteractPair(a, b)) return;
   const actionSession = ++cascadeSession;
-  bufferedMove = null;
   clearComboConstraint();
   const snapshot = cloneBoard(board);
 
@@ -3792,7 +3893,6 @@ async function resetGame() {
     const origin = startScreenEl?.classList.contains('hidden') ? 'restart' : 'menu';
     locked = true;
     selected = null;
-    bufferedMove = null;
     clearComboConstraint();
     clearHint();
     stopTurnTimer();
@@ -3837,6 +3937,18 @@ startNewGameBtn.addEventListener('click', startNewGameFromHome);
 startLeaderboardBtn.addEventListener('click', openLeaderboard);
 startSettingsBtn.addEventListener('click', openSettingsFromMenu);
 startBoostExitBtn?.addEventListener('click', openLauncherLinksModal);
+gamehubDevTriggerEl?.addEventListener('click', handleGamehubDevTap);
+gamehubDevCancelBtn?.addEventListener('click', closeGamehubDevModal);
+gamehubDevSubmitBtn?.addEventListener('click', () => {
+  void submitGamehubDevPassword();
+});
+gamehubDevPasswordEl?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    void submitGamehubDevPassword();
+  }
+});
+alphaGamehubMatch3Btn?.addEventListener('click', closeAlphaGamehub);
 soundToggleBtn.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   updateSoundToggleLabel();

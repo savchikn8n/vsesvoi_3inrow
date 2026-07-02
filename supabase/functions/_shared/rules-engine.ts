@@ -442,6 +442,10 @@ function makeRefillRng(state: GameState) {
   return createSeededRng(`${state.seed}:${state.movesCount}:${state.score}`);
 }
 
+function makeShuffleRng(state: GameState) {
+  return createSeededRng(`${state.seed}:shuffle:${state.movesCount}:${state.score}`);
+}
+
 function resolveCascades(state: GameState, swappedPair: [number, number] | null = null) {
   let combo = 0;
   let pair = swappedPair;
@@ -457,6 +461,11 @@ function resolveCascades(state: GameState, swappedPair: [number, number] | null 
   }
   if (combo > 1) state.score += combo * 20;
   updateClaps(state);
+}
+
+function reshuffleIfNeeded(state: GameState) {
+  if (findPotentialMove(state.board, state.size)) return;
+  state.board = cleanBoard(createBoard(state.size, state.colorCount, makeShuffleRng(state)));
 }
 
 function applySpecialMove(state: GameState, a: number, b: number) {
@@ -512,10 +521,14 @@ export function applyMove(inputState: GameState, move: GameMove): { accepted: bo
   const from = Math.floor(Number(move?.from));
   const to = Math.floor(Number(move?.to));
   if (isOutOfRange(from, state.size) || isOutOfRange(to, state.size)) return { accepted: false, reason: 'out_of_range', state };
-  if (!areAdjacent(from, to, state.size)) return { accepted: false, reason: 'non_adjacent', state };
 
-  if (state.board[from]?.special || state.board[to]?.special) {
+  const specialMove = Boolean(state.board[from]?.special || state.board[to]?.special);
+  const specialSelfTap = from === to && Boolean(state.board[from]?.special);
+  if (!areAdjacent(from, to, state.size) && !specialSelfTap) return { accepted: false, reason: 'non_adjacent', state };
+
+  if (specialMove) {
     applySpecialMove(state, from, to);
+    reshuffleIfNeeded(state);
     state.movesCount++;
     updateClaps(state);
     return { accepted: true, reason: null, state };
@@ -525,6 +538,7 @@ export function applyMove(inputState: GameState, move: GameMove): { accepted: bo
 
   [state.board[from], state.board[to]] = [state.board[to], state.board[from]];
   resolveCascades(state, [from, to]);
+  reshuffleIfNeeded(state);
   state.movesCount++;
   updateClaps(state);
   return { accepted: true, reason: null, state };

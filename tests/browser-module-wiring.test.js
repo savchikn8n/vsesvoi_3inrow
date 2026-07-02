@@ -114,3 +114,16 @@ test('game runtime prepares replay move tracking for server validation', () => {
   assert.match(game, /sessionReplayMoves/);
   assert.match(game, /recordReplayMove/);
 });
+
+test('game runtime uses seeded board refill and shuffle for replay parity', () => {
+  const game = readRepoFile('game.js');
+
+  assert.match(game, /function currentReplaySeed\(\)/);
+  assert.match(game, /window\.VSGameRng\.createSeededRng/);
+  assert.match(game, /function createRefillRng\(\)/);
+  assert.match(game, /\$\{currentReplaySeed\(\)\}:\$\{sessionMovesCount\}:\$\{score\}/);
+  assert.match(game, /function createShuffleRng\(\)/);
+  assert.match(game, /\$\{currentReplaySeed\(\)\}:shuffle:\$\{sessionMovesCount\}:\$\{score\}/);
+  assert.match(functionBody(game, 'applyGravity'), /const refillRng = createRefillRng\(\);/);
+  assert.match(functionBody(game, 'shuffleBoard'), /rng: createShuffleRng\(\)/);
+});
