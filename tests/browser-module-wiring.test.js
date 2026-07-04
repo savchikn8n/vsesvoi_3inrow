@@ -10,7 +10,7 @@ function readRepoFile(filePath) {
 }
 
 function scriptSources(html) {
-  return [...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map((match) => match[1]);
+  return [...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map((match) => match[1].split('?')[0]);
 }
 
 function functionBody(source, functionName) {
@@ -126,4 +126,11 @@ test('game runtime uses seeded board refill and shuffle for replay parity', () =
   assert.match(game, /\$\{currentReplaySeed\(\)\}:shuffle:\$\{sessionMovesCount\}:\$\{score\}/);
   assert.match(functionBody(game, 'applyGravity'), /const refillRng = createRefillRng\(\);/);
   assert.match(functionBody(game, 'shuffleBoard'), /rng: createShuffleRng\(\)/);
+});
+
+test('game runtime scripts are cache-busted for Telegram webview updates', () => {
+  const html = readRepoFile('index.html');
+
+  assert.match(html, /src="src\/game\/core\/rules-engine\.js\?v=20260704-clapfix"/);
+  assert.match(html, /src="game\.js\?v=20260704-clapfix"/);
 });
