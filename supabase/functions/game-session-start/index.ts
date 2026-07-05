@@ -3,6 +3,11 @@ import { verifyTelegramInitData } from '../_shared/telegram-auth.ts';
 
 const RULES_VERSION = 'match3-v1';
 
+// A human restarting instantly still needs ~30-60s per run; scripted farming
+// wants hundreds of sessions per hour. 60/hour caps bots without touching players.
+const SESSION_RATE_WINDOW_MS = 60 * 60 * 1000;
+const SESSION_RATE_LIMIT = 60;
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -48,6 +53,23 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false },
     });
+    const rateCutoffIso = new Date(Date.now() - SESSION_RATE_WINDOW_MS).toISOString();
+    const { count: recentSessions, error: rateError } = await admin
+      .from('game_sessions')
+      .select('session_id', { count: 'exact', head: true })
+      .eq('telegram_id', user.id)
+      .gte('started_at', rateCutoffIso);
+    if (rateError) throw new Error(rateError.message);
+    if (Number(recentSessions || 0) >= SESSION_RATE_LIMIT) {
+      return new Response(JSON.stringify({
+        error: 'Too many game sessions, try again later',
+        code: 'session_rate_limited',
+      }), {
+        status: 429,
+        headers: corsHeaders,
+      });
+    }
+
     const sessionId = crypto.randomUUID();
     const seed = createSeed();
 

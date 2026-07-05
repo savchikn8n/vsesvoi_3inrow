@@ -9,6 +9,11 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
+// A human move costs at least a swap animation plus the cascade lock, so
+// sustained sub-500ms moves are only reachable by scripted replay farming.
+const MIN_MS_PER_MOVE = 500;
+const MOVE_TIME_GRACE_MS = 1500;
+
 function toNonNegativeInt(value: unknown) {
   const normalized = Math.floor(Number(value ?? 0));
   return Number.isFinite(normalized) && normalized >= 0 ? normalized : 0;
@@ -26,6 +31,14 @@ function normalizeMoves(value: unknown): GameMove[] {
     from: Math.floor(Number(move?.from)),
     to: Math.floor(Number(move?.to)),
   }));
+}
+
+function movesAreImplausiblyFast(moveCount: number, sessionStartedAt: string | null) {
+  if (moveCount <= 0 || !sessionStartedAt) return false;
+  const startedAtMs = Date.parse(sessionStartedAt);
+  if (!Number.isFinite(startedAtMs)) return false;
+  const elapsedMs = Date.now() - startedAtMs;
+  return elapsedMs + MOVE_TIME_GRACE_MS < moveCount * MIN_MS_PER_MOVE;
 }
 
 Deno.serve(async (req) => {
@@ -72,7 +85,7 @@ Deno.serve(async (req) => {
 
     const { data: session, error: sessionError } = await admin
       .from('game_sessions')
-      .select('session_id, telegram_id, rules_version, seed')
+      .select('session_id, telegram_id, rules_version, seed, status, started_at')
       .eq('session_id', sessionId)
       .maybeSingle();
     if (sessionError) throw new Error(sessionError.message);
@@ -80,6 +93,27 @@ Deno.serve(async (req) => {
     if (!session?.session_id || Number(session.telegram_id) !== Number(user.id)) {
       return new Response(JSON.stringify({ error: 'Session not found' }), {
         status: 403,
+        headers: corsHeaders,
+      });
+    }
+
+    // Claim the session atomically: only one submit may ever transition
+    // started -> submitted, so replay evidence cannot be overwritten later.
+    const { data: claimed, error: claimError } = await admin
+      .from('game_sessions')
+      .update({ status: 'submitted', ended_at: new Date().toISOString() })
+      .eq('session_id', sessionId)
+      .eq('telegram_id', user.id)
+      .eq('status', 'started')
+      .select('session_id')
+      .maybeSingle();
+    if (claimError) throw new Error(claimError.message);
+    if (!claimed?.session_id) {
+      return new Response(JSON.stringify({
+        error: 'Session already submitted',
+        code: 'session_already_submitted',
+      }), {
+        status: 409,
         headers: corsHeaders,
       });
     }
@@ -95,8 +129,10 @@ Deno.serve(async (req) => {
     });
     const scoreMatches = replay.score === clientFinalScore;
     const clapsMatch = replay.clapsEarned === clientClapsEarned;
-    const accepted = replay.accepted && scoreMatches && clapsMatch;
+    const implausiblyFast = movesAreImplausiblyFast(moves.length, session.started_at || null);
+    const accepted = replay.accepted && scoreMatches && clapsMatch && !implausiblyFast;
     const rejectReason = replay.rejectReason
+      || (implausiblyFast ? 'implausible_speed' : null)
       || (!scoreMatches ? 'score_mismatch' : null)
       || (!clapsMatch ? 'claps_mismatch' : null);
 
@@ -130,8 +166,6 @@ Deno.serve(async (req) => {
     const { error: updateError } = await admin
       .from('game_sessions')
       .update({
-        status: 'submitted',
-        ended_at: new Date().toISOString(),
         client_final_score: clientFinalScore,
         server_final_score: replay.score,
         client_claps_earned: clientClapsEarned,
@@ -142,6 +176,18 @@ Deno.serve(async (req) => {
       .eq('session_id', sessionId)
       .eq('telegram_id', user.id);
     if (updateError) throw new Error(updateError.message);
+
+    // Credit progress from the server replay, not from client-reported numbers.
+    // The single-claim transition above makes this credit idempotent, and the
+    // atomic RPC keeps it race-safe against concurrent clap spends.
+    if (accepted && (replay.score > 0 || replay.clapsEarned > 0)) {
+      const { error: creditError } = await admin.rpc('apply_game_session_result', {
+        p_telegram_id: user.id,
+        p_server_score: replay.score,
+        p_claps_earned: replay.clapsEarned,
+      });
+      if (creditError) throw new Error(creditError.message);
+    }
 
     return new Response(JSON.stringify({
       accepted,

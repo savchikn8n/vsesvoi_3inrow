@@ -69,6 +69,8 @@ Deno.serve(async (req) => {
 
     const nextClaps = currentClaps - spendAmount;
 
+    // Compare-and-set on the previous balance: concurrent spends must not both
+    // succeed against the same read, otherwise one debit is silently lost.
     const { data, error } = await admin
       .from('profiles')
       .update({
@@ -79,10 +81,20 @@ Deno.serve(async (req) => {
         last_seen_at: new Date().toISOString(),
       })
       .eq('telegram_id', user.id)
+      .eq('clap_balance', currentClaps)
       .select('telegram_id, telegram_username, telegram_first_name, telegram_last_name, display_name, avatar_choice, avatar_url, best_score, clap_balance, last_seen_at, notifications_enabled')
-      .single();
+      .maybeSingle();
 
     if (error) throw new Error(error.message);
+    if (!data?.telegram_id) {
+      return new Response(JSON.stringify({
+        error: 'Баланс изменился, попробуйте ещё раз.',
+        code: 'balance_conflict',
+      }), {
+        status: 409,
+        headers: corsHeaders,
+      });
+    }
 
     return new Response(JSON.stringify({ profile: data, spent: spendAmount }), {
       status: 200,

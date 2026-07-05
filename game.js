@@ -162,6 +162,7 @@ let touchInsideBoard = false;
 let bestScore = 0;
 let clapBalance = 0;
 let clapsAwardedThisRun = 0;
+let runInitialBestScore = 0;
 let pendingBestScoreSync = false;
 let pendingClapBalanceSync = false;
 let profile = null;
@@ -551,50 +552,19 @@ function createShuffleRng() {
   return createSeededRng(`${currentReplaySeed()}:shuffle:${sessionMovesCount}:${score}`);
 }
 
-function randColor(rng = Math.random) {
-  return Math.floor(rng() * COLORS);
-}
-
-function makeCell(color = randColor(), special = null) {
-  return { color, special };
-}
-
-function countSameInDirection(r, c, dr, dc, color) {
-  let count = 0;
-  let nr = r + dr;
-  let nc = c + dc;
-  while (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
-    const cell = board[posToIdx(nr, nc)];
-    if (!cell || cell.special || cell.color !== color) break;
-    count++;
-    nr += dr;
-    nc += dc;
-  }
-  return count;
-}
-
-function causesImmediateMatchAt(r, c, color) {
-  const horiz =
-    countSameInDirection(r, c, 0, -1, color) + countSameInDirection(r, c, 0, 1, color);
-  const vert =
-    countSameInDirection(r, c, -1, 0, color) + countSameInDirection(r, c, 1, 0, color);
-  return horiz >= 2 || vert >= 2;
+// Board/cell primitives are owned by the shared core module (src/game/core/*)
+// so the browser runtime and the server replay stay byte-identical. Do not
+// re-implement match/gravity math here; delegate to window.VSGameCore.
+function makeCell(color, special = null) {
+  return window.VSGameCore.makeCell(color, special);
 }
 
 function makeStableCell(r, c, rng = Math.random) {
-  const pool = Array.from({ length: COLORS }, (_, i) => i);
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-
-  for (const color of pool) {
-    if (!causesImmediateMatchAt(r, c, color)) {
-      return makeCell(color);
-    }
-  }
-
-  return makeCell(pool[0]);
+  return window.VSGameCore.makeStableCell(board, r, c, {
+    size: SIZE,
+    colorCount: COLORS,
+    rng,
+  });
 }
 
 function idxToPos(index) {
@@ -628,19 +598,11 @@ function hasSpecial(index) {
 }
 
 function createBoard() {
-  if (window.VSGameCore?.createBoard) {
-    board = window.VSGameCore.createBoard({
-      size: SIZE,
-      colorCount: COLORS,
-      rng: createSeededRng(currentReplaySeed()),
-    });
-    return;
-  }
-
-  const rng = createSeededRng(currentReplaySeed());
-  do {
-    board = Array.from({ length: SIZE * SIZE }, () => makeCell(randColor(rng)));
-  } while (findMatchGroups(board).length > 0 || !hasAnyMove(board));
+  board = window.VSGameCore.createBoard({
+    size: SIZE,
+    colorCount: COLORS,
+    rng: createSeededRng(currentReplaySeed()),
+  });
 }
 
 function directionClass(from, to) {
@@ -1190,25 +1152,60 @@ function recordReplayMove(from, to) {
   sessionReplayMoves.push({ from: normalizedFrom, to: normalizedTo });
 }
 
+let pendingLateGameSessionRequest = null;
+
 async function startServerGameSession() {
   const initData = telegramInitData();
   if (!initData || !profile?.telegram_id) return null;
 
-  try {
-    const result = await Promise.race([
-      postJson('game-session-start', { initData }),
-      delay(1200).then(() => null),
-    ]);
-    if (!result?.sessionId || !result?.seed) return null;
-    return {
-      sessionId: result.sessionId,
-      seed: result.seed,
-      rulesVersion: result.rulesVersion || 'match3-v1',
-      submitted: false,
-    };
-  } catch (_) {
-    return null;
+  pendingLateGameSessionRequest = null;
+  const request = postJson('game-session-start', { initData })
+    .then((result) => {
+      if (!result?.sessionId || !result?.seed) return null;
+      return {
+        sessionId: result.sessionId,
+        seed: result.seed,
+        rulesVersion: result.rulesVersion || 'match3-v1',
+        submitted: false,
+      };
+    })
+    .catch(() => null);
+
+  const settled = await Promise.race([
+    request,
+    delay(1200).then(() => undefined),
+  ]);
+  if (settled !== undefined) return settled;
+
+  // Server is slow: start locally, but keep the request so a late session can
+  // still be adopted before the first move instead of losing validation.
+  pendingLateGameSessionRequest = request;
+  return null;
+}
+
+function adoptLateGameSession(gameSession, runId) {
+  if (!gameSession || runId !== gameStartRunId) return;
+  if (!activeSessionId || serverGameSession || locked) return;
+  if (sessionMovesCount > 0 || sessionReplayMoves.length > 0) return;
+
+  serverGameSession = gameSession;
+  activeSessionId = gameSession.sessionId;
+  resetReplayTracking();
+  if (replayInitialState?.board) {
+    board = cloneBoard(replayInitialState.board);
+    selected = null;
+    clearHint();
+    drawBoard();
   }
+}
+
+function watchLateGameSession(startRunId) {
+  const request = pendingLateGameSessionRequest;
+  if (!request) return;
+  pendingLateGameSessionRequest = null;
+  void request.then((gameSession) => {
+    adoptLateGameSession(gameSession, startRunId);
+  });
 }
 
 function flushServerGameSession(options = {}) {
@@ -2089,7 +2086,7 @@ async function openLeaderboard() {
   const cachedItems = Array.isArray(cached?.items) ? cached.items : [];
   const leaderboardRequest = postJsonWithOptions(
     'leaderboard',
-    { limit: 50 },
+    { initData: telegramInitData(), limit: 50 },
     { timeoutMs: 6500, retries: 2 },
   );
 
@@ -2906,62 +2903,8 @@ function onTilePointerEnd(e) {
   swipeGesture = null;
 }
 
-function cellIdx(primary, secondary, horizontal) {
-  return horizontal ? posToIdx(primary, secondary) : posToIdx(secondary, primary);
-}
-
-function scanLineGroups(arr, horizontal) {
-  const groups = [];
-
-  for (let p = 0; p < SIZE; p++) {
-    let run = [];
-    for (let s = 0; s < SIZE; s++) {
-      const idx = cellIdx(p, s, horizontal);
-      const cell = arr[idx];
-
-      if (!cell) {
-        if (run.length >= 3) {
-          groups.push({ cells: [...run], orientation: horizontal ? 'h' : 'v' });
-        }
-        run = [];
-        continue;
-      }
-
-      // Specials are activated manually and do not auto-trigger from cascade matches.
-      if (cell.special) {
-        if (run.length >= 3) {
-          groups.push({ cells: [...run], orientation: horizontal ? 'h' : 'v' });
-        }
-        run = [];
-        continue;
-      }
-
-      if (run.length === 0) {
-        run.push(idx);
-        continue;
-      }
-
-      const prev = run[run.length - 1];
-      if (arr[prev] && cell.color === arr[prev].color) {
-        run.push(idx);
-      } else {
-        if (run.length >= 3) {
-          groups.push({ cells: [...run], orientation: horizontal ? 'h' : 'v' });
-        }
-        run = [idx];
-      }
-    }
-
-    if (run.length >= 3) {
-      groups.push({ cells: [...run], orientation: horizontal ? 'h' : 'v' });
-    }
-  }
-
-  return groups;
-}
-
 function findMatchGroups(arr = board) {
-  return [...scanLineGroups(arr, true), ...scanLineGroups(arr, false)];
+  return window.VSGameCore.findMatchGroups(arr, SIZE);
 }
 
 function chooseSpecialIndex(cells, swappedPair) {
@@ -3220,9 +3163,7 @@ async function resolveCascades(swappedPair = null) {
 }
 
 function canSwapMakeMatch(a, b) {
-  const test = cloneBoard(board);
-  swapIn(test, a, b);
-  return findMatchGroups(test).length > 0;
+  return window.VSGameCore.canSwapMakeMatch(board, a, b, SIZE);
 }
 
 function cascadeDelay(combo) {
@@ -3231,22 +3172,7 @@ function cascadeDelay(combo) {
 }
 
 function findPotentialMove(arr = board) {
-  for (let i = 0; i < arr.length; i++) {
-    const [r, c] = idxToPos(i);
-    const neighbors = [];
-    if (c + 1 < SIZE) neighbors.push(posToIdx(r, c + 1));
-    if (c - 1 >= 0) neighbors.push(posToIdx(r, c - 1));
-    if (r + 1 < SIZE) neighbors.push(posToIdx(r + 1, c));
-    if (r - 1 >= 0) neighbors.push(posToIdx(r - 1, c));
-
-    for (const n of neighbors) {
-      if (arr[i]?.special) return { from: i, to: n };
-      const test = cloneBoard(arr);
-      swapIn(test, i, n);
-      if (findMatchGroups(test).length > 0) return { from: i, to: n };
-    }
-  }
-  return null;
+  return window.VSGameCore.findPotentialMove(arr, SIZE);
 }
 
 function hasAnyMove(arr = board) {
@@ -3254,19 +3180,11 @@ function hasAnyMove(arr = board) {
 }
 
 function shuffleBoard() {
-  if (window.VSGameCore?.createBoard) {
-    board = window.VSGameCore.createBoard({
-      size: SIZE,
-      colorCount: COLORS,
-      rng: createShuffleRng(),
-    });
-    return;
-  }
-
-  const shuffleRng = createShuffleRng();
-  do {
-    board = Array.from({ length: SIZE * SIZE }, () => makeCell(randColor(shuffleRng)));
-  } while (findMatchGroups(board).length > 0 || !hasAnyMove(board));
+  board = window.VSGameCore.createBoard({
+    size: SIZE,
+    colorCount: COLORS,
+    rng: createShuffleRng(),
+  });
 }
 
 function stopTurnTimer() {
@@ -3400,11 +3318,18 @@ function endGameByTimeout() {
   updateContinueRunButton();
   drawBoard();
   showModal(gameOverModalEl);
-  void submitFinalProgressAndEnd('timeout').then((result) => {
-    if (result?.share_record_available) {
-      setShareRecordState({ enabled: true, score: result.share_record_score || score });
-    }
-  });
+
+  // Do NOT finalize the server session here: a paid continue must be able to
+  // extend the SAME seed-replayable run. The session is submitted and credited
+  // only when the run truly ends (exit to menu, new game, or app close), so
+  // post-continue progress is no longer lost to a closed session.
+  flushSessionSnapshot({ reason: 'timeout' });
+
+  // Share is a social action the client can judge locally; the authoritative
+  // record is still credited server-side when the session is submitted.
+  if (score > 0 && score > runInitialBestScore) {
+    setShareRecordState({ enabled: true, score });
+  }
 }
 
 async function continueRunWithClaps() {
@@ -3434,8 +3359,11 @@ async function continueRunWithClaps() {
     locked = false;
     selected = null;
     clearHint();
+    setShareRecordState(null);
     statusEl.textContent = 'Игра продолжена.';
-    startAnalyticsSession('continue');
+    // Resume the SAME session/board/move-list instead of minting a fresh one:
+    // this keeps the run seed-replayable end to end so its record can still be
+    // validated and credited when the run finally ends.
     sessionClapsSpent += CONTINUE_RUN_CLAPS_COST;
     flushSessionSnapshot({ reason: 'continue_spend' });
     startTurnTimer();
@@ -3903,6 +3831,7 @@ async function resetGame() {
     startAnalyticsSession(origin, gameSession);
     score = 0;
     clapsAwardedThisRun = 0;
+    runInitialBestScore = bestScore;
     locked = false;
     hideStartScreen();
     closeAllModals();
@@ -3916,6 +3845,9 @@ async function resetGame() {
     startTurnTimer();
     refreshAmbientLayers();
     syncAmbientGameMask();
+    if (!gameSession) {
+      watchLateGameSession(startRunId);
+    }
   } finally {
     if (startRunId === gameStartRunId) {
       gameStartInProgress = false;

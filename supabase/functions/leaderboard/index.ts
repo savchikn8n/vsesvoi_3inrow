@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import { verifyTelegramInitData } from '../_shared/telegram-auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,9 +21,10 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN') || '';
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error('Missing required environment variables');
     }
 
@@ -31,6 +33,18 @@ Deno.serve(async (req) => {
     });
 
     const body = await req.json().catch(() => ({}));
+    const initData = typeof body?.initData === 'string' ? body.initData : '';
+    if (!initData) {
+      return new Response(JSON.stringify({ error: 'initData is required' }), {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
+
+    // Leaderboard exposes telegram_id + display names, so it must not be an
+    // anonymous scrape endpoint.
+    await verifyTelegramInitData(initData, BOT_TOKEN);
+
     const requestedLimit = Number(body?.limit || 50);
     const limit = Number.isFinite(requestedLimit)
       ? Math.max(1, Math.min(50, Math.floor(requestedLimit)))
@@ -40,6 +54,7 @@ Deno.serve(async (req) => {
       .from('profiles')
       .select('telegram_id, display_name, avatar_choice, avatar_url, best_score')
       .order('best_score', { ascending: false })
+      .order('updated_at', { ascending: true })
       .limit(limit);
 
     if (error) {
@@ -51,8 +66,8 @@ Deno.serve(async (req) => {
       headers: corsHeaders,
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message || 'Internal error' }), {
-      status: 500,
+    return new Response(JSON.stringify({ error: error.message || 'Unauthorized' }), {
+      status: 401,
       headers: corsHeaders,
     });
   }

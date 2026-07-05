@@ -173,6 +173,20 @@ function setSecretPanelCollapsed(collapsed) {
   authPanelEl?.classList.toggle('is-collapsed', Boolean(collapsed));
 }
 
+const HTML_ESCAPE_MAP = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+// Player-controlled values (display names, event names, codes, promo fields)
+// must never reach innerHTML unescaped: the dashboard runs with DASHBOARD_SECRET.
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => HTML_ESCAPE_MAP[char]);
+}
+
 function formatNumber(value) {
   return new Intl.NumberFormat('ru-RU').format(Number(value || 0));
 }
@@ -374,10 +388,10 @@ function renderTopPlayers(items = [], targetEl, mode = 'score') {
     const primaryValue = mode === 'claps' ? formatNumber(item.clap_balance) : formatNumber(item.best_score);
     const secondaryValue = mode === 'claps' ? formatNumber(item.best_score) : formatNumber(item.clap_balance);
     row.innerHTML = `
-      <div class="rank-index">#${item.rank}</div>
-      <div class="rank-player">${item.display_name}</div>
-      <div class="rank-score">${primaryValue}</div>
-      <div class="rank-claps">${secondaryValue}</div>
+      <div class="rank-index">#${escapeHtml(item.rank)}</div>
+      <div class="rank-player">${escapeHtml(item.display_name)}</div>
+      <div class="rank-score">${escapeHtml(primaryValue)}</div>
+      <div class="rank-claps">${escapeHtml(secondaryValue)}</div>
     `;
     targetEl.appendChild(row);
   });
@@ -470,14 +484,14 @@ function renderSessions(items = []) {
       : Number(item.claps_spent || 0);
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td>${item.display_name || 'Игрок'}</td>
-      <td>${item.telegram_id}</td>
+      <td>${escapeHtml(item.display_name || 'Игрок')}</td>
+      <td>${escapeHtml(item.telegram_id)}</td>
       <td>${formatDateTime(item.session_started_at)}</td>
       <td>${formatDuration(item.duration_sec)}</td>
       <td>${formatNumber(item.best_score)}</td>
       <td>${formatNumber(clapsValue)}</td>
       <td>${formatNumber(item.moves_count)}</td>
-      <td>${item.end_reason || 'active'}</td>
+      <td>${escapeHtml(item.end_reason || 'active')}</td>
     `;
     recentSessionsBodyEl.appendChild(row);
   });
@@ -496,7 +510,7 @@ function renderBroadcasts(items = []) {
         const summaryText = stripTelegramHtml(item.text);
         row.innerHTML = `
           <td>${formatDateTime(item.sent_at || item.scheduled_for || item.created_at)}</td>
-          <td>${truncate(summaryText, 110)}</td>
+          <td>${escapeHtml(truncate(summaryText, 110))}</td>
           <td>${broadcastStatusLabel(item)}</td>
           <td>${formatNumber(item.sent_count)}</td>
           <td>${formatNumber(item.failed_count)}</td>
@@ -567,7 +581,7 @@ function renderTopEventsList(items = []) {
       card.className = 'event-mini-card';
       card.innerHTML = `
         <div class="event-mini-top">
-          <p class="event-mini-title">${translateAnalyticsEventName(item.event_name)}</p>
+          <p class="event-mini-title">${escapeHtml(translateAnalyticsEventName(item.event_name))}</p>
           <span class="event-mini-count">${formatNumber(count)}</span>
         </div>
         <div class="event-mini-meta">
@@ -612,14 +626,14 @@ function renderGiftPurchases(items = []) {
   filteredItems.forEach((item) => {
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td>${item.player_label || 'Игрок'}</td>
-      <td>${shopPurchaseTypeLabel(item)}</td>
-      <td>${item.gift_id}</td>
-      <td>${item.code}</td>
+      <td>${escapeHtml(item.player_label || 'Игрок')}</td>
+      <td>${escapeHtml(shopPurchaseTypeLabel(item))}</td>
+      <td>${escapeHtml(item.gift_id)}</td>
+      <td>${escapeHtml(item.code)}</td>
       <td>${formatDateTime(item.created_at)}</td>
-      <td><span class="status-pill ${item.status}">${item.status === 'issued' ? 'Выдан' : 'Не выдан'}</span></td>
-      <td><button type="button" class="dashboard-ghost-btn" data-gift-action="toggle-issued" data-code="${item.code}">${item.status === 'issued' ? 'Снять' : 'Выдать'}</button></td>
-      <td><button type="button" class="dashboard-danger-btn" data-gift-action="delete" data-code="${item.code}">Удалить</button></td>
+      <td><span class="status-pill ${escapeHtml(item.status)}">${item.status === 'issued' ? 'Выдан' : 'Не выдан'}</span></td>
+      <td><button type="button" class="dashboard-ghost-btn" data-gift-action="toggle-issued" data-code="${escapeHtml(item.code)}">${item.status === 'issued' ? 'Снять' : 'Выдать'}</button></td>
+      <td><button type="button" class="dashboard-danger-btn" data-gift-action="delete" data-code="${escapeHtml(item.code)}">Удалить</button></td>
     `;
     giftPurchasesBodyEl.appendChild(row);
   });
@@ -780,14 +794,14 @@ function renderPromoList(items = []) {
     const ctr = views ? Math.round((opens / views) * 100) : 0;
     const dismissRate = views ? Math.round((dismisses / views) * 100) : 0;
     card.innerHTML = `
-      <div class="promo-item-thumb">${popup.image_url ? `<img src="${popup.image_url}" alt="${popup.title}" />` : ''}</div>
+      <div class="promo-item-thumb">${popup.image_url ? `<img src="${escapeHtml(popup.image_url)}" alt="${escapeHtml(popup.title)}" />` : ''}</div>
       <div class="promo-item-copy">
         <div class="promo-item-title-row">
-          <span class="promo-item-title">${popup.title}</span>
+          <span class="promo-item-title">${escapeHtml(popup.title)}</span>
           <span class="promo-status-pill">${status}</span>
         </div>
-        <div class="promo-item-body">${popup.body}</div>
-        <div class="promo-item-meta">${popup.primary_label} → ${popup.primary_url}</div>
+        <div class="promo-item-body">${escapeHtml(popup.body)}</div>
+        <div class="promo-item-meta">${escapeHtml(popup.primary_label)} → ${escapeHtml(popup.primary_url)}</div>
         <div class="promo-item-meta">${popup.active_until ? `Активен до: ${formatDateTime(popup.active_until)}` : 'Без срока окончания'}</div>
         <div class="promo-item-stats">
           <span>Показы: ${formatNumber(views)}</span>
@@ -796,10 +810,10 @@ function renderPromoList(items = []) {
         </div>
       </div>
       <div class="promo-item-actions">
-        <button type="button" data-action="edit" data-id="${popup.id}" class="dashboard-ghost-btn">Редактировать</button>
-        <button type="button" data-action="activate" data-id="${popup.id}">${popup.is_active ? 'Активен' : 'Запустить'}</button>
-        <button type="button" data-action="deactivate" data-id="${popup.id}" class="dashboard-ghost-btn">Стоп</button>
-        <button type="button" data-action="archive" data-id="${popup.id}" class="dashboard-ghost-btn">В архив</button>
+        <button type="button" data-action="edit" data-id="${escapeHtml(popup.id)}" class="dashboard-ghost-btn">Редактировать</button>
+        <button type="button" data-action="activate" data-id="${escapeHtml(popup.id)}">${popup.is_active ? 'Активен' : 'Запустить'}</button>
+        <button type="button" data-action="deactivate" data-id="${escapeHtml(popup.id)}" class="dashboard-ghost-btn">Стоп</button>
+        <button type="button" data-action="archive" data-id="${escapeHtml(popup.id)}" class="dashboard-ghost-btn">В архив</button>
       </div>
     `;
     promoListEl.appendChild(card);

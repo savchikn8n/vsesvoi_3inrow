@@ -102,12 +102,15 @@ Deno.serve(async (req) => {
     const previousBest = Math.max(0, Number(existing?.best_score || 0));
     const previousClaps = Math.max(0, Number(existing?.clap_balance || 0));
     const bestWouldIncrease = incomingBestScore > previousBest;
-    const clapsWouldIncrease = incomingClapBalance > previousClaps;
     let recentSessionBestScore: number | null = null;
     let recentSessionClapsEarned: number | null = null;
     let rejectReason: string | null = null;
 
-    if (bestWouldIncrease || clapsWouldIncrease) {
+    // Clap balance is server-authoritative: it is credited by the accepted
+    // game-session replay (apply_game_session_result), broadcast bonuses and
+    // purchases. Client-reported clap balance is recorded for audit only and
+    // must never raise the stored balance here.
+    if (bestWouldIncrease) {
       if (!sessionId) {
         rejectReason = 'missing_session';
       } else {
@@ -172,21 +175,13 @@ Deno.serve(async (req) => {
             (maxScore, item) => Math.max(maxScore, Number(item.server_score || 0)),
             0,
           );
-          const validatedClapsEarned = acceptedValidations.reduce(
-            (total, item) => total + Math.max(0, Number(item.server_claps_earned || 0)),
-            0,
-          );
 
           const incomingBestExceedsSession = bestWouldIncrease && incomingBestScore > validatedBestScore;
-          const incomingClapGain = Math.max(0, incomingClapBalance - previousClaps);
-          const incomingClapsExceedSession = clapsWouldIncrease && incomingClapGain > validatedClapsEarned;
 
           if (!sessionIsInUnsubmittedWindow) {
             rejectReason = 'missing_session';
           } else if (incomingBestExceedsSession) {
             rejectReason = 'score_rejected';
-          } else if (incomingClapsExceedSession) {
-            rejectReason = 'claps_rejected';
           }
         }
       }
@@ -217,7 +212,7 @@ Deno.serve(async (req) => {
     }
 
     const nextBest = Math.max(previousBest, incomingBestScore);
-    const nextClaps = Math.max(previousClaps, incomingClapBalance);
+    const nextClaps = previousClaps;
 
     const { data, error } = await admin
       .from('profiles')

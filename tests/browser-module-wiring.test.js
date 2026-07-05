@@ -131,6 +131,45 @@ test('game runtime uses seeded board refill and shuffle for replay parity', () =
 test('game runtime scripts are cache-busted for Telegram webview updates', () => {
   const html = readRepoFile('index.html');
 
-  assert.match(html, /src="src\/game\/core\/rules-engine\.js\?v=20260704-clapfix"/);
-  assert.match(html, /src="game\.js\?v=20260704-clapfix"/);
+  assert.match(html, /src="src\/game\/core\/rules-engine\.js\?v=20260705-security"/);
+  assert.match(html, /src="game\.js\?v=20260705-security"/);
+});
+
+test('game.js delegates board math to the shared core instead of re-implementing it', () => {
+  const game = readRepoFile('game.js');
+
+  // Board/cell primitives must have a single source of truth (src/game/core)
+  // so the browser runtime and the server replay cannot silently diverge.
+  assert.match(game, /function makeCell\([^)]*\) \{\s*return window\.VSGameCore\.makeCell/);
+  assert.match(game, /function makeStableCell\([^)]*\) \{\s*return window\.VSGameCore\.makeStableCell/);
+  assert.match(game, /function findMatchGroups\([^)]*\) \{\s*return window\.VSGameCore\.findMatchGroups/);
+  assert.match(game, /function findPotentialMove\([^)]*\) \{\s*return window\.VSGameCore\.findPotentialMove/);
+  assert.match(game, /function canSwapMakeMatch\([^)]*\) \{\s*return window\.VSGameCore\.canSwapMakeMatch/);
+
+  // The duplicated inline implementations must be gone.
+  assert.doesNotMatch(game, /function scanLineGroups\(/);
+  assert.doesNotMatch(game, /function causesImmediateMatchAt\(/);
+  assert.doesNotMatch(game, /function countSameInDirection\(/);
+  assert.doesNotMatch(game, /function randColor\(/);
+
+  // Dead pre-module fallbacks that never ran are removed.
+  assert.doesNotMatch(functionBody(game, 'createBoard'), /Array\.from\(\{ length: SIZE \* SIZE \}/);
+  assert.doesNotMatch(functionBody(game, 'shuffleBoard'), /Array\.from\(\{ length: SIZE \* SIZE \}/);
+});
+
+test('continue-with-claps extends the same seed-replayable run', () => {
+  const game = readRepoFile('game.js');
+  const timeoutBody = functionBody(game, 'endGameByTimeout');
+  const continueBody = game.match(/async function continueRunWithClaps\(\) \{([\s\S]*?)\n\}/)[1];
+
+  // Game over must not finalize the session, so a paid continue can keep going.
+  assert.doesNotMatch(timeoutBody, /submitFinalProgressAndEnd/);
+  assert.match(timeoutBody, /score > runInitialBestScore/);
+
+  // Continue must resume the existing session, not mint a fresh one that the
+  // server replay cannot validate.
+  assert.doesNotMatch(continueBody, /startAnalyticsSession\('continue'\)/);
+  assert.match(continueBody, /sessionClapsSpent \+= CONTINUE_RUN_CLAPS_COST/);
+  assert.match(game, /let runInitialBestScore = 0;/);
+  assert.match(game, /runInitialBestScore = bestScore;/);
 });

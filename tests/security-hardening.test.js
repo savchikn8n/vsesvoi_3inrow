@@ -70,10 +70,8 @@ test('score-submit requires server validated game session evidence for progress 
   assert.match(source, /\.from\('game_session_validations'\)[\s\S]*\.eq\('session_id', sessionId\)/);
   assert.match(source, /accepted', true/);
   assert.match(source, /server_score/);
-  assert.match(source, /server_claps_earned/);
   assert.match(source, /lastAcceptedSubmission/);
   assert.match(source, /\.gt\('created_at', lastAcceptedAt\)/);
-  assert.match(source, /validatedClapsEarned/);
   assert.match(source, /acceptedValidations\.reduce/);
   assert.match(source, /incomingBestExceedsSession/);
   assert.match(source, /insertScoreSubmissionAudit/);
@@ -83,6 +81,15 @@ test('score-submit requires server validated game session evidence for progress 
   assert.match(analyticsTrack, /function normalizeSessionId/);
   assert.match(purchaseGift, /function randomDiscountCode/);
   assert.match(purchaseGift, /async function sendPurchaseNotification/);
+});
+
+test('score-submit never raises clap balance from client-reported numbers', () => {
+  const source = readRepoFile('supabase/functions/score-submit/index.ts');
+
+  assert.match(source, /const nextClaps = previousClaps;/);
+  assert.doesNotMatch(source, /Math\.max\(previousClaps, incomingClapBalance\)/);
+  assert.doesNotMatch(source, /clapsWouldIncrease/);
+  assert.doesNotMatch(source, /claps_rejected/);
 });
 
 test('client final progress submits server validation before score-submit', () => {
@@ -171,7 +178,7 @@ test('game-session-start verifies Telegram auth and does not write profiles', ()
   assert.match(config, /verify_jwt = false/);
 });
 
-test('game-session-submit records shadow validation without writing profiles', () => {
+test('game-session-submit claims each session once and credits progress atomically', () => {
   const source = readRepoFile('supabase/functions/game-session-submit/index.ts');
   const config = readRepoFile('supabase/config.toml');
 
@@ -181,7 +188,77 @@ test('game-session-submit records shadow validation without writing profiles', (
   assert.match(source, /\.from\('game_session_validations'\)/);
   assert.match(source, /replayMoves/);
   assert.match(source, /validation_status/);
-  assert.doesNotMatch(source, /\.from\('profiles'\)\.(update|upsert|insert)/);
+  // Single started -> submitted transition: resubmitting a session with a
+  // different move list must be impossible.
+  assert.match(source, /\.eq\('status', 'started'\)/);
+  assert.match(source, /session_already_submitted/);
+  // Progress is credited from the server replay through the race-safe RPC,
+  // never via direct profile writes from client-reported numbers.
+  assert.match(source, /rpc\('apply_game_session_result'/);
+  assert.doesNotMatch(source, /\.from\('profiles'\)/);
+  // Scripted farming guard: sustained sub-human move rates are rejected.
+  assert.match(source, /MIN_MS_PER_MOVE/);
+  assert.match(source, /implausible_speed/);
   assert.match(config, /\[functions\.game-session-submit\]/);
   assert.match(config, /verify_jwt = false/);
+});
+
+test('game session result crediting migration is additive and service-role only', () => {
+  const sql = readRepoFile('supabase/sql/018_game_session_result.sql');
+  const migration = readRepoFile('supabase/migrations/20260705090000_game_session_result.sql');
+
+  assert.equal(sql, migration);
+  assert.match(sql, /create or replace function public\.apply_game_session_result/i);
+  assert.match(sql, /greatest\(coalesce\(best_score, 0\)/i);
+  assert.match(sql, /clap_balance = coalesce\(clap_balance, 0\) \+ greatest/i);
+  assert.match(sql, /revoke all on function public\.apply_game_session_result[\s\S]*from anon/i);
+  assert.match(sql, /grant execute on function public\.apply_game_session_result[\s\S]*to service_role/i);
+  assert.doesNotMatch(sql, /drop table|truncate|delete from public\./i);
+});
+
+test('game-session-start rate limits session creation per player', () => {
+  const source = readRepoFile('supabase/functions/game-session-start/index.ts');
+
+  assert.match(source, /SESSION_RATE_LIMIT/);
+  assert.match(source, /session_rate_limited/);
+  assert.match(source, /\.gte\('started_at', rateCutoffIso\)/);
+});
+
+test('spend-claps debits balance with a compare-and-set guard', () => {
+  const source = readRepoFile('supabase/functions/spend-claps/index.ts');
+
+  assert.match(source, /\.eq\('clap_balance', currentClaps\)/);
+  assert.match(source, /balance_conflict/);
+});
+
+test('leaderboard requires Telegram auth and orders deterministically', () => {
+  const source = readRepoFile('supabase/functions/leaderboard/index.ts');
+  const game = readRepoFile('game.js');
+
+  assert.match(source, /verifyTelegramInitData/);
+  assert.match(source, /initData is required/);
+  assert.match(source, /\.order\('updated_at', \{ ascending: true \}\)/);
+  assert.match(game, /'leaderboard',\s*\{ initData: telegramInitData\(\), limit: 50 \}/);
+});
+
+test('dashboard escapes user-controlled values before innerHTML rendering', () => {
+  const source = readRepoFile('dashboard.js');
+
+  assert.match(source, /function escapeHtml\(/);
+  assert.match(source, /escapeHtml\(item\.display_name\)/);
+  assert.match(source, /escapeHtml\(item\.player_label \|\| 'Игрок'\)/);
+  assert.match(source, /escapeHtml\(item\.code\)/);
+  assert.match(source, /escapeHtml\(popup\.title\)/);
+  assert.doesNotMatch(source, /innerHTML = `[^`]*\$\{item\.display_name\}/);
+  assert.doesNotMatch(source, /innerHTML = `[^`]*\$\{popup\.title\}/);
+});
+
+test('client adopts a late server game session only before the first move', () => {
+  const source = readRepoFile('game.js');
+
+  assert.match(source, /let pendingLateGameSessionRequest = null;/);
+  assert.match(source, /function adoptLateGameSession\(gameSession, runId\)/);
+  assert.match(source, /if \(!gameSession \|\| runId !== gameStartRunId\) return;/);
+  assert.match(source, /if \(sessionMovesCount > 0 \|\| sessionReplayMoves\.length > 0\) return;/);
+  assert.match(source, /watchLateGameSession\(startRunId\)/);
 });
