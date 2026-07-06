@@ -57,6 +57,12 @@ const leaderboardModalEl = document.getElementById('leaderboard-modal');
 const leaderboardStatusEl = document.getElementById('leaderboard-status');
 const leaderboardListEl = document.getElementById('leaderboard-list');
 const leaderboardCloseBtn = document.getElementById('leaderboard-close');
+const leaderboardMeEl = document.getElementById('leaderboard-me');
+const leaderboardMeRankEl = document.getElementById('leaderboard-me-rank');
+const leaderboardMeAvatarEl = document.getElementById('leaderboard-me-avatar');
+const leaderboardMeNameEl = document.getElementById('leaderboard-me-name');
+const leaderboardMeCrownEl = document.getElementById('leaderboard-me-crown');
+const leaderboardMeScoreEl = document.getElementById('leaderboard-me-score');
 const titlesModalEl = document.getElementById('titles-modal');
 const titlesCloseBtn = document.getElementById('titles-close');
 const finalScoreEl = document.getElementById('final-score');
@@ -163,6 +169,7 @@ let bestScore = 0;
 let clapBalance = 0;
 let clapsAwardedThisRun = 0;
 let runInitialBestScore = 0;
+let lastSubmittedMoveCount = -1;
 let pendingBestScoreSync = false;
 let pendingClapBalanceSync = false;
 let profile = null;
@@ -180,7 +187,6 @@ let giftsFlipTimer = null;
 let activeSessionId = null;
 let sessionStartedAtMs = 0;
 let sessionMovesCount = 0;
-let sessionClapsBaseline = 0;
 let sessionClapsSpent = 0;
 let sessionSnapshotTimerId = null;
 let sessionReplayMoves = [];
@@ -892,7 +898,9 @@ function maybeAwardClapsFromScore() {
   updateHud();
   updateContinueRunButton();
   scheduleSessionSnapshot();
-  void syncProgressIfNeeded();
+  // Claps are optimistic during play and credited server-side by the accepted
+  // session replay (game-session-submit). Do NOT round-trip score-submit here:
+  // it no longer credits claps and its stale balance would revert this gain.
 }
 
 function loadProfile() {
@@ -1082,7 +1090,7 @@ function buildSessionAnalyticsPayload(reason = 'progress') {
     durationSec: Math.max(0, Math.round((Date.now() - sessionStartedAtMs) / 1000)),
     endReason: reason,
     bestScore: score,
-    clapsEarned: Math.max(0, clapBalance - sessionClapsBaseline),
+    clapsEarned: Math.max(0, Math.floor(Number(clapsAwardedThisRun || 0))),
     clapsSpent: sessionClapsSpent,
     movesCount: sessionMovesCount,
   };
@@ -1209,7 +1217,7 @@ function watchLateGameSession(startRunId) {
 }
 
 function flushServerGameSession(options = {}) {
-  if (!serverGameSession?.sessionId || serverGameSession.submitted) {
+  if (!serverGameSession?.sessionId) {
     return options.useLifecycleTransport ? false : Promise.resolve(null);
   }
   const initData = telegramInitData();
@@ -1217,15 +1225,25 @@ function flushServerGameSession(options = {}) {
     return options.useLifecycleTransport ? false : Promise.resolve(null);
   }
 
+  // A session may be submitted repeatedly as a paid continue extends the run;
+  // the server credits only the positive clap delta, so re-submitting is safe.
+  // Skip redundant submits that carry no new moves unless explicitly forced.
+  const moveCount = sessionReplayMoves.length;
+  if (!options.force && moveCount === lastSubmittedMoveCount) {
+    return options.useLifecycleTransport ? false : Promise.resolve(null);
+  }
+  lastSubmittedMoveCount = moveCount;
+
   const payload = {
     initData,
     sessionId: serverGameSession.sessionId,
     moves: [...sessionReplayMoves],
     clientFinalScore: Math.max(0, Math.floor(Number(score || 0))),
-    clientClapsEarned: Math.max(0, clapBalance - sessionClapsBaseline),
+    // Claps actually earned from score this run, not the balance delta (which
+    // spends would corrupt and trigger a false claps_mismatch rejection).
+    clientClapsEarned: Math.max(0, Math.floor(Number(clapsAwardedThisRun || 0))),
   };
 
-  serverGameSession.submitted = true;
   if (options.useLifecycleTransport) {
     return postLifecycleJson('game-session-submit', payload);
   }
@@ -1246,8 +1264,8 @@ function startAnalyticsSession(origin = 'menu', gameSession = null) {
   activeSessionId = gameSession?.sessionId || makeSessionId();
   sessionStartedAtMs = Date.now();
   sessionMovesCount = 0;
-  sessionClapsBaseline = clapBalance;
   sessionClapsSpent = 0;
+  lastSubmittedMoveCount = -1;
   resetReplayTracking();
 
   void trackAnalytics('session_start', { sessionId: activeSessionId });
@@ -1270,7 +1288,6 @@ function endAnalyticsSession(reason = 'menu_exit', options = {}) {
   activeSessionId = null;
   sessionStartedAtMs = 0;
   sessionMovesCount = 0;
-  sessionClapsBaseline = clapBalance;
   sessionClapsSpent = 0;
   sessionReplayMoves = [];
   replayInitialState = null;
@@ -2055,6 +2072,38 @@ function focusCurrentLeaderboardUser() {
   }
 }
 
+function hideLeaderboardMe() {
+  if (!leaderboardMeEl) return;
+  leaderboardMeEl.classList.add('hidden');
+  leaderboardMeEl.setAttribute('aria-hidden', 'true');
+}
+
+// Pin the caller's own rank + record under the list, but only when they are not
+// already visible in the returned top slice (their row is highlighted there).
+function renderLeaderboardMe(me, items = []) {
+  if (!leaderboardMeEl || !me?.telegram_id) {
+    hideLeaderboardMe();
+    return;
+  }
+
+  const inList = items.some((item) => String(item.telegram_id) === String(me.telegram_id));
+  if (inList) {
+    hideLeaderboardMe();
+    return;
+  }
+
+  if (leaderboardMeRankEl) leaderboardMeRankEl.textContent = me.rank ? String(me.rank) : '—';
+  if (leaderboardMeAvatarEl) {
+    leaderboardMeAvatarEl.style.backgroundImage = `url("${leaderboardAvatarUrl(me)}")`;
+  }
+  if (leaderboardMeNameEl) leaderboardMeNameEl.textContent = me.display_name || 'Игрок';
+  if (leaderboardMeCrownEl) leaderboardMeCrownEl.textContent = String(scoreLevel(Number(me.best_score || 0)));
+  if (leaderboardMeScoreEl) leaderboardMeScoreEl.textContent = String(Number(me.best_score || 0));
+
+  leaderboardMeEl.classList.remove('hidden');
+  leaderboardMeEl.setAttribute('aria-hidden', 'false');
+}
+
 function commitLeaderboardRender(fragment, items = [], showEmptyMessage = true) {
   if (!leaderboardListEl) return;
   leaderboardListEl.replaceChildren(fragment);
@@ -2079,6 +2128,7 @@ async function openLeaderboard() {
   leaderboardBusy = true;
   closeAllModals();
   clearLeaderboardList();
+  hideLeaderboardMe();
   setLeaderboardLoading(true);
   showModal(leaderboardModalEl);
   const preloadPromise = preloadAvatarAssets();
@@ -2098,10 +2148,11 @@ async function openLeaderboard() {
       commitLeaderboardRender(cachedFragment, cachedItems, false);
     }
 
-    const { leaderboard } = await leaderboardRequest;
+    const { leaderboard, me } = await leaderboardRequest;
     const items = Array.isArray(leaderboard) ? leaderboard : [];
     const fragment = await buildLeaderboardFragment(items);
     commitLeaderboardRender(fragment, items);
+    renderLeaderboardMe(me, items);
     saveLeaderboardCache(items);
   } catch (error) {
     const cacheFresh = cached && Date.now() - Number(cached.ts || 0) <= LEADERBOARD_CACHE_TTL_MS;
@@ -3319,10 +3370,11 @@ function endGameByTimeout() {
   drawBoard();
   showModal(gameOverModalEl);
 
-  // Do NOT finalize the server session here: a paid continue must be able to
-  // extend the SAME seed-replayable run. The session is submitted and credited
-  // only when the run truly ends (exit to menu, new game, or app close), so
-  // post-continue progress is no longer lost to a closed session.
+  // Bank the run so far: the session is re-submittable, so this credits the
+  // claps/best earned up to now WITHOUT closing the run. A paid continue can
+  // still extend the same seed-replayable session and re-submit later, and the
+  // banked claps are already spendable for the continue.
+  void flushServerGameSession({ force: true });
   flushSessionSnapshot({ reason: 'timeout' });
 
   // Share is a social action the client can judge locally; the authoritative
@@ -3342,6 +3394,11 @@ async function continueRunWithClaps() {
     if (!initData) {
       throw new Error('Нет Telegram-сессии для списания ладошек.');
     }
+
+    // Bank the run's earned claps before spending so the debit is applied to a
+    // balance that already includes them (otherwise the just-earned clap would
+    // be transiently dropped when the server balance overwrites the local one).
+    await flushServerGameSession({ force: true });
 
     const result = await postJson('spend-claps', {
       initData,
@@ -3462,6 +3519,9 @@ async function cancelExitConfirm() {
     if (!initData) {
       throw new Error('Нет Telegram-сессии для списания ладошек.');
     }
+
+    // Bank the run's earned claps before spending (see continueRunWithClaps).
+    await flushServerGameSession({ force: true });
 
     const result = await postJson('spend-claps', {
       initData,

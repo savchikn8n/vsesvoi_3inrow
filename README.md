@@ -145,8 +145,8 @@ Telegram Mini App для кальянной "Все свои": мобильна�
 3. Client инициализирует board через shared deterministic rules. Если ответ сервера опоздал, client стартует локально и принимает «опоздавшую» сессию только до первого хода.
 4. Client локально записывает принятые ходы.
 5. При завершении или lifecycle flush client вызывает `game-session-submit` с moves и client final progress.
-6. Server атомарно переводит сессию `started -> submitted` (повторный submit отклоняется), делает replay от seed, проверяет правдоподобную скорость ходов и пишет `game_session_moves` + `game_session_validations`.
-7. Если replay принят, server сам начисляет прогресс в `profiles` через атомарный RPC `apply_game_session_result`: `best_score = GREATEST(...)`, `clap_balance += server_claps_earned`.
+6. Server делает replay от seed, проверяет правдоподобную скорость ходов и пишет `game_session_moves` + `game_session_validations`. Session можно submit повторно — paid continue продлевает тот же run, и client банкует его перед каждым списанием.
+7. Если replay принят, server сам начисляет прогресс в `profiles` через атомарный RPC `credit_game_session_result`: `best_score = GREATEST(...)`, а claps — только дельтой сверх `game_sessions.credited_claps` (идемпотентно, без двойного начисления при пересабмите).
 8. Client дополнительно вызывает `score-submit` с final best score и `sessionId`; увеличение best score принимается только при подтвержденной validation window. Clap balance из client-репорта никогда не повышается — он server-authoritative.
 9. Existing `profiles.best_score` и `profiles.clap_balance` этим путем никогда не уменьшаются.
 
@@ -192,7 +192,8 @@ Supabase Postgres tables и поверхности:
 
 SQL функции:
 
-- `apply_game_session_result(telegram_id, server_score, claps_earned)`: атомарное начисление прогресса из accepted replay (security definer, execute только для service_role).
+- `credit_game_session_result(session_id, telegram_id, server_score, server_claps_earned)`: атомарное идемпотентное начисление из accepted replay — best через GREATEST, claps положительной дельтой сверх `game_sessions.credited_claps` под row lock (security definer, execute только для service_role). Актуальный путь.
+- `apply_game_session_result(telegram_id, server_score, claps_earned)`: предыдущая версия (оставлена, не используется game-session-submit).
 
 Хранилище Supabase:
 
@@ -387,9 +388,11 @@ supabase functions deploy spend-claps --use-api --no-verify-jwt
 
 Важно про порядок деплоя security-обновления session crediting:
 
-1. Сначала `supabase db push` (RPC `apply_game_session_result` из `supabase/migrations/20260705090000_game_session_result.sql`).
+1. Сначала `supabase db push` — миграции `20260705090000_game_session_result.sql` (RPC) и `20260705120000_game_session_incremental_claps.sql` (колонка `credited_claps` + RPC `credit_game_session_result`).
 2. Затем `game-session-submit`, `game-session-start`, `score-submit`, `spend-claps`, `leaderboard`.
 3. Затем frontend deploy (client шлет `initData` в `leaderboard` — старый клиент против нового `leaderboard` получит 400, поэтому frontend деплоить сразу после functions).
+
+Замечание про crediting: `game-session-submit` ссылается на `game_sessions.credited_claps` и RPC `credit_game_session_result`, поэтому миграцию `db push` надо применять до деплоя функции (иначе submit будет падать на отсутствующем столбце/RPC).
 
 Каждую измененную function деплоить явно. Не считать, что frontend deploy обновляет Supabase functions.
 
@@ -549,10 +552,10 @@ docs/superpowers/plans/*
 
 - move list ограничен 3000 entries;
 - session должна принадлежать Telegram user;
-- session можно submit только один раз: повторный вызов получает HTTP `409` с `code: 'session_already_submitted'`;
+- session можно submit повторно (paid continue продлевает тот же seed-replayable run); crediting идемпотентен;
 - ходы, отправленные быстрее физически возможного темпа (менее ~500ms на ход от `started_at`), отклоняются с `rejectReason: 'implausible_speed'`;
 - server делает replay deterministic rules от seed и пишет validation evidence;
-- при accepted replay server начисляет прогресс в `profiles` через RPC `apply_game_session_result` (GREATEST для best score, инкремент для claps) — это единственный путь повышения clap balance из gameplay.
+- при accepted replay server начисляет прогресс в `profiles` через RPC `credit_game_session_result`: best score через GREATEST, а claps — только положительной **дельтой** сверх уже начисленного этой сессией (`game_sessions.credited_claps`, под row lock). Это единственный путь повышения clap balance из gameplay и он не двойно-начисляет при пересабмите.
 
 Ответ:
 
@@ -602,6 +605,7 @@ docs/superpowers/plans/*
 
 - Требует Telegram `initData` (endpoint раскрывает telegram_id и display names).
 - Читает top profiles, отсортированные по `best_score` с tie-break по `updated_at`.
+- Дополнительно возвращает `me: { telegram_id, display_name, avatar_choice, avatar_url, best_score, rank }` — глобальную позицию и рекорд вызывающего игрока (rank = число игроков строго выше + 1; `null`, если рекорда ещё нет). Клиент закрепляет этот блок под списком, если игрок не попал в top-50.
 
 ### Эндпоинты магазина
 
@@ -805,8 +809,9 @@ Admin endpoints требуют `DASHBOARD_SECRET` через `x-dashboard-secret
 - Не сохранять maintenance/GameHub dev bypass в browser storage.
 - Не возвращать cascade-time move buffering, который server replay не может воспроизвести.
 - Не доверять client-reported score/clap increases без accepted server validation.
-- Не повышать clap balance из client-reported чисел ни в одной function: начисление только через `apply_game_session_result`, бонусы и покупки.
-- Не позволять повторный `game-session-submit` для уже submitted сессии.
+- Не повышать clap balance из client-reported чисел ни в одной function: начисление только через `credit_game_session_result`, бонусы и покупки.
+- Начисление ладошек за сессию должно оставаться дельта-based и идемпотентным (`credited_claps`), чтобы пересабмит продлённого continue-рана не начислял дважды.
+- Клиент должен банкать сессию (`flushServerGameSession`) перед любым списанием ладошек (continue, платная отмена выхода), чтобы заработанное было в балансе до spend.
 - Не вставлять player-controlled строки в dashboard `innerHTML` без `escapeHtml`.
 - Не раскрывать service-role secrets в browser files.
 - Не превращать Coal Tower planning в production behavior без явного scope approval.

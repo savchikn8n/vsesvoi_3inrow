@@ -2457,6 +2457,30 @@ h1 {
   box-shadow: 0 0 0 1px rgba(243, 179, 21, 0.35);
 }
 
+.leaderboard-me {
+  margin: 2px 0 12px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(243, 179, 21, 0.35);
+}
+
+.leaderboard-me.hidden {
+  display: none;
+}
+
+.leaderboard-me-label {
+  color: #f3b315;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  padding-left: 2px;
+}
+
+.leaderboard-me .leaderboard-row {
+  box-shadow: 0 0 0 1px rgba(243, 179, 21, 0.45), 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+
 .leaderboard-rank {
   color: #f3b315;
   font-weight: 700;

@@ -178,7 +178,7 @@ test('game-session-start verifies Telegram auth and does not write profiles', ()
   assert.match(config, /verify_jwt = false/);
 });
 
-test('game-session-submit claims each session once and credits progress atomically', () => {
+test('game-session-submit credits progress incrementally from the server replay', () => {
   const source = readRepoFile('supabase/functions/game-session-submit/index.ts');
   const config = readRepoFile('supabase/config.toml');
 
@@ -188,13 +188,12 @@ test('game-session-submit claims each session once and credits progress atomical
   assert.match(source, /\.from\('game_session_validations'\)/);
   assert.match(source, /replayMoves/);
   assert.match(source, /validation_status/);
-  // Single started -> submitted transition: resubmitting a session with a
-  // different move list must be impossible.
-  assert.match(source, /\.eq\('status', 'started'\)/);
-  assert.match(source, /session_already_submitted/);
   // Progress is credited from the server replay through the race-safe RPC,
-  // never via direct profile writes from client-reported numbers.
-  assert.match(source, /rpc\('apply_game_session_result'/);
+  // never via direct profile writes from client-reported numbers. The RPC
+  // credits only the positive clap delta so a re-submitted (continued) session
+  // is not double-paid.
+  assert.match(source, /rpc\('credit_game_session_result'/);
+  assert.match(source, /credited_claps/);
   assert.doesNotMatch(source, /\.from\('profiles'\)/);
   // Scripted farming guard: sustained sub-human move rates are rejected.
   assert.match(source, /MIN_MS_PER_MOVE/);
@@ -214,6 +213,52 @@ test('game session result crediting migration is additive and service-role only'
   assert.match(sql, /revoke all on function public\.apply_game_session_result[\s\S]*from anon/i);
   assert.match(sql, /grant execute on function public\.apply_game_session_result[\s\S]*to service_role/i);
   assert.doesNotMatch(sql, /drop table|truncate|delete from public\./i);
+});
+
+test('incremental clap crediting migration is additive, delta-based and race-safe', () => {
+  const sql = readRepoFile('supabase/sql/019_game_session_incremental_claps.sql');
+  const migration = readRepoFile('supabase/migrations/20260705120000_game_session_incremental_claps.sql');
+
+  assert.equal(sql, migration);
+  assert.match(sql, /add column if not exists credited_claps integer not null default 0/i);
+  assert.match(sql, /create or replace function public\.credit_game_session_result/i);
+  // Row lock + positive delta only => idempotent, no double credit on resubmit.
+  assert.match(sql, /for update/i);
+  assert.match(sql, /v_delta := greatest\(0, coalesce\(p_server_claps_earned, 0\) - v_prev\)/i);
+  assert.match(sql, /clap_balance = coalesce\(clap_balance, 0\) \+ v_delta/i);
+  assert.match(sql, /best_score = greatest\(coalesce\(best_score, 0\)/i);
+  assert.match(sql, /grant execute on function public\.credit_game_session_result[\s\S]*to service_role/i);
+  assert.doesNotMatch(sql, /drop table|truncate|delete from public\./i);
+});
+
+test('client keeps claps optimistic in-run and banks them before spending', () => {
+  const game = readRepoFile('game.js');
+
+  // No mid-run score-submit round trip that would revert the optimistic clap.
+  const awardBody = game.match(/function maybeAwardClapsFromScore\(\) \{([\s\S]*?)\n\}/)[1];
+  assert.doesNotMatch(awardBody, /syncProgressIfNeeded/);
+
+  // Session submit reports claps actually earned, not the spend-corrupted delta.
+  assert.match(game, /clientClapsEarned: Math\.max\(0, Math\.floor\(Number\(clapsAwardedThisRun/);
+
+  // Spends bank the run first so the debit applies to a balance that already
+  // includes the earned claps.
+  const continueBody = game.match(/async function continueRunWithClaps\(\) \{([\s\S]*?)\n\}/)[1];
+  assert.ok(
+    continueBody.indexOf('flushServerGameSession({ force: true })') <
+      continueBody.indexOf("postJson('spend-claps'"),
+    'continue must bank the session before spending',
+  );
+  const cancelBody = game.match(/async function cancelExitConfirm\(\) \{([\s\S]*?)\n\}/)[1];
+  assert.ok(
+    cancelBody.indexOf('flushServerGameSession({ force: true })') <
+      cancelBody.indexOf("postJson('spend-claps'"),
+    'paid exit-cancel must bank the session before spending',
+  );
+
+  // Session is re-submittable as a run is extended.
+  assert.match(game, /let lastSubmittedMoveCount = -1;/);
+  assert.doesNotMatch(game, /serverGameSession\.submitted = true/);
 });
 
 test('game-session-start rate limits session creation per player', () => {

@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
 
     const { data: session, error: sessionError } = await admin
       .from('game_sessions')
-      .select('session_id, telegram_id, rules_version, seed, status, started_at')
+      .select('session_id, telegram_id, rules_version, seed, status, started_at, credited_claps')
       .eq('session_id', sessionId)
       .maybeSingle();
     if (sessionError) throw new Error(sessionError.message);
@@ -93,27 +93,6 @@ Deno.serve(async (req) => {
     if (!session?.session_id || Number(session.telegram_id) !== Number(user.id)) {
       return new Response(JSON.stringify({ error: 'Session not found' }), {
         status: 403,
-        headers: corsHeaders,
-      });
-    }
-
-    // Claim the session atomically: only one submit may ever transition
-    // started -> submitted, so replay evidence cannot be overwritten later.
-    const { data: claimed, error: claimError } = await admin
-      .from('game_sessions')
-      .update({ status: 'submitted', ended_at: new Date().toISOString() })
-      .eq('session_id', sessionId)
-      .eq('telegram_id', user.id)
-      .eq('status', 'started')
-      .select('session_id')
-      .maybeSingle();
-    if (claimError) throw new Error(claimError.message);
-    if (!claimed?.session_id) {
-      return new Response(JSON.stringify({
-        error: 'Session already submitted',
-        code: 'session_already_submitted',
-      }), {
-        status: 409,
         headers: corsHeaders,
       });
     }
@@ -166,6 +145,8 @@ Deno.serve(async (req) => {
     const { error: updateError } = await admin
       .from('game_sessions')
       .update({
+        status: 'submitted',
+        ended_at: new Date().toISOString(),
         client_final_score: clientFinalScore,
         server_final_score: replay.score,
         client_claps_earned: clientClapsEarned,
@@ -177,14 +158,17 @@ Deno.serve(async (req) => {
       .eq('telegram_id', user.id);
     if (updateError) throw new Error(updateError.message);
 
-    // Credit progress from the server replay, not from client-reported numbers.
-    // The single-claim transition above makes this credit idempotent, and the
-    // atomic RPC keeps it race-safe against concurrent clap spends.
-    if (accepted && (replay.score > 0 || replay.clapsEarned > 0)) {
-      const { error: creditError } = await admin.rpc('apply_game_session_result', {
+    // Credit progress from the server replay, never from client-reported numbers.
+    // A session may be (re)submitted as a paid continue extends the run, so the
+    // atomic RPC credits only the positive clap delta beyond what this session
+    // already credited (row-locked) and raises best score with GREATEST. This
+    // makes crediting idempotent and race-safe against concurrent clap spends.
+    if (accepted) {
+      const { error: creditError } = await admin.rpc('credit_game_session_result', {
+        p_session_id: sessionId,
         p_telegram_id: user.id,
         p_server_score: replay.score,
-        p_claps_earned: replay.clapsEarned,
+        p_server_claps_earned: replay.clapsEarned,
       });
       if (creditError) throw new Error(creditError.message);
     }

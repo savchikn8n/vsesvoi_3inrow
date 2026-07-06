@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
 
     // Leaderboard exposes telegram_id + display names, so it must not be an
     // anonymous scrape endpoint.
-    await verifyTelegramInitData(initData, BOT_TOKEN);
+    const user = await verifyTelegramInitData(initData, BOT_TOKEN);
 
     const requestedLimit = Number(body?.limit || 50);
     const limit = Number.isFinite(requestedLimit)
@@ -61,7 +61,46 @@ Deno.serve(async (req) => {
       throw new Error(error.message);
     }
 
-    return new Response(JSON.stringify({ leaderboard: data || [] }), {
+    const leaderboard = data || [];
+
+    // Always resolve the caller's own rank + record so the client can pin their
+    // position even when they are outside the returned top slice.
+    let me: {
+      telegram_id: number;
+      display_name: string | null;
+      avatar_choice: string | null;
+      avatar_url: string | null;
+      best_score: number;
+      rank: number | null;
+    } | null = null;
+
+    const { data: selfProfile, error: selfError } = await admin
+      .from('profiles')
+      .select('telegram_id, display_name, avatar_choice, avatar_url, best_score')
+      .eq('telegram_id', user.id)
+      .maybeSingle();
+    if (selfError) throw new Error(selfError.message);
+
+    if (selfProfile?.telegram_id) {
+      const selfBest = Math.max(0, Number(selfProfile.best_score || 0));
+      // Rank = how many players are strictly ahead + 1. Unranked (no score yet).
+      const { count: ahead, error: rankError } = await admin
+        .from('profiles')
+        .select('telegram_id', { count: 'exact', head: true })
+        .gt('best_score', selfBest);
+      if (rankError) throw new Error(rankError.message);
+
+      me = {
+        telegram_id: selfProfile.telegram_id,
+        display_name: selfProfile.display_name,
+        avatar_choice: selfProfile.avatar_choice,
+        avatar_url: selfProfile.avatar_url,
+        best_score: selfBest,
+        rank: selfBest > 0 ? Number(ahead || 0) + 1 : null,
+      };
+    }
+
+    return new Response(JSON.stringify({ leaderboard, me }), {
       status: 200,
       headers: corsHeaders,
     });
