@@ -57,12 +57,6 @@ const leaderboardModalEl = document.getElementById('leaderboard-modal');
 const leaderboardStatusEl = document.getElementById('leaderboard-status');
 const leaderboardListEl = document.getElementById('leaderboard-list');
 const leaderboardCloseBtn = document.getElementById('leaderboard-close');
-const leaderboardMeEl = document.getElementById('leaderboard-me');
-const leaderboardMeRankEl = document.getElementById('leaderboard-me-rank');
-const leaderboardMeAvatarEl = document.getElementById('leaderboard-me-avatar');
-const leaderboardMeNameEl = document.getElementById('leaderboard-me-name');
-const leaderboardMeCrownEl = document.getElementById('leaderboard-me-crown');
-const leaderboardMeScoreEl = document.getElementById('leaderboard-me-score');
 const titlesModalEl = document.getElementById('titles-modal');
 const titlesCloseBtn = document.getElementById('titles-close');
 const finalScoreEl = document.getElementById('final-score');
@@ -1160,60 +1154,25 @@ function recordReplayMove(from, to) {
   sessionReplayMoves.push({ from: normalizedFrom, to: normalizedTo });
 }
 
-let pendingLateGameSessionRequest = null;
-
 async function startServerGameSession() {
   const initData = telegramInitData();
   if (!initData || !profile?.telegram_id) return null;
 
-  pendingLateGameSessionRequest = null;
-  const request = postJson('game-session-start', { initData })
-    .then((result) => {
-      if (!result?.sessionId || !result?.seed) return null;
-      return {
-        sessionId: result.sessionId,
-        seed: result.seed,
-        rulesVersion: result.rulesVersion || 'match3-v1',
-        submitted: false,
-      };
-    })
-    .catch(() => null);
-
-  const settled = await Promise.race([
-    request,
-    delay(1200).then(() => undefined),
-  ]);
-  if (settled !== undefined) return settled;
-
-  // Server is slow: start locally, but keep the request so a late session can
-  // still be adopted before the first move instead of losing validation.
-  pendingLateGameSessionRequest = request;
-  return null;
-}
-
-function adoptLateGameSession(gameSession, runId) {
-  if (!gameSession || runId !== gameStartRunId) return;
-  if (!activeSessionId || serverGameSession || locked) return;
-  if (sessionMovesCount > 0 || sessionReplayMoves.length > 0) return;
-
-  serverGameSession = gameSession;
-  activeSessionId = gameSession.sessionId;
-  resetReplayTracking();
-  if (replayInitialState?.board) {
-    board = cloneBoard(replayInitialState.board);
-    selected = null;
-    clearHint();
-    drawBoard();
+  // Wait for the authoritative session before building the board so the very
+  // first arrangement already matches the server seed. Building a local board
+  // first and swapping it in later caused a visible one-frame board flip on the
+  // first interaction, so we keep the menu/board covered until this resolves.
+  try {
+    const result = await postJsonWithOptions('game-session-start', { initData }, { timeoutMs: 5000, retries: 0 });
+    if (!result?.sessionId || !result?.seed) return null;
+    return {
+      sessionId: result.sessionId,
+      seed: result.seed,
+      rulesVersion: result.rulesVersion || 'match3-v1',
+    };
+  } catch (_) {
+    return null;
   }
-}
-
-function watchLateGameSession(startRunId) {
-  const request = pendingLateGameSessionRequest;
-  if (!request) return;
-  pendingLateGameSessionRequest = null;
-  void request.then((gameSession) => {
-    adoptLateGameSession(gameSession, startRunId);
-  });
 }
 
 function flushServerGameSession(options = {}) {
@@ -1383,10 +1342,11 @@ function loadLeaderboardCache() {
   }
 }
 
-function saveLeaderboardCache(items) {
+function saveLeaderboardCache(items, me = null) {
   const payload = {
     ts: Date.now(),
     items: Array.isArray(items) ? items : [],
+    me: me && me.telegram_id ? me : null,
   };
   localStorage.setItem(LEADERBOARD_CACHE_KEY, JSON.stringify(payload));
 }
@@ -2008,7 +1968,7 @@ function hideStartScreen() {
   syncAmbientGameMask();
 }
 
-function makeLeaderboardRow(item, index) {
+function makeLeaderboardRow(item, index, options = {}) {
   const row = document.createElement('div');
   row.className = 'leaderboard-row';
   row.dataset.telegramId = String(item.telegram_id || '');
@@ -2019,7 +1979,8 @@ function makeLeaderboardRow(item, index) {
 
   const rank = document.createElement('span');
   rank.className = 'leaderboard-rank';
-  rank.textContent = String(index + 1);
+  const rankLabel = options.rankLabel != null ? options.rankLabel : index + 1;
+  rank.textContent = String(rankLabel);
 
   const avatar = document.createElement('span');
   avatar.className = 'leaderboard-avatar';
@@ -2073,35 +2034,30 @@ function focusCurrentLeaderboardUser() {
 }
 
 function hideLeaderboardMe() {
-  if (!leaderboardMeEl) return;
-  leaderboardMeEl.classList.add('hidden');
-  leaderboardMeEl.setAttribute('aria-hidden', 'true');
+  if (!leaderboardListEl) return;
+  leaderboardListEl.querySelector('.leaderboard-me-sticky')?.remove();
 }
 
-// Pin the caller's own rank + record under the list, but only when they are not
-// already visible in the returned top slice (their row is highlighted there).
+// Pin the caller's own rank + record. When they are already in the returned top
+// slice their in-list row is highlighted (nothing pinned). When they are not,
+// a sticky tile floats at the bottom edge of the scroll area and docks after
+// the last row once the list is scrolled to the end (studio-style).
 function renderLeaderboardMe(me, items = []) {
-  if (!leaderboardMeEl || !me?.telegram_id) {
-    hideLeaderboardMe();
-    return;
-  }
+  hideLeaderboardMe();
+  if (!leaderboardListEl || !me?.telegram_id) return;
 
   const inList = items.some((item) => String(item.telegram_id) === String(me.telegram_id));
-  if (inList) {
-    hideLeaderboardMe();
-    return;
-  }
+  if (inList) return;
 
-  if (leaderboardMeRankEl) leaderboardMeRankEl.textContent = me.rank ? String(me.rank) : '—';
-  if (leaderboardMeAvatarEl) {
-    leaderboardMeAvatarEl.style.backgroundImage = `url("${leaderboardAvatarUrl(me)}")`;
-  }
-  if (leaderboardMeNameEl) leaderboardMeNameEl.textContent = me.display_name || 'Игрок';
-  if (leaderboardMeCrownEl) leaderboardMeCrownEl.textContent = String(scoreLevel(Number(me.best_score || 0)));
-  if (leaderboardMeScoreEl) leaderboardMeScoreEl.textContent = String(Number(me.best_score || 0));
+  const row = makeLeaderboardRow(me, 0, { rankLabel: me.rank != null ? me.rank : '—' });
+  row.classList.add('is-current-user', 'leaderboard-me-sticky');
 
-  leaderboardMeEl.classList.remove('hidden');
-  leaderboardMeEl.setAttribute('aria-hidden', 'false');
+  const meBadge = document.createElement('span');
+  meBadge.className = 'leaderboard-me-badge';
+  meBadge.textContent = 'Вы';
+  row.querySelector('.leaderboard-name-wrap')?.prepend(meBadge);
+
+  leaderboardListEl.appendChild(row);
 }
 
 function commitLeaderboardRender(fragment, items = [], showEmptyMessage = true) {
@@ -2146,6 +2102,8 @@ async function openLeaderboard() {
     if (cachedItems.length) {
       const cachedFragment = await buildLeaderboardFragment(cachedItems);
       commitLeaderboardRender(cachedFragment, cachedItems, false);
+      // Show the cached own-rank tile instantly so it does not pop in later.
+      renderLeaderboardMe(cached?.me || null, cachedItems);
     }
 
     const { leaderboard, me } = await leaderboardRequest;
@@ -2153,12 +2111,13 @@ async function openLeaderboard() {
     const fragment = await buildLeaderboardFragment(items);
     commitLeaderboardRender(fragment, items);
     renderLeaderboardMe(me, items);
-    saveLeaderboardCache(items);
+    saveLeaderboardCache(items, me);
   } catch (error) {
     const cacheFresh = cached && Date.now() - Number(cached.ts || 0) <= LEADERBOARD_CACHE_TTL_MS;
     if (cacheFresh && cachedItems.length) {
       const cachedFragment = await buildLeaderboardFragment(cachedItems);
       commitLeaderboardRender(cachedFragment, cachedItems, false);
+      renderLeaderboardMe(cached?.me || null, cachedItems);
       setLeaderboardStatus('Слабая сеть: показаны сохраненные результаты.');
     } else if (!cachedItems.length) {
       clearLeaderboardList();
@@ -3905,9 +3864,6 @@ async function resetGame() {
     startTurnTimer();
     refreshAmbientLayers();
     syncAmbientGameMask();
-    if (!gameSession) {
-      watchLateGameSession(startRunId);
-    }
   } finally {
     if (startRunId === gameStartRunId) {
       gameStartInProgress = false;

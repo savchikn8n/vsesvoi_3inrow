@@ -298,12 +298,13 @@ test('dashboard escapes user-controlled values before innerHTML rendering', () =
   assert.doesNotMatch(source, /innerHTML = `[^`]*\$\{popup\.title\}/);
 });
 
-test('client adopts a late server game session only before the first move', () => {
+test('client builds the board once from the resolved session without a late swap', () => {
   const source = readRepoFile('game.js');
 
-  assert.match(source, /let pendingLateGameSessionRequest = null;/);
-  assert.match(source, /function adoptLateGameSession\(gameSession, runId\)/);
-  assert.match(source, /if \(!gameSession \|\| runId !== gameStartRunId\) return;/);
-  assert.match(source, /if \(sessionMovesCount > 0 \|\| sessionReplayMoves\.length > 0\) return;/);
-  assert.match(source, /watchLateGameSession\(startRunId\)/);
+  // The board must be built once from the authoritative session; adopting a
+  // late session and re-drawing caused a visible one-frame board flip.
+  assert.doesNotMatch(source, /adoptLateGameSession/);
+  assert.doesNotMatch(source, /watchLateGameSession/);
+  assert.doesNotMatch(source, /pendingLateGameSessionRequest/);
+  assert.match(source, /Wait for the authoritative session before building the board/);
 });

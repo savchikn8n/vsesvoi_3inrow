@@ -2457,28 +2457,29 @@ h1 {
   box-shadow: 0 0 0 1px rgba(243, 179, 21, 0.35);
 }
 
-.leaderboard-me {
-  margin: 2px 0 12px;
-  padding-top: 10px;
-  border-top: 1px dashed rgba(243, 179, 21, 0.35);
+/* Own-rank tile: floats at the bottom edge of the scroll area while scrolling
+   and docks after the last row once scrolled to the end. */
+.leaderboard-row.leaderboard-me-sticky {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  margin-top: 8px;
+  border-color: #f3b315;
+  background: linear-gradient(180deg, rgba(28, 20, 2, 0.98), rgba(16, 11, 0, 0.99));
+  box-shadow: 0 -10px 22px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(243, 179, 21, 0.5);
 }
 
-.leaderboard-me.hidden {
-  display: none;
-}
-
-.leaderboard-me-label {
-  color: #f3b315;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-  padding-left: 2px;
-}
-
-.leaderboard-me .leaderboard-row {
-  box-shadow: 0 0 0 1px rgba(243, 179, 21, 0.45), 0 6px 18px rgba(0, 0, 0, 0.4);
+.leaderboard-me-badge {
+  align-self: center;
+  flex: 0 0 auto;
+  color: #120d00;
+  background: #f3b315;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  padding: 3px 7px;
+  border-radius: 999px;
 }
 
 .leaderboard-rank {
