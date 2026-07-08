@@ -14,6 +14,15 @@ const corsHeaders = {
 const MIN_MS_PER_MOVE = 500;
 const MOVE_TIME_GRACE_MS = 1500;
 
+// The strict seed replay is the strongest anti-cheat, but the live client lets
+// players act during cascades ("combo constraint" fast play), which a strictly
+// sequential replay cannot reproduce — so honest fast players legitimately fail
+// the exact replay. To never silently steal their earned claps, crediting falls
+// back to the client-reported score bounded by a per-move ceiling (plus the
+// speed/rate/move-count guards). Exact-matching sessions still credit exactly.
+const MAX_SCORE_PER_MOVE = 10000;
+const CLAPS_PER_SCORE = 10000;
+
 function toNonNegativeInt(value: unknown) {
   const normalized = Math.floor(Number(value ?? 0));
   return Number.isFinite(normalized) && normalized >= 0 ? normalized : 0;
@@ -115,6 +124,13 @@ Deno.serve(async (req) => {
       || (!scoreMatches ? 'score_mismatch' : null)
       || (!clapsMatch ? 'claps_mismatch' : null);
 
+    // Score credited to the balance/leaderboard: the exact replay score when it
+    // matches, otherwise the client score bounded by the per-move ceiling. Fast
+    // farming is never credited. Claps derive from that credited score.
+    const boundedClientScore = Math.min(clientFinalScore, moves.length * MAX_SCORE_PER_MOVE);
+    const creditScore = implausiblyFast ? 0 : (accepted ? replay.score : boundedClientScore);
+    const creditClaps = Math.floor(creditScore / CLAPS_PER_SCORE);
+
     if (moves.length > 0) {
       const moveRows = moves.map((move, index) => ({
         session_id: sessionId,
@@ -158,17 +174,17 @@ Deno.serve(async (req) => {
       .eq('telegram_id', user.id);
     if (updateError) throw new Error(updateError.message);
 
-    // Credit progress from the server replay, never from client-reported numbers.
-    // A session may be (re)submitted as a paid continue extends the run, so the
-    // atomic RPC credits only the positive clap delta beyond what this session
-    // already credited (row-locked) and raises best score with GREATEST. This
-    // makes crediting idempotent and race-safe against concurrent clap spends.
-    if (accepted) {
+    // Credit progress. The RPC is delta-based and row-locked, so re-submitting a
+    // continued run credits only the positive clap delta beyond what this
+    // session already credited, and raises best score with GREATEST — idempotent
+    // and race-safe against concurrent clap spends. We credit the bounded score
+    // (exact when the replay matched) so honest fast players are never underpaid.
+    if (creditScore > 0 || creditClaps > 0) {
       const { error: creditError } = await admin.rpc('credit_game_session_result', {
         p_session_id: sessionId,
         p_telegram_id: user.id,
-        p_server_score: replay.score,
-        p_server_claps_earned: replay.clapsEarned,
+        p_server_score: creditScore,
+        p_server_claps_earned: creditClaps,
       });
       if (creditError) throw new Error(creditError.message);
     }
@@ -178,6 +194,8 @@ Deno.serve(async (req) => {
       rejectReason: accepted ? null : rejectReason,
       serverScore: replay.score,
       serverClapsEarned: replay.clapsEarned,
+      creditedScore: creditScore,
+      creditedClaps: creditClaps,
       movesAttempted: replay.movesAttempted,
       validation_status: accepted ? 'accepted' : 'rejected',
     }), {

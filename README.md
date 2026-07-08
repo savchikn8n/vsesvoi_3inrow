@@ -146,7 +146,7 @@ Telegram Mini App для кальянной "Все свои": мобильна�
 4. Client локально записывает принятые ходы.
 5. При завершении или lifecycle flush client вызывает `game-session-submit` с moves и client final progress.
 6. Server делает replay от seed, проверяет правдоподобную скорость ходов и пишет `game_session_moves` + `game_session_validations`. Session можно submit повторно — paid continue продлевает тот же run, и client банкует его перед каждым списанием.
-7. Если replay принят, server сам начисляет прогресс в `profiles` через атомарный RPC `credit_game_session_result`: `best_score = GREATEST(...)`, а claps — только дельтой сверх `game_sessions.credited_claps` (идемпотентно, без двойного начисления при пересабмите).
+7. Server начисляет прогресс в `profiles` через атомарный RPC `credit_game_session_result`: `best_score = GREATEST(...)`, а claps — только дельтой сверх `game_sessions.credited_claps` (идемпотентно). Базой начисления служит **credit score**: точный replay-счёт, если реплей полностью совпал, иначе client-репорт счёта, **ограниченный** потолком `ходы × 10000` за ход. Это защищает честных «быстрых» игроков (их клиент допускает ходы во время каскадов, что строго последовательный реплей воспроизвести не может, поэтому их сессии часто не совпадают точно) — при этом фабрикация ограничена потолком за ход, `implausible_speed`, rate limit и лимитом ходов, а точные сессии по-прежнему начисляются ровно по реплею.
 8. Client дополнительно вызывает `score-submit` с final best score и `sessionId`; увеличение best score принимается только при подтвержденной validation window. Clap balance из client-репорта никогда не повышается — он server-authoritative.
 9. Existing `profiles.best_score` и `profiles.clap_balance` этим путем никогда не уменьшаются.
 
@@ -809,8 +809,8 @@ Admin endpoints требуют `DASHBOARD_SECRET` через `x-dashboard-secret
 - Не сохранять maintenance/GameHub dev bypass в browser storage.
 - Не возвращать cascade-time move buffering, который server replay не может воспроизвести.
 - Не доверять client-reported score/clap increases без accepted server validation.
-- Не повышать clap balance из client-reported чисел ни в одной function: начисление только через `credit_game_session_result`, бонусы и покупки.
-- Начисление ладошек за сессию должно оставаться дельта-based и идемпотентным (`credited_claps`), чтобы пересабмит продлённого continue-рана не начислял дважды.
+- Начисление ладошек за сессию — только через `credit_game_session_result` (плюс бонусы и покупки), дельта-based и идемпотентное (`credited_claps`), чтобы пересабмит продлённого continue-рана не начислял дважды.
+- Начисление НЕ должно требовать точного совпадения реплея: клиент допускает ходы во время каскадов, поэтому честные сессии часто расходятся с последовательным реплеем. Базой служит credit score = точный replay-счёт при совпадении, иначе client-счёт под потолком `ходы × MAX_SCORE_PER_MOVE`. Нельзя возвращать «начислять только при accepted replay» — это молча крадёт заслуженные ладошки у честных игроков.
 - Клиент должен банкать сессию (`flushServerGameSession`) перед любым списанием ладошек (continue, платная отмена выхода), чтобы заработанное было в балансе до spend.
 - Не вставлять player-controlled строки в dashboard `innerHTML` без `escapeHtml`.
 - Не раскрывать service-role secrets в browser files.

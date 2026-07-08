@@ -188,16 +188,21 @@ test('game-session-submit credits progress incrementally from the server replay'
   assert.match(source, /\.from\('game_session_validations'\)/);
   assert.match(source, /replayMoves/);
   assert.match(source, /validation_status/);
-  // Progress is credited from the server replay through the race-safe RPC,
-  // never via direct profile writes from client-reported numbers. The RPC
-  // credits only the positive clap delta so a re-submitted (continued) session
-  // is not double-paid.
+  // Progress is credited via the race-safe delta RPC, never via direct profile
+  // writes. Honest fast players fail the strictly-sequential replay, so credit
+  // falls back to the client score bounded by a per-move ceiling instead of
+  // silently paying zero.
   assert.match(source, /rpc\('credit_game_session_result'/);
+  assert.match(source, /const boundedClientScore = Math\.min\(clientFinalScore, moves\.length \* MAX_SCORE_PER_MOVE\)/);
+  assert.match(source, /const creditScore = implausiblyFast \? 0 : \(accepted \? replay\.score : boundedClientScore\)/);
+  assert.match(source, /p_server_claps_earned: creditClaps/);
   assert.match(source, /credited_claps/);
   assert.doesNotMatch(source, /\.from\('profiles'\)/);
-  // Scripted farming guard: sustained sub-human move rates are rejected.
+  // Anti-farm guards remain: sub-human move rate earns zero, and the per-move
+  // ceiling bounds any fabricated score.
   assert.match(source, /MIN_MS_PER_MOVE/);
   assert.match(source, /implausible_speed/);
+  assert.match(source, /MAX_SCORE_PER_MOVE/);
   assert.match(config, /\[functions\.game-session-submit\]/);
   assert.match(config, /verify_jwt = false/);
 });
