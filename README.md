@@ -72,6 +72,7 @@ Telegram Mini App для кальянной "Все свои": мобильна�
 - форма обратной связи;
 - runtime maintenance screen;
 - скрытый page-load-only dev bypass для тестирования maintenance/GameHub;
+- скрытый page-load-only dev-review режим для 3-в-ряд (предпрод-ревью игрового фила/графики без техпаузы для игроков);
 - promo popups и отслеживание promo actions;
 - claim flow для broadcast bonus;
 - share record flow через Telegram link.
@@ -92,6 +93,15 @@ Telegram Mini App для кальянной "Все свои": мобильна�
 - Hidden alpha GameHub entry существует для "Угольной башни".
 - "Угольная башня" описана как alpha/future internal module.
 - Реальный Coal Tower gameplay еще не production-ready в этом репозитории.
+
+### Dev-review контур (предпрод-ревью 3-в-ряд)
+
+Скрытый режим для ревью изменений игрового фила/графики на живом клиенте, не показывая их обычным игрокам и не включая техпаузу:
+
+- **Вход:** 7 тапов по логотипу «Все Свои: 3 в ряд» (слайд-0 карусели, `data-devreview-dev-trigger`) в окне 1200мс → модалка пароля → `maintenance-dev-auth` (тот же `MAINTENANCE_DEV_PASSWORD`, что и maintenance/GameHub) → `showDevReview()`. Слайд-1 «Угольная башня» держит отдельный 5-тап GameHub-гейт.
+- **Панель `#devreview-panel`:** бейдж, live FPS-метр, тумблеры экспериментов, кнопки «Играть» (`resetGame()`) и «Выйти» (`closeDevReview()`).
+- **Реестр `DEV_FLAGS`** (в `game.js`): массив `{ id, label, apply(on) }`. Каждый флаг рендерится тумблером, `applyDevFlag(id, on)` пишет в `devFlags[id]`, а игровой код читает `devFlags['<id>']` в нужной точке. **Все флаги по умолчанию OFF** и сбрасываются в OFF при выходе — прод-игроки экспериментов не видят.
+- **Инвариант:** page-load-only, без `localStorage`/`sessionStorage` (как maintenance/GameHub bypass). Тест: `tests/devreview-gate.test.js`.
 
 ## Архитектура
 
@@ -210,7 +220,7 @@ SQL функции:
 
 Важный storage invariant:
 
-- Maintenance/GameHub dev bypass должен оставаться page-load-only state. Не сохранять его в `localStorage` или `sessionStorage`.
+- Maintenance/GameHub dev bypass и dev-review режим 3-в-ряд должны оставаться page-load-only state. Не сохранять их в `localStorage` или `sessionStorage`.
 
 ## Безопасность и приватность
 
@@ -260,7 +270,7 @@ SQL функции:
 | `SUPABASE_SERVICE_ROLE_KEY` | Да | Most Edge Functions | Server-side database/storage access. Никогда не раскрывать в browser. |
 | `DASHBOARD_SECRET` | Да для dashboard/admin | `analytics-summary`, `gift-admin`, `messages-admin`, `feedback-admin`, `promo-admin`, `promo-upload`, `runtime-config-admin`, `process-scheduled-broadcasts` | Защита staff/admin access. |
 | `REMINDER_CRON_SECRET` | Да для cron/broadcast endpoints | `send-inactive-reminders`, `broadcast-message` | Защищает scheduled/bulk message endpoints. |
-| `MAINTENANCE_DEV_PASSWORD` | Да для dev bypass | `maintenance-dev-auth` | Password для page-load-only maintenance/GameHub test access. |
+| `MAINTENANCE_DEV_PASSWORD` | Да для dev bypass | `maintenance-dev-auth` | Password для page-load-only maintenance/GameHub/dev-review test access. |
 | `ADMIN_GIFTS_BOT_TOKEN` | Опционально | `purchase-gift` | Отправляет admin notification при успешной покупке. |
 | `ADMIN_GIFTS_CHAT_ID` | Опционально | `purchase-gift` | Target chat для purchase notifications. |
 
@@ -345,6 +355,7 @@ node --test tests/game-rules-engine.test.js tests/server-rules-engine-source.tes
 - protection от game-start race;
 - server-authoritative score/clap validation;
 - maintenance dev bypass без browser storage;
+- dev-review гейт 3-в-ряд (7-тап, дефолт-OFF флаги, page-load-only);
 - shop catalog, discounts, backend contracts и dashboard labels;
 - static UI timing/control invariants.
 

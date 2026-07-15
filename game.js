@@ -47,6 +47,12 @@ const menuHeroDots = Array.from(document.querySelectorAll('.menu-hero-dot'));
 const gamehubDevTriggerEl = document.querySelector('[data-gamehub-dev-trigger]');
 const alphaGamehubScreenEl = document.getElementById('alpha-gamehub-screen');
 const alphaGamehubMatch3Btn = document.getElementById('alpha-gamehub-match3');
+const devReviewDevTriggerEl = document.querySelector('[data-devreview-dev-trigger]');
+const devReviewPanelEl = document.getElementById('devreview-panel');
+const devReviewFlagsEl = document.getElementById('devreview-flags');
+const devReviewFpsEl = document.getElementById('devreview-fps');
+const devReviewPlayBtn = document.getElementById('devreview-play');
+const devReviewExitBtn = document.getElementById('devreview-exit');
 const gameOverModalEl = document.getElementById('game-over-modal');
 const exitConfirmModalEl = document.getElementById('exit-confirm-modal');
 const exitConfirmCancelBtn = document.getElementById('exit-confirm-cancel');
@@ -139,6 +145,11 @@ const gamehubDevPasswordEl = document.getElementById('gamehub-dev-password');
 const gamehubDevStatusEl = document.getElementById('gamehub-dev-status');
 const gamehubDevCancelBtn = document.getElementById('gamehub-dev-cancel');
 const gamehubDevSubmitBtn = document.getElementById('gamehub-dev-submit');
+const devReviewDevModalEl = document.getElementById('devreview-dev-modal');
+const devReviewDevPasswordEl = document.getElementById('devreview-dev-password');
+const devReviewDevStatusEl = document.getElementById('devreview-dev-status');
+const devReviewDevCancelBtn = document.getElementById('devreview-dev-cancel');
+const devReviewDevSubmitBtn = document.getElementById('devreview-dev-submit');
 const feedbackModalEl = document.getElementById('feedback-modal');
 const feedbackInputEl = document.getElementById('feedback-input');
 const feedbackCancelBtn = document.getElementById('feedback-cancel');
@@ -199,6 +210,11 @@ let gamehubDevTapCount = 0;
 let gamehubDevLastTapAt = 0;
 let gamehubDevBusy = false;
 let gamehubDevModeActive = false;
+let devReviewDevTapCount = 0;
+let devReviewDevLastTapAt = 0;
+let devReviewDevBusy = false;
+let devReviewModeActive = false;
+let devReviewFpsRaf = 0;
 let continueRunBusy = false;
 let shopPurchaseBusy = false;
 let shopOwnedBusy = false;
@@ -868,6 +884,144 @@ async function submitGamehubDevPassword() {
   } finally {
     gamehubDevBusy = false;
     if (gamehubDevSubmitBtn) gamehubDevSubmitBtn.disabled = false;
+  }
+}
+
+// Pre-prod review flags. Each is page-load-only (no storage) and defaults to
+// OFF so production players never see an experiment. Phase-2 feel/graphics work
+// registers experiments here and reads devFlags[id] at the relevant call site.
+const DEV_FLAGS = [
+  {
+    id: 'debugGrid',
+    label: 'Сетка отладки',
+    apply: (on) => document.body.classList.toggle('dev-grid-overlay', on),
+  },
+];
+const devFlags = Object.fromEntries(DEV_FLAGS.map((flag) => [flag.id, false]));
+
+function isDevReviewActive() {
+  return devReviewModeActive;
+}
+
+function applyDevFlag(id, on) {
+  devFlags[id] = on;
+  const flag = DEV_FLAGS.find((entry) => entry.id === id);
+  if (typeof flag?.apply === 'function') flag.apply(on);
+}
+
+function renderDevFlags() {
+  if (!devReviewFlagsEl) return;
+  devReviewFlagsEl.textContent = '';
+  DEV_FLAGS.forEach((flag) => {
+    const row = document.createElement('label');
+    row.className = 'devreview-flag';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = Boolean(devFlags[flag.id]);
+    input.addEventListener('change', () => applyDevFlag(flag.id, input.checked));
+    const text = document.createElement('span');
+    text.textContent = flag.label;
+    row.append(input, text);
+    devReviewFlagsEl.append(row);
+  });
+}
+
+function startDevReviewFpsMeter() {
+  if (devReviewFpsRaf || !devReviewFpsEl) return;
+  let frames = 0;
+  let last = performance.now();
+  const tick = (now) => {
+    frames += 1;
+    if (now - last >= 500) {
+      const fps = Math.round((frames * 1000) / (now - last));
+      devReviewFpsEl.textContent = `${fps} fps`;
+      frames = 0;
+      last = now;
+    }
+    devReviewFpsRaf = window.requestAnimationFrame(tick);
+  };
+  devReviewFpsRaf = window.requestAnimationFrame(tick);
+}
+
+function stopDevReviewFpsMeter() {
+  if (devReviewFpsRaf) {
+    window.cancelAnimationFrame(devReviewFpsRaf);
+    devReviewFpsRaf = 0;
+  }
+}
+
+function openDevReviewDevModal() {
+  if (!devReviewDevModalEl) return;
+  if (devReviewDevStatusEl) devReviewDevStatusEl.textContent = '';
+  if (devReviewDevPasswordEl) devReviewDevPasswordEl.value = '';
+  devReviewDevModalEl.classList.remove('hidden');
+  devReviewDevModalEl.setAttribute('aria-hidden', 'false');
+  setTimeout(() => devReviewDevPasswordEl?.focus(), 20);
+}
+
+function closeDevReviewDevModal() {
+  devReviewDevModalEl?.classList.add('hidden');
+  devReviewDevModalEl?.setAttribute('aria-hidden', 'true');
+  if (devReviewDevPasswordEl) devReviewDevPasswordEl.value = '';
+  if (devReviewDevStatusEl) devReviewDevStatusEl.textContent = '';
+}
+
+function showDevReview() {
+  devReviewModeActive = true;
+  renderDevFlags();
+  devReviewPanelEl?.classList.remove('hidden');
+  devReviewPanelEl?.setAttribute('aria-hidden', 'false');
+  startDevReviewFpsMeter();
+}
+
+function closeDevReview() {
+  devReviewModeActive = false;
+  stopDevReviewFpsMeter();
+  DEV_FLAGS.forEach((flag) => applyDevFlag(flag.id, false));
+  devReviewPanelEl?.classList.add('hidden');
+  devReviewPanelEl?.setAttribute('aria-hidden', 'true');
+  showStartScreen();
+}
+
+function handleDevReviewDevTap() {
+  if (menuHeroSlide !== 0) return;
+  const now = Date.now();
+  devReviewDevTapCount = now - devReviewDevLastTapAt <= MAINTENANCE_DEV_TAP_WINDOW_MS
+    ? devReviewDevTapCount + 1
+    : 1;
+  devReviewDevLastTapAt = now;
+
+  if (devReviewDevTapCount >= 7) {
+    devReviewDevTapCount = 0;
+    openDevReviewDevModal();
+  }
+}
+
+async function submitDevReviewDevPassword() {
+  if (devReviewDevBusy) return;
+  const password = devReviewDevPasswordEl?.value || '';
+  if (!password.trim()) {
+    if (devReviewDevStatusEl) devReviewDevStatusEl.textContent = 'Введите пароль';
+    return;
+  }
+
+  devReviewDevBusy = true;
+  if (devReviewDevSubmitBtn) devReviewDevSubmitBtn.disabled = true;
+  if (devReviewDevStatusEl) devReviewDevStatusEl.textContent = 'Проверяем';
+  try {
+    const result = await postJson('maintenance-dev-auth', { password });
+    if (!result?.ok) {
+      throw new Error('Неверный ответ сервера');
+    }
+    closeDevReviewDevModal();
+    showDevReview();
+  } catch (error) {
+    if (devReviewDevStatusEl) {
+      devReviewDevStatusEl.textContent = error.message || 'Ошибка';
+    }
+  } finally {
+    devReviewDevBusy = false;
+    if (devReviewDevSubmitBtn) devReviewDevSubmitBtn.disabled = false;
   }
 }
 
@@ -3897,6 +4051,21 @@ gamehubDevPasswordEl?.addEventListener('keydown', (event) => {
   }
 });
 alphaGamehubMatch3Btn?.addEventListener('click', closeAlphaGamehub);
+devReviewDevTriggerEl?.addEventListener('click', handleDevReviewDevTap);
+devReviewDevCancelBtn?.addEventListener('click', closeDevReviewDevModal);
+devReviewDevSubmitBtn?.addEventListener('click', () => {
+  void submitDevReviewDevPassword();
+});
+devReviewDevPasswordEl?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    void submitDevReviewDevPassword();
+  }
+});
+devReviewPlayBtn?.addEventListener('click', () => {
+  void resetGame();
+});
+devReviewExitBtn?.addEventListener('click', closeDevReview);
 soundToggleBtn.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   updateSoundToggleLabel();

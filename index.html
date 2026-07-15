@@ -87,7 +87,7 @@
 
         <div id="menu-hero" class="menu-hero" aria-label="Карусель игр">
           <div id="menu-hero-track" class="menu-hero-track">
-            <div class="menu-hero-slide is-active" data-slide="0" aria-hidden="false">
+            <div class="menu-hero-slide is-active" data-slide="0" aria-hidden="false" data-devreview-dev-trigger>
               <img src="./assets/ingamelogo.svg" alt="Все Свои 3 в ряд" />
             </div>
             <div class="menu-hero-slide menu-hero-slide-upcoming" data-slide="1" aria-hidden="true" data-gamehub-dev-trigger>
@@ -144,6 +144,19 @@
           </div>
         </div>
       </section>
+
+      <div id="devreview-panel" class="devreview-panel hidden" aria-label="Dev review" aria-hidden="true">
+        <div class="devreview-panel-head">
+          <span class="devreview-badge">DEV REVIEW · 3 в ряд</span>
+          <span id="devreview-fps" class="devreview-fps" aria-live="off">-- fps</span>
+        </div>
+        <div class="devreview-panel-note">Предпрод-ревью. Игроки этого не видят.</div>
+        <div id="devreview-flags" class="devreview-flags"></div>
+        <div class="devreview-panel-actions">
+          <button id="devreview-play" type="button">🎮 Играть</button>
+          <button id="devreview-exit" type="button">Выйти</button>
+        </div>
+      </div>
 
       <section id="shop-screen" class="shop-screen hidden" aria-label="Подарки">
         <div id="shop-ambient-layer" class="ambient-layer shop-ambient-layer" aria-hidden="true"></div>
@@ -341,6 +354,27 @@
         <div class="modal-actions dev-password-actions">
           <button id="gamehub-dev-cancel" type="button">Отмена</button>
           <button id="gamehub-dev-submit" type="button">Войти</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="devreview-dev-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card dev-password-card">
+        <h2>password</h2>
+        <input
+          id="devreview-dev-password"
+          class="dev-password-input"
+          type="password"
+          inputmode="text"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          aria-label="password"
+        />
+        <p id="devreview-dev-status" class="dev-password-status" aria-live="polite"></p>
+        <div class="modal-actions dev-password-actions">
+          <button id="devreview-dev-cancel" type="button">Отмена</button>
+          <button id="devreview-dev-submit" type="button">Войти</button>
         </div>
       </div>
     </div>
@@ -577,14 +611,14 @@
     <script>
       window.__SUPABASE_URL__ = 'https://tnngitplssufqeqpxuib.supabase.co';
     </script>
-    <script src="maintenance-config.js?v=20260706-ux"></script>
-    <script src="src/game/core/rng.js?v=20260706-ux"></script>
-    <script src="src/game/core/board-core.js?v=20260706-ux"></script>
-    <script src="src/game/core/resolution-core.js?v=20260706-ux"></script>
-    <script src="src/game/core/rules-engine.js?v=20260706-ux"></script>
-    <script src="src/game/runtime/progress-adapter.js?v=20260706-ux"></script>
-    <script src="src/game/runtime/board-renderer.js?v=20260706-ux"></script>
-    <script src="src/shop/catalog.js?v=20260706-ux"></script>
-    <script src="game.js?v=20260706-ux"></script>
+    <script src="maintenance-config.js?v=20260715-devreview"></script>
+    <script src="src/game/core/rng.js?v=20260715-devreview"></script>
+    <script src="src/game/core/board-core.js?v=20260715-devreview"></script>
+    <script src="src/game/core/resolution-core.js?v=20260715-devreview"></script>
+    <script src="src/game/core/rules-engine.js?v=20260715-devreview"></script>
+    <script src="src/game/runtime/progress-adapter.js?v=20260715-devreview"></script>
+    <script src="src/game/runtime/board-renderer.js?v=20260715-devreview"></script>
+    <script src="src/shop/catalog.js?v=20260715-devreview"></script>
+    <script src="game.js?v=20260715-devreview"></script>
   </body>
 </html>
