@@ -896,6 +896,14 @@ const DEV_FLAGS = [
     label: 'Сетка отладки',
     apply: (on) => document.body.classList.toggle('dev-grid-overlay', on),
   },
+  {
+    id: 'cascadeJuice',
+    label: 'Каскады: комбо-попап + вспышка (≥x2)',
+  },
+  {
+    id: 'rewardBursts',
+    label: 'Награды: всплеск «+N 👏» у ладошек',
+  },
 ];
 const devFlags = Object.fromEntries(DEV_FLAGS.map((flag) => [flag.id, false]));
 
@@ -1046,6 +1054,7 @@ function maybeAwardClapsFromScore() {
   updateHud();
   updateContinueRunButton();
   scheduleSessionSnapshot();
+  if (devFlags.rewardBursts) spawnRewardBurst(delta);
   // Claps are optimistic during play and credited server-side by the accepted
   // session replay (game-session-submit). Do NOT round-trip score-submit here:
   // it no longer credits claps and its stale balance would revert this gain.
@@ -2825,6 +2834,38 @@ function spawnBoardDimEffect() {
   setTimeout(() => dim.remove(), 280);
 }
 
+// Phase-2 dev-review experiment: extra cascade juice. Pops a scaling combo
+// badge over the board center. Gated by devFlags.cascadeJuice (default OFF).
+function spawnComboPopup(combo) {
+  if (!effectsLayerEl || combo < 2) return;
+  const boardRect = boardEl.getBoundingClientRect();
+  const badge = document.createElement('div');
+  badge.className = 'effect-combo-popup';
+  badge.textContent = `x${combo}!`;
+  badge.style.left = `${boardRect.width / 2}px`;
+  badge.style.top = `${boardRect.height / 2}px`;
+  effectsLayerEl.appendChild(badge);
+  setTimeout(() => badge.remove(), 620);
+}
+
+// Phase-2 dev-review experiment: reward burst. Floats a "+N 👏" chip up from the
+// HUD clap counter and pulses it. Gated by devFlags.rewardBursts (default OFF).
+function spawnRewardBurst(delta) {
+  if (delta <= 0) return;
+  const anchor = document.getElementById('hud-claps');
+  if (!anchor) return;
+  const rect = anchor.getBoundingClientRect();
+  const chip = document.createElement('div');
+  chip.className = 'effect-reward-burst';
+  chip.textContent = `+${delta} 👏`;
+  chip.style.left = `${rect.left + rect.width / 2}px`;
+  chip.style.top = `${rect.top}px`;
+  document.body.appendChild(chip);
+  anchor.classList.add('is-reward-pulse');
+  setTimeout(() => anchor.classList.remove('is-reward-pulse'), 420);
+  setTimeout(() => chip.remove(), 900);
+}
+
 function spawnGigaLinkEffect(fromIndex, toIndex) {
   if (!effectsLayerEl) return;
   const from = getTileCenter(fromIndex);
@@ -3298,6 +3339,10 @@ async function resolveCascades(swappedPair = null) {
     if (groups.length === 0) break;
 
     combo++;
+    if (devFlags.cascadeJuice && combo >= 2) {
+      spawnComboPopup(combo);
+      spawnBoardFlashEffect();
+    }
     locked = true;
     const firstSwap = swappedPair && combo === 1 ? swappedPair : null;
     const { removals, specialCreates, smokeCells } = buildMatchResolution(groups, firstSwap);

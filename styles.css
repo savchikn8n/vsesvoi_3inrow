@@ -472,6 +472,69 @@ h1 {
   background: radial-gradient(circle, #ffd8cfcc 0%, #ff8c7aaa 44%, transparent 78%);
 }
 
+/* Phase-2 dev-review experiment effects (cascadeJuice / rewardBursts). */
+.effect-combo-popup {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: "Muller", "Manrope", sans-serif;
+  font-weight: 800;
+  font-size: 44px;
+  color: #ffe08a;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55), 0 0 18px rgba(255, 190, 68, 0.6);
+  pointer-events: none;
+  animation: combo-popup 620ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes combo-popup {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  30% { opacity: 1; transform: translate(-50%, -60%) scale(1.15); }
+  70% { opacity: 1; transform: translate(-50%, -70%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -95%) scale(0.95); }
+}
+
+.effect-reward-burst {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  z-index: 1300;
+  font-family: "Muller", "Manrope", sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: #ffe08a;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  animation: reward-burst 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes reward-burst {
+  0% { opacity: 0; transform: translate(-50%, -20%) scale(0.7); }
+  25% { opacity: 1; transform: translate(-50%, -60%) scale(1.05); }
+  100% { opacity: 0; transform: translate(-50%, -160%) scale(1); }
+}
+
+.panel-claps.is-reward-pulse,
+.panel-claps-value.is-reward-pulse,
+#hud-claps.is-reward-pulse {
+  animation: reward-pulse 420ms ease-out;
+}
+
+@keyframes reward-pulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.28); color: #ffe08a; }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .effect-combo-popup { animation: reduced-fade 300ms ease-out forwards; }
+  .effect-reward-burst { animation: reduced-fade 400ms ease-out forwards; }
+  #hud-claps.is-reward-pulse { animation: none; }
+}
+
+@keyframes reduced-fade {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 .effect-giga-charge {
   position: absolute;
   border-radius: 999px;
