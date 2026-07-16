@@ -49,6 +49,7 @@ const alphaGamehubScreenEl = document.getElementById('alpha-gamehub-screen');
 const alphaGamehubMatch3Btn = document.getElementById('alpha-gamehub-match3');
 const devReviewDevTriggerEl = document.querySelector('[data-devreview-dev-trigger]');
 const devReviewPanelEl = document.getElementById('devreview-panel');
+const devReviewHeadEl = document.getElementById('devreview-head');
 const devReviewFlagsEl = document.getElementById('devreview-flags');
 const devReviewFpsEl = document.getElementById('devreview-fps');
 const devReviewPlayBtn = document.getElementById('devreview-play');
@@ -897,12 +898,20 @@ const DEV_FLAGS = [
     apply: (on) => document.body.classList.toggle('dev-grid-overlay', on),
   },
   {
-    id: 'cascadeJuice',
-    label: 'Каскады: комбо-попап + вспышка (≥x2)',
+    id: 'fxGigaBomb',
+    label: 'FX: гига-взрыв (два уголька)',
   },
   {
-    id: 'rewardBursts',
-    label: 'Награды: всплеск «+N 👏» у ладошек',
+    id: 'fxRocket',
+    label: 'FX: ракеты (одиночная и ракета+ракета)',
+  },
+  {
+    id: 'fxBomb',
+    label: 'FX: одиночный уголёк',
+  },
+  {
+    id: 'fxBombRocket',
+    label: 'FX: комбо ракета+уголёк',
   },
 ];
 const devFlags = Object.fromEntries(DEV_FLAGS.map((flag) => [flag.id, false]));
@@ -982,8 +991,13 @@ function showDevReview() {
   startDevReviewFpsMeter();
 }
 
+function toggleDevReviewCollapsed() {
+  devReviewPanelEl?.classList.toggle('is-collapsed');
+}
+
 function closeDevReview() {
   devReviewModeActive = false;
+  devReviewPanelEl?.classList.remove('is-collapsed');
   stopDevReviewFpsMeter();
   DEV_FLAGS.forEach((flag) => applyDevFlag(flag.id, false));
   devReviewPanelEl?.classList.add('hidden');
@@ -1054,7 +1068,7 @@ function maybeAwardClapsFromScore() {
   updateHud();
   updateContinueRunButton();
   scheduleSessionSnapshot();
-  if (devFlags.rewardBursts) spawnRewardBurst(delta);
+  spawnRewardBurst(delta);
   // Claps are optimistic during play and credited server-side by the accepted
   // session replay (game-session-submit). Do NOT round-trip score-submit here:
   // it no longer credits claps and its stale balance would revert this gain.
@@ -2834,8 +2848,8 @@ function spawnBoardDimEffect() {
   setTimeout(() => dim.remove(), 280);
 }
 
-// Phase-2 dev-review experiment: extra cascade juice. Pops a scaling combo
-// badge over the board center. Gated by devFlags.cascadeJuice (default OFF).
+// Cascade juice (shipped): pops a scaling combo badge over the board center on
+// cascades >= x2.
 function spawnComboPopup(combo) {
   if (!effectsLayerEl || combo < 2) return;
   const boardRect = boardEl.getBoundingClientRect();
@@ -2848,8 +2862,9 @@ function spawnComboPopup(combo) {
   setTimeout(() => badge.remove(), 620);
 }
 
-// Phase-2 dev-review experiment: reward burst. Floats a "+N 👏" chip up from the
-// HUD clap counter and pulses it. Gated by devFlags.rewardBursts (default OFF).
+// Reward burst (shipped): floats a "+N 👏" chip up from the HUD clap counter and
+// pulses it whenever claps are awarded. The chip lingers ~1.5s so the gain reads
+// clearly instead of flicking away.
 function spawnRewardBurst(delta) {
   if (delta <= 0) return;
   const anchor = document.getElementById('hud-claps');
@@ -2862,8 +2877,8 @@ function spawnRewardBurst(delta) {
   chip.style.top = `${rect.top}px`;
   document.body.appendChild(chip);
   anchor.classList.add('is-reward-pulse');
-  setTimeout(() => anchor.classList.remove('is-reward-pulse'), 420);
-  setTimeout(() => chip.remove(), 900);
+  setTimeout(() => anchor.classList.remove('is-reward-pulse'), 460);
+  setTimeout(() => chip.remove(), 1500);
 }
 
 function spawnGigaLinkEffect(fromIndex, toIndex) {
@@ -2906,6 +2921,85 @@ function emitMegaBombComboEffect(indices) {
     triggerBoardShake();
     playGigaBombSound();
   }, 110);
+}
+
+// ── Phase-2 dev-review FX experiments (gated by devFlags, default OFF) ──
+// Reusable primitives: an expanding shockwave ring and a radial spark burst.
+function spawnShockwaveRing(x, y, size, tone = 'gold') {
+  if (!effectsLayerEl) return;
+  const ring = document.createElement('div');
+  ring.className = `effect-shockwave effect-shockwave-${tone}`;
+  ring.style.left = `${x}px`;
+  ring.style.top = `${y}px`;
+  ring.style.width = `${size}px`;
+  ring.style.height = `${size}px`;
+  effectsLayerEl.appendChild(ring);
+  setTimeout(() => ring.remove(), 560);
+}
+
+function spawnSparkBurst(x, y, count = 10, tone = 'gold') {
+  if (!effectsLayerEl) return;
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+    const dist = 40 + Math.random() * 48;
+    const spark = document.createElement('div');
+    spark.className = `effect-spark effect-spark-${tone}`;
+    spark.style.left = `${x}px`;
+    spark.style.top = `${y}px`;
+    spark.style.setProperty('--spark-dx', `${Math.cos(angle) * dist}px`);
+    spark.style.setProperty('--spark-dy', `${Math.sin(angle) * dist}px`);
+    spark.style.animationDelay = `${Math.random() * 40}ms`;
+    effectsLayerEl.appendChild(spark);
+    setTimeout(() => spark.remove(), 640);
+  }
+}
+
+// Upgraded giga explosion: layers extra red shockwave rings + gold sparks over
+// each core and a second board flash on top of the shipped emitMegaBombComboEffect.
+function fxGigaBombUpgrade(indices) {
+  syncEffectsLayer();
+  indices.forEach((idx) => {
+    const c = getTileCenter(idx);
+    if (!c) return;
+    spawnShockwaveRing(c.x, c.y, c.size * 3.4, 'red');
+    spawnSparkBurst(c.x, c.y, 16, 'gold');
+  });
+  setTimeout(() => {
+    spawnBoardFlashEffect();
+    triggerBoardShake();
+  }, 180);
+}
+
+// Upgraded rocket: draws the (otherwise unused) beam plus a spark spray along the
+// firing axis so single-rocket and rocket+rocket reads as a real launch.
+function fxRocketUpgrade(index, special) {
+  syncEffectsLayer();
+  spawnRocketEffect(index, special);
+  const c = getTileCenter(index);
+  if (c) spawnSparkBurst(c.x, c.y, 12, 'gold');
+}
+
+// Upgraded single coal: draws the bomb shockwave plus a ring and sparks.
+function fxBombUpgrade(index) {
+  syncEffectsLayer();
+  spawnBombEffect(index);
+  const c = getTileCenter(index);
+  if (!c) return;
+  spawnShockwaveRing(c.x, c.y, c.size * 3, 'red');
+  spawnSparkBurst(c.x, c.y, 12, 'red');
+}
+
+// Upgraded rocket+coal combo: crossed beams + central ring + sparks + shake.
+function fxBombRocketUpgrade(centerIndex) {
+  syncEffectsLayer();
+  spawnRocketEffect(centerIndex, 'rocket-h');
+  spawnRocketEffect(centerIndex, 'rocket-v');
+  const c = getTileCenter(centerIndex);
+  if (c) {
+    spawnShockwaveRing(c.x, c.y, c.size * 3.2, 'red');
+    spawnSparkBurst(c.x, c.y, 16, 'gold');
+  }
+  triggerBoardShake();
 }
 
 function emitSpecialEffects(specials) {
@@ -3339,7 +3433,7 @@ async function resolveCascades(swappedPair = null) {
     if (groups.length === 0) break;
 
     combo++;
-    if (devFlags.cascadeJuice && combo >= 2) {
+    if (combo >= 2) {
       spawnComboPopup(combo);
       spawnBoardFlashEffect();
     }
@@ -3899,17 +3993,22 @@ async function activateSpecialMove(a, b) {
   let blast = new Set();
   if (a !== b && activations.length === 2 && bombCount === 2) {
     emitMegaBombComboEffect(activations.map((item) => item.idx));
+    if (devFlags.fxGigaBomb) fxGigaBombUpgrade(activations.map((item) => item.idx));
     for (let idx = 0; idx < SIZE * SIZE; idx++) {
       blast.add(idx);
     }
   } else if (a !== b && activations.length === 2 && rocketCount === 2) {
     const center = b;
+    if (devFlags.fxRocket) activations.forEach(({ idx, special }) => fxRocketUpgrade(idx, special));
     blast = getRocketRocketComboArea(center);
   } else if (a !== b && activations.length === 2 && hasBomb && hasRocket) {
     const center = b;
+    if (devFlags.fxBombRocket) fxBombRocketUpgrade(center);
     blast = getBombRocketComboArea(center);
   } else {
     activations.forEach(({ idx, special }) => {
+      if (devFlags.fxRocket && (special === 'rocket-h' || special === 'rocket-v')) fxRocketUpgrade(idx, special);
+      if (devFlags.fxBomb && special === 'bomb') fxBombUpgrade(idx);
       getBlastArea(idx, special).forEach((n) => blast.add(n));
     });
   }
@@ -4111,6 +4210,13 @@ devReviewPlayBtn?.addEventListener('click', () => {
   void resetGame();
 });
 devReviewExitBtn?.addEventListener('click', closeDevReview);
+devReviewHeadEl?.addEventListener('click', toggleDevReviewCollapsed);
+devReviewHeadEl?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    toggleDevReviewCollapsed();
+  }
+});
 soundToggleBtn.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   updateSoundToggleLabel();

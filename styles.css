@@ -502,13 +502,14 @@ h1 {
   color: #ffe08a;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   pointer-events: none;
-  animation: reward-burst 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: reward-burst 1500ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes reward-burst {
   0% { opacity: 0; transform: translate(-50%, -20%) scale(0.7); }
-  25% { opacity: 1; transform: translate(-50%, -60%) scale(1.05); }
-  100% { opacity: 0; transform: translate(-50%, -160%) scale(1); }
+  18% { opacity: 1; transform: translate(-50%, -55%) scale(1.08); }
+  70% { opacity: 1; transform: translate(-50%, -110%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -165%) scale(0.98); }
 }
 
 .panel-claps.is-reward-pulse,
@@ -533,6 +534,99 @@ h1 {
   0% { opacity: 0; }
   30% { opacity: 1; }
   100% { opacity: 0; }
+}
+
+/* Dev-review FX experiments: shockwave ring + spark burst. */
+.effect-shockwave {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  border: 3px solid rgba(255, 211, 95, 0.85);
+  pointer-events: none;
+  animation: shockwave-ring 540ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.effect-shockwave-red {
+  border-color: rgba(255, 128, 96, 0.9);
+  box-shadow: 0 0 22px rgba(255, 120, 70, 0.55), inset 0 0 18px rgba(255, 120, 70, 0.4);
+}
+
+.effect-shockwave-gold {
+  box-shadow: 0 0 22px rgba(255, 211, 95, 0.5), inset 0 0 16px rgba(255, 211, 95, 0.36);
+}
+
+@keyframes shockwave-ring {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2); border-width: 5px; }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); border-width: 1px; }
+}
+
+.effect-spark {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: spark-fly 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.effect-spark-gold {
+  background: radial-gradient(circle, #fff7ca, #ffd35c 55%, transparent 72%);
+  box-shadow: 0 0 8px rgba(255, 211, 95, 0.75);
+}
+
+.effect-spark-red {
+  background: radial-gradient(circle, #ffe3d2, #ff8c5a 55%, transparent 72%);
+  box-shadow: 0 0 8px rgba(255, 120, 70, 0.75);
+}
+
+@keyframes spark-fly {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  20% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--spark-dx, 0px)), calc(-50% + var(--spark-dy, 0px))) scale(0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .effect-shockwave { animation: reduced-fade 300ms ease-out forwards; }
+  .effect-spark { animation: reduced-fade 300ms ease-out forwards; }
+}
+
+/* Dev-review panel: collapsed state (tap the header to fold to one line). */
+.devreview-panel-head {
+  cursor: pointer;
+  user-select: none;
+}
+
+.devreview-head-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.devreview-caret {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  transition: transform 160ms ease;
+}
+
+.devreview-panel.is-collapsed {
+  gap: 0;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.devreview-panel.is-collapsed .devreview-panel-note,
+.devreview-panel.is-collapsed .devreview-flags,
+.devreview-panel.is-collapsed .devreview-panel-actions {
+  display: none;
+}
+
+.devreview-panel.is-collapsed .devreview-caret {
+  transform: rotate(-90deg);
 }
 
 .effect-giga-charge {
