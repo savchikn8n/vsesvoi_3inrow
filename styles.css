@@ -595,6 +595,71 @@ h1 {
   .effect-spark { animation: reduced-fade 300ms ease-out forwards; }
 }
 
+/* FX experiment: falling-tile trail (body.fx-fall-trail). A golden streak fades
+   behind gems while they drop. Pure CSS, only active while the flag is on. */
+.fx-fall-trail .tile.falling::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -45%;
+  width: 42%;
+  height: 130%;
+  transform: translateX(-50%);
+  background: linear-gradient(to bottom, rgba(255, 211, 95, 0) 0%, rgba(255, 211, 95, 0.5) 62%, rgba(255, 211, 95, 0) 100%);
+  filter: blur(3px);
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: -1;
+  animation: fall-trail var(--tile-fall-ms, 320ms) ease-out both;
+  animation-delay: var(--tile-drop-delay, 0ms);
+}
+
+@keyframes fall-trail {
+  0% { opacity: 0.75; }
+  60% { opacity: 0.3; }
+  100% { opacity: 0; }
+}
+
+/* FX experiment: special-tile charge pulse (body.fx-special-charge). Rockets and
+   coals breathe a warm glow so they stand out. Skipped while falling to avoid
+   fighting the drop animation. */
+.fx-special-charge .tile.special-bomb:not(.falling) .gem,
+.fx-special-charge .tile.special-rocket-h:not(.falling) .gem,
+.fx-special-charge .tile.special-rocket-v:not(.falling) .gem {
+  animation: special-charge 1.15s ease-in-out infinite;
+}
+
+@keyframes special-charge {
+  0%, 100% { box-shadow: 0 0 0 rgba(255, 211, 95, 0); filter: brightness(1); }
+  50% { box-shadow: 0 0 14px 2px rgba(255, 211, 95, 0.7); filter: brightness(1.18); }
+}
+
+/* FX experiment: screen-edge glow for high-impact moments. */
+.effect-edge-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1150;
+  animation: edge-glow 600ms ease-out forwards;
+}
+
+.effect-edge-glow-gold { box-shadow: inset 0 0 90px 10px rgba(255, 211, 95, 0.55); }
+.effect-edge-glow-red { box-shadow: inset 0 0 92px 12px rgba(255, 120, 70, 0.6); }
+
+@keyframes edge-glow {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-fall-trail .tile.falling::before { animation: none; opacity: 0; }
+  .fx-special-charge .tile.special-bomb:not(.falling) .gem,
+  .fx-special-charge .tile.special-rocket-h:not(.falling) .gem,
+  .fx-special-charge .tile.special-rocket-v:not(.falling) .gem { animation: none; }
+  .effect-edge-glow { animation: reduced-fade 400ms ease-out forwards; }
+}
+
 /* Dev-review panel: collapsed state (tap the header to fold to one line). */
 .devreview-panel-head {
   cursor: pointer;

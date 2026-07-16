@@ -913,6 +913,20 @@ const DEV_FLAGS = [
     id: 'fxBombRocket',
     label: 'FX: комбо ракета+уголёк',
   },
+  {
+    id: 'fxFallTrail',
+    label: 'FX: шлейф падающих фишек',
+    apply: (on) => document.body.classList.toggle('fx-fall-trail', on),
+  },
+  {
+    id: 'fxEdgeGlow',
+    label: 'FX: свечение краёв (комбо ≥x3 / гига)',
+  },
+  {
+    id: 'fxSpecialCharge',
+    label: 'FX: заряд спец-фишки (пульс)',
+    apply: (on) => document.body.classList.toggle('fx-special-charge', on),
+  },
 ];
 const devFlags = Object.fromEntries(DEV_FLAGS.map((flag) => [flag.id, false]));
 
@@ -3002,6 +3016,14 @@ function fxBombRocketUpgrade(centerIndex) {
   triggerBoardShake();
 }
 
+// Full-screen edge glow for high-impact moments (big cascades / giga blast).
+function spawnEdgeGlow(tone = 'gold') {
+  const el = document.createElement('div');
+  el.className = `effect-edge-glow effect-edge-glow-${tone}`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 600);
+}
+
 function emitSpecialEffects(specials) {
   // Intentionally disabled: for special clears we only use red smoke.
   void specials;
@@ -3437,6 +3459,7 @@ async function resolveCascades(swappedPair = null) {
       spawnComboPopup(combo);
       spawnBoardFlashEffect();
     }
+    if (devFlags.fxEdgeGlow && combo >= 3) spawnEdgeGlow('gold');
     locked = true;
     const firstSwap = swappedPair && combo === 1 ? swappedPair : null;
     const { removals, specialCreates, smokeCells } = buildMatchResolution(groups, firstSwap);
@@ -3994,6 +4017,7 @@ async function activateSpecialMove(a, b) {
   if (a !== b && activations.length === 2 && bombCount === 2) {
     emitMegaBombComboEffect(activations.map((item) => item.idx));
     if (devFlags.fxGigaBomb) fxGigaBombUpgrade(activations.map((item) => item.idx));
+    if (devFlags.fxEdgeGlow) spawnEdgeGlow('red');
     for (let idx = 0; idx < SIZE * SIZE; idx++) {
       blast.add(idx);
     }
