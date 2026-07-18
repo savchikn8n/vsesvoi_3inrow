@@ -31,9 +31,9 @@ test('shop catalog exposes gifts and hookah discounts with stable prices', () =>
   assert.deepEqual(
     SHOP_DISCOUNT_ITEMS.map((item) => [item.id, item.price, item.discountPercent, item.itemType]),
     [
-      ['discount30', 45, 30, 'discount'],
-      ['discount20', 30, 20, 'discount'],
-      ['discount10', 15, 10, 'discount'],
+      ['discount30', 70, 30, 'discount'],
+      ['discount20', 45, 20, 'discount'],
+      ['discount10', 25, 10, 'discount'],
     ],
   );
 

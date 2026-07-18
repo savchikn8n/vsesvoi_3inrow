@@ -47,9 +47,9 @@
   ]);
 
   const SHOP_DISCOUNT_ITEMS = Object.freeze([
-    { id: 'discount30', itemType: 'discount', title: '30% на кальян', price: 45, discountPercent: 30 },
-    { id: 'discount20', itemType: 'discount', title: '20% на кальян', price: 30, discountPercent: 20 },
-    { id: 'discount10', itemType: 'discount', title: '10% на кальян', price: 15, discountPercent: 10 },
+    { id: 'discount30', itemType: 'discount', title: '30% на кальян', price: 70, discountPercent: 30 },
+    { id: 'discount20', itemType: 'discount', title: '20% на кальян', price: 45, discountPercent: 20 },
+    { id: 'discount10', itemType: 'discount', title: '10% на кальян', price: 25, discountPercent: 10 },
   ]);
 
   const SHOP_ITEMS = Object.freeze([...SHOP_GIFT_ITEMS, ...SHOP_DISCOUNT_ITEMS]);
