@@ -11,7 +11,7 @@
       href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Manrope:wght@500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./dashboard.css" />
+    <link rel="stylesheet" href="./dashboard.css?v=20260817-iodiet" />
   </head>
   <body>
     <main class="dashboard-shell">
@@ -32,7 +32,6 @@
         <div class="dashboard-header-tools">
           <button id="refresh-dashboard" class="dashboard-ghost-btn" type="button">Обновить</button>
           <span id="dashboard-loading" class="dashboard-loading" aria-hidden="true"></span>
-          <p id="dashboard-status" class="dashboard-status" aria-live="polite"></p>
           <div id="auth-panel" class="auth-panel is-collapsed">
             <button id="toggle-secret" class="dashboard-ghost-btn dashboard-secret-toggle" type="button">Ключ</button>
             <div class="auth-row">
@@ -41,6 +40,8 @@
             </div>
           </div>
         </div>
+
+        <p id="dashboard-status" class="dashboard-status" aria-live="polite"></p>
       </header>
 
       <section id="analytics-panel" class="dashboard-panel is-active">
@@ -493,7 +494,7 @@
     <script>
       window.__SUPABASE_URL__ = window.__SUPABASE_URL__ || 'https://tnngitplssufqeqpxuib.supabase.co';
     </script>
-    <script src="./maintenance-config.js"></script>
-    <script src="./dashboard.js"></script>
+    <script src="./maintenance-config.js?v=20260817-iodiet"></script>
+    <script src="./dashboard.js?v=20260817-iodiet"></script>
   </body>
 </html>

@@ -1,4 +1,5 @@
 const DASHBOARD_SECRET_KEY = 'vs_dashboard_secret';
+const REQUEST_TIMEOUT_MS = 20000;
 const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUMMARY_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/analytics-summary` : '';
 const GIFT_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/gift-admin` : '';
@@ -284,17 +285,40 @@ async function uploadPromoImageIfNeeded() {
 async function postDashboardJson(url, payload) {
   const secret = loadDashboardSecret();
   if (!secret) throw new Error('Введите DASHBOARD_SECRET.');
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-dashboard-secret': secret,
-    },
-    body: JSON.stringify(payload || {}),
-  });
+  // A database under IO pressure accepts the connection and then never answers,
+  // so an untimed request hangs the panel indefinitely instead of reporting it.
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-dashboard-secret': secret,
+      },
+      body: JSON.stringify(payload || {}),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch (_) {
+    throw new Error('База не отвечает. Похоже, Supabase недоступен — проверьте статус проекта.');
+  }
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data?.error || 'Ошибка dashboard-запроса');
+  if (!response.ok) throw new Error(describeRequestFailure(response.status, data?.error));
   return data;
+}
+
+// A failing gateway wraps the origin's HTML error page into its JSON envelope,
+// so data.error can be a whole document. Rendering it raw once buried the header
+// under a Cloudflare 522 page and read like a rejected key, which sent the
+// investigation the wrong way. Report what the status actually means instead,
+// and never let an unbounded body reach the UI.
+function describeRequestFailure(status, rawError) {
+  if (status === 401 || status === 403) return 'Ключ не подходит. Проверьте DASHBOARD_SECRET.';
+  if (status === 429) return 'Слишком много запросов. Подождите немного.';
+  if (status >= 500) return `База недоступна (${status}). Это сбой Supabase, а не ключ — попробуйте через пару минут.`;
+
+  const text = typeof rawError === 'string' ? rawError.trim() : '';
+  if (!text || text.startsWith('<')) return `Ошибка dashboard-запроса (${status})`;
+  return text.length > 200 ? `${text.slice(0, 200)}…` : text;
 }
 
 function normalizeDashboardRuntimeConfig(value) {

@@ -184,11 +184,20 @@ textarea {
   gap: 12px;
 }
 
+/* Own row across the full header width. Sharing the right-hand column with the
+   tools let a long message push out over the (nowrap) tabs and cover them. */
 .dashboard-status {
-  min-height: 18px;
+  grid-column: 1 / -1;
   margin: 0;
-  color: rgba(10, 10, 10, 0.74);
+  padding: 2px 2px 4px;
+  color: rgba(10, 10, 10, 0.82);
   font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-status:empty {
+  display: none;
 }
 
 .dashboard-loading {

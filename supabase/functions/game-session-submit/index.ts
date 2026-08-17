@@ -23,6 +23,11 @@ const MOVE_TIME_GRACE_MS = 1500;
 const MAX_SCORE_PER_MOVE = 10000;
 const CLAPS_PER_SCORE = 10000;
 
+// Cap on the move trail stored for a rejected run. Long enough to investigate a
+// real game by hand, short enough that a forged multi-thousand-move payload
+// cannot turn the audit trail back into a disk-IO problem.
+const MAX_AUDITED_MOVES = 500;
+
 function toNonNegativeInt(value: unknown) {
   const normalized = Math.floor(Number(value ?? 0));
   return Number.isFinite(normalized) && normalized >= 0 ? normalized : 0;
@@ -131,18 +136,14 @@ Deno.serve(async (req) => {
     const creditScore = implausiblyFast ? 0 : (accepted ? replay.score : boundedClientScore);
     const creditClaps = Math.floor(creditScore / CLAPS_PER_SCORE);
 
-    if (moves.length > 0) {
-      const moveRows = moves.map((move, index) => ({
-        session_id: sessionId,
-        move_index: index,
-        from_idx: move.from,
-        to_idx: move.to,
-      }));
-      const { error: movesError } = await admin
-        .from('game_session_moves')
-        .upsert(moveRows, { onConflict: 'session_id,move_index' });
-      if (movesError) throw new Error(movesError.message);
-    }
+    // Moves are replayed above straight from the request body, so storing them
+    // is audit-only. Writing a row per move on every accepted run was the single
+    // heaviest write in the project and exhausted the disk IO budget, so only
+    // rejected runs are kept now — as one compact JSON blob on the session, which
+    // is all a manual cheat investigation needs.
+    const rejectedMoves = accepted
+      ? null
+      : moves.slice(0, MAX_AUDITED_MOVES).map((move) => [move.from, move.to]);
 
     const { error: validationError } = await admin.from('game_session_validations').insert({
       session_id: sessionId,
@@ -169,6 +170,7 @@ Deno.serve(async (req) => {
         server_claps_earned: replay.clapsEarned,
         validation_status: accepted ? 'accepted' : 'rejected',
         validation_error: accepted ? null : rejectReason,
+        rejected_moves: rejectedMoves,
       })
       .eq('session_id', sessionId)
       .eq('telegram_id', user.id);

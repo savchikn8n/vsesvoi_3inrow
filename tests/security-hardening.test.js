@@ -184,7 +184,6 @@ test('game-session-submit credits progress incrementally from the server replay'
 
   assert.match(source, /verifyTelegramInitData/);
   assert.match(source, /\.from\('game_sessions'\)/);
-  assert.match(source, /\.from\('game_session_moves'\)/);
   assert.match(source, /\.from\('game_session_validations'\)/);
   assert.match(source, /replayMoves/);
   assert.match(source, /validation_status/);
