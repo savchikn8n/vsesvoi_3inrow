@@ -27,6 +27,24 @@ function normalizeScheduledFor(value: unknown) {
   return new Date(timestamp).toISOString();
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// The dashboard sends its own id with every real broadcast and reuses it on a
+// retry, so the primary key turns a repeated request into a rejected duplicate
+// instead of a second message to every player.
+function normalizeBroadcastId(value: unknown) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  return UUID_PATTERN.test(text) ? text.toLowerCase() : crypto.randomUUID();
+}
+
+function duplicateBroadcastResponse(broadcastId: string) {
+  return new Response(JSON.stringify({
+    error: 'Это сообщение уже отправлено или запланировано — повтор не выполнен.',
+    duplicate: true,
+    broadcastId,
+  }), { status: 409, headers: corsHeaders });
+}
+
 async function sendTelegramMessage(botToken: string, chatId: number, text: string) {
   const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: 'POST',
@@ -175,6 +193,7 @@ Deno.serve(async (req) => {
     const limit = Math.max(1, Math.min(5000, normalizePositiveInt(body?.limit, 5000) || 2000));
     const dryRun = Boolean(body?.dryRun);
     const scheduledFor = normalizeScheduledFor(body?.scheduledFor);
+    const broadcastId = normalizeBroadcastId(body?.broadcastId);
 
     if (!messageText) {
       return new Response(JSON.stringify({ error: 'Text is required' }), { status: 400, headers: corsHeaders });
@@ -195,7 +214,7 @@ Deno.serve(async (req) => {
 
     if (scheduledFor && Date.parse(scheduledFor) > Date.now() + 60 * 1000) {
       const row = {
-        id: crypto.randomUUID(),
+        id: broadcastId,
         text: messageText,
         bonus_claps: bonusClaps,
         bonus_window_hours: bonusWindowHours,
@@ -207,6 +226,7 @@ Deno.serve(async (req) => {
         failed_count: 0,
       };
       const { error: insertError } = await admin.from('broadcast_messages').insert(row);
+      if (insertError?.code === '23505') return duplicateBroadcastResponse(broadcastId);
       if (insertError) throw new Error(insertError.message);
 
       const { error: analyticsEventError } = await admin
@@ -232,7 +252,6 @@ Deno.serve(async (req) => {
       }), { status: 200, headers: corsHeaders });
     }
 
-    const broadcastId = crypto.randomUUID();
     const createdAt = new Date().toISOString();
     const { error: insertError } = await admin
       .from('broadcast_messages')
@@ -247,6 +266,7 @@ Deno.serve(async (req) => {
         sent_count: 0,
         failed_count: 0,
       });
+    if (insertError?.code === '23505') return duplicateBroadcastResponse(broadcastId);
     if (insertError) throw new Error(insertError.message);
 
     const result = await dispatchBroadcast(

@@ -1,5 +1,9 @@
 const DASHBOARD_SECRET_KEY = 'vs_dashboard_secret';
 const REQUEST_TIMEOUT_MS = 20000;
+// A real broadcast sends to every player one by one inside the request, which
+// outlasts the normal timeout. Timing out early reported a failure while the
+// messages were still going out, and invited a second, duplicate send.
+const BROADCAST_TIMEOUT_MS = 180000;
 const SUPABASE_URL = window.__SUPABASE_URL__ || '';
 const SUMMARY_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/analytics-summary` : '';
 const GIFT_ADMIN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/gift-admin` : '';
@@ -133,6 +137,8 @@ let promoPreviewObjectUrl = '';
 let currentSessionsClapsMode = 'earned';
 let lastSessionHistory = [];
 let isScheduleMode = false;
+let isBroadcastBusy = false;
+let pendingBroadcast = { key: '', id: '' };
 let lastDashboardFetchAt = 0;
 
 const EVENT_COLORS = ['#f7c83e', '#f3a620', '#ffdf7b', '#d9a83a', '#8cd18f', '#78a5ff', '#f98080', '#b58cff', '#63d6d6', '#f7edc0'];
@@ -282,7 +288,7 @@ async function uploadPromoImageIfNeeded() {
   return imageUrl;
 }
 
-async function postDashboardJson(url, payload) {
+async function postDashboardJson(url, payload, timeoutMs = REQUEST_TIMEOUT_MS) {
   const secret = loadDashboardSecret();
   if (!secret) throw new Error('Введите DASHBOARD_SECRET.');
   // A database under IO pressure accepts the connection and then never answers,
@@ -296,13 +302,17 @@ async function postDashboardJson(url, payload) {
         'x-dashboard-secret': secret,
       },
       body: JSON.stringify(payload || {}),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (_) {
     throw new Error('База не отвечает. Похоже, Supabase недоступен — проверьте статус проекта.');
   }
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(describeRequestFailure(response.status, data?.error));
+  if (!response.ok) {
+    const failure = new Error(describeRequestFailure(response.status, data?.error));
+    failure.status = response.status;
+    throw failure;
+  }
   return data;
 }
 
@@ -925,31 +935,79 @@ async function runBroadcast(options = {}) {
   const scheduledForRaw = typeof options.scheduledFor === 'string' ? options.scheduledFor : '';
   const scheduledFor = scheduledForRaw ? new Date(scheduledForRaw).toISOString() : '';
   if (!text) throw new Error('Введите текст сообщения.');
-  const data = await postDashboardJson(MESSAGE_ADMIN_URL, {
-    text,
-    bonusClaps,
-    bonusWindowHours,
-    dryRun,
-    scheduledFor,
-    limit: 2000,
-  });
+  if (isBroadcastBusy) return;
 
-  if (dryRun) {
-    setBroadcastResult(`Получателей: ${formatNumber(data?.recipients || 0)}`);
-    return;
-  }
+  setBroadcastBusy(true);
+  try {
+    if (dryRun) {
+      const data = await postDashboardJson(MESSAGE_ADMIN_URL, { text, bonusClaps, bonusWindowHours, dryRun: true, limit: 2000 });
+      setBroadcastResult(`Получателей: ${formatNumber(data?.recipients || 0)}`);
+      return;
+    }
 
-  if (data?.scheduled) {
-    setBroadcastResult(`Сообщение запланировано на ${formatDateTime(data.scheduledFor)}.`);
-    if (broadcastScheduledForEl) broadcastScheduledForEl.value = '';
-    isScheduleMode = false;
-    updateBroadcastScheduleMode();
+    // A mass send reaches every player and may credit claps to each of them, so
+    // it never goes out on a single tap: show the real audience and ask first.
+    const audience = await postDashboardJson(MESSAGE_ADMIN_URL, { text, bonusClaps, bonusWindowHours, dryRun: true, limit: 2000 });
+    const recipients = formatNumber(audience?.recipients || 0);
+    const bonusLine = bonusClaps > 0 ? `\nКаждому начислится ${formatNumber(bonusClaps)} ладошек (окно ${bonusWindowHours} ч).` : '';
+    const whenLine = scheduledFor ? `\nОтправка: ${formatDateTime(scheduledFor)}.` : '\nОтправка: сразу, отменить будет нельзя.';
+    if (!window.confirm(`Отправить сообщение ${recipients} игрокам?${bonusLine}${whenLine}`)) {
+      setBroadcastResult('Отправка отменена.');
+      return;
+    }
+
+    // The id is generated here and reused while the same message is retried, so
+    // a retry after a lost response is rejected by the server as a duplicate
+    // instead of reaching every player a second time.
+    const broadcastKey = JSON.stringify([text, bonusClaps, bonusWindowHours, scheduledFor]);
+    if (pendingBroadcast.key !== broadcastKey) {
+      pendingBroadcast = { key: broadcastKey, id: crypto.randomUUID() };
+    }
+
+    setBroadcastResult('Отправляем… Не закрывайте вкладку.');
+    let data;
+    try {
+      data = await postDashboardJson(MESSAGE_ADMIN_URL, {
+        text,
+        bonusClaps,
+        bonusWindowHours,
+        dryRun: false,
+        scheduledFor,
+        broadcastId: pendingBroadcast.id,
+        limit: 2000,
+      }, BROADCAST_TIMEOUT_MS);
+    } catch (error) {
+      // 409 is the server recognising this exact message as already sent: a
+      // final answer, so the retry note below would only confuse.
+      if (error.status === 409) {
+        pendingBroadcast = { key: '', id: '' };
+        throw error;
+      }
+      throw new Error(`${error.message} Рассылка могла уйти — проверьте историю ниже. Повтор этого же сообщения не отправит его второй раз.`);
+    }
+    pendingBroadcast = { key: '', id: '' };
+
+    if (data?.scheduled) {
+      setBroadcastResult(`Сообщение запланировано на ${formatDateTime(data.scheduledFor)}.`);
+      if (broadcastScheduledForEl) broadcastScheduledForEl.value = '';
+      isScheduleMode = false;
+      updateBroadcastScheduleMode();
+      await fetchSummary();
+      return;
+    }
+
+    setBroadcastResult(`Отправлено: ${formatNumber(data?.sent || 0)}. Ошибок: ${formatNumber(data?.failed || 0)}.`);
     await fetchSummary();
-    return;
+  } finally {
+    setBroadcastBusy(false);
   }
+}
 
-  setBroadcastResult(`Отправлено: ${formatNumber(data?.sent || 0)}. Ошибок: ${formatNumber(data?.failed || 0)}.`);
-  await fetchSummary();
+function setBroadcastBusy(busy) {
+  isBroadcastBusy = busy;
+  [broadcastSendBtnEl, broadcastScheduleSendBtnEl, broadcastDryRunBtnEl].forEach((button) => {
+    if (button) button.disabled = busy;
+  });
 }
 
 function applyFormatToBroadcast(format) {

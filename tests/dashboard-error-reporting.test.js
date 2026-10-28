@@ -57,6 +57,9 @@ test('dashboard requests cannot hang forever on a stalled database', () => {
   const dashboard = readRepoFile('dashboard.js');
 
   assert.match(dashboard, /const REQUEST_TIMEOUT_MS = \d+/);
-  assert.match(dashboard, /signal: AbortSignal\.timeout\(REQUEST_TIMEOUT_MS\)/);
+  // Every request is bounded; only a real broadcast gets the longer budget.
+  assert.match(dashboard, /timeoutMs = REQUEST_TIMEOUT_MS\)/);
+  assert.match(dashboard, /signal: AbortSignal\.timeout\(timeoutMs\)/);
+  assert.match(dashboard, /const BROADCAST_TIMEOUT_MS = \d+/);
   assert.match(dashboard, /База не отвечает/);
 });
