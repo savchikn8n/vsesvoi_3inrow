@@ -1199,6 +1199,13 @@ async function trackAnalytics(eventType, payload = {}) {
   }
 }
 
+// Beacons are sent with credentials, and a JSON content type forces a CORS
+// preflight that Supabase's wildcard origin cannot satisfy: the browser drops
+// the request silently while sendBeacon still reports success. text/plain is a
+// simple request, so it skips the preflight; the functions parse it with
+// req.json() all the same.
+const LIFECYCLE_CONTENT_TYPE = 'text/plain;charset=UTF-8';
+
 function trackAnalyticsLifecycle(eventType, payload = {}) {
   const initData = telegramInitData();
   if (!initData || !profile?.telegram_id) return false;
@@ -1214,7 +1221,7 @@ function trackAnalyticsLifecycle(eventType, payload = {}) {
 
   try {
     if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-      const blob = new Blob([body], { type: 'application/json' });
+      const blob = new Blob([body], { type: LIFECYCLE_CONTENT_TYPE });
       if (navigator.sendBeacon(url, blob)) {
         return true;
       }
@@ -1226,7 +1233,7 @@ function trackAnalyticsLifecycle(eventType, payload = {}) {
   try {
     fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': LIFECYCLE_CONTENT_TYPE },
       body,
       keepalive: true,
     }).catch(() => {});
@@ -1246,7 +1253,7 @@ function postLifecycleJson(path, payload) {
 
   try {
     if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-      const blob = new Blob([body], { type: 'application/json' });
+      const blob = new Blob([body], { type: LIFECYCLE_CONTENT_TYPE });
       if (navigator.sendBeacon(url, blob)) {
         return true;
       }
@@ -1258,7 +1265,7 @@ function postLifecycleJson(path, payload) {
   try {
     fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': LIFECYCLE_CONTENT_TYPE },
       body,
       keepalive: true,
     }).catch(() => {});
@@ -4331,9 +4338,13 @@ window.addEventListener('beforeunload', () => {
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
+    // Hidden is not the end of a run: Telegram fires it on a minimise, a chat
+    // switch or a screen lock, and the player often comes back to the same
+    // board. Bank the run so far but keep the server session alive, otherwise
+    // every clap earned after returning has no session to be credited to.
     flushSessionSnapshot({ reason: 'hidden', useLifecycleTransport: true });
     flushProgressLifecycleIfNeeded();
-    endAnalyticsSession('hidden', { useLifecycleTransport: true });
+    flushServerGameSession({ useLifecycleTransport: true });
   }
 });
 

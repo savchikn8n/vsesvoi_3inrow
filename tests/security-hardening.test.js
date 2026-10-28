@@ -115,6 +115,30 @@ test('client lifecycle progress flush submits server validation before score-sub
   );
 });
 
+test('client lifecycle beacons avoid a CORS preflight so they reach Supabase', () => {
+  const source = readRepoFile('game.js');
+
+  assert.match(source, /const LIFECYCLE_CONTENT_TYPE = 'text\/plain;charset=UTF-8';/);
+  for (const name of ['trackAnalyticsLifecycle', 'postLifecycleJson']) {
+    const match = source.match(new RegExp(`function ${name}\\([^)]*\\) \\{([\\s\\S]*?)\\n\\}`));
+    assert.ok(match, `${name} should exist`);
+    const body = match[1];
+    assert.match(body, /new Blob\(\[body\], \{ type: LIFECYCLE_CONTENT_TYPE \}\)/);
+    assert.match(body, /'Content-Type': LIFECYCLE_CONTENT_TYPE/);
+    assert.doesNotMatch(body, /application\/json/);
+  }
+});
+
+test('hiding the app banks the run without ending the server game session', () => {
+  const source = readRepoFile('game.js');
+  const match = source.match(/document\.addEventListener\('visibilitychange', \(\) => \{([\s\S]*?)\n\}\);/);
+  assert.ok(match, 'visibilitychange handler should exist');
+  const body = match[1];
+
+  assert.match(body, /flushServerGameSession\(\{ useLifecycleTransport: true \}\)/);
+  assert.doesNotMatch(body, /endAnalyticsSession/);
+});
+
 test('client does not buffer cascade-time moves that server replay cannot reproduce', () => {
   const source = readRepoFile('game.js');
 
