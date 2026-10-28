@@ -410,8 +410,8 @@ supabase functions deploy spend-claps --use-api --no-verify-jwt
 
 Запланированные задачи:
 
-- `send-inactive-reminders` нужно запускать hourly с `x-cron-secret: REMINDER_CRON_SECRET`.
-- `process-scheduled-broadcasts` является scheduled broadcast processor.
+- `send-inactive-reminders` **выключены намеренно** (решение от 28 октября 2026). Расписания для них нет ни в pg_cron, ни снаружи; последний запуск был 14 марта 2026. Функция задеплоена и рабочая, но включать ее только по явному решению: первый запуск придет почти всем неактивным игрокам разом (на 28 октября 2026 таких 221). Если включать — hourly с `x-cron-secret: REMINDER_CRON_SECRET`, отдельной миграцией с задачей pg_cron.
+- `process-scheduled-broadcasts` — обработчик отложенных рассылок, pg_cron `*/5 * * * *`.
 - `broadcast-message` является protected bulk message endpoint.
 
 ## Карта кода
