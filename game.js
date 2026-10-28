@@ -289,34 +289,35 @@ function setupTelegramWebApp() {
   const tg = window.Telegram?.WebApp;
   if (!tg) return;
 
-  const expandToFullscreen = () => {
-    tg.expand();
-    if (typeof tg.requestFullscreen === 'function') {
-      try {
-        const result = tg.requestFullscreen();
-        if (result && typeof result.catch === 'function') {
-          result.catch(() => {});
-        }
-      } catch (_) {
-        // Ignore unsupported/fullscreen-denied cases and keep expanded mode.
-      }
+  const supports = (version) => typeof tg.isVersionAtLeast === 'function' && tg.isVersionAtLeast(version);
+
+  // Fullscreen is asked for once per launch. Re-requesting it on every
+  // viewportChanged fought the player whenever they left fullscreen, and on
+  // clients older than Bot API 8.0 each call only logged an error.
+  let fullscreenRequested = false;
+  const requestFullscreenOnce = () => {
+    if (fullscreenRequested || tg.isFullscreen || !supports('8.0')) return;
+    if (typeof tg.requestFullscreen !== 'function') return;
+    fullscreenRequested = true;
+    try {
+      tg.requestFullscreen();
+    } catch (_) {
+      // Fullscreen denied: stay in the expanded mode.
     }
   };
 
   tg.ready();
-  expandToFullscreen();
+  tg.expand();
+  requestFullscreenOnce();
 
   if (typeof tg.onEvent === 'function') {
-    tg.onEvent('activated', expandToFullscreen);
-    tg.onEvent('viewportChanged', () => {
-      window.requestAnimationFrame(expandToFullscreen);
+    tg.onEvent('activated', () => tg.expand());
+    tg.onEvent('viewportChanged', (event) => {
+      if (event?.isStateStable && !tg.isExpanded) tg.expand();
     });
   }
 
-  window.setTimeout(expandToFullscreen, 60);
-  window.setTimeout(expandToFullscreen, 240);
-
-  if (typeof tg.disableVerticalSwipes === 'function') {
+  if (supports('7.7') && typeof tg.disableVerticalSwipes === 'function') {
     tg.disableVerticalSwipes();
   }
 }

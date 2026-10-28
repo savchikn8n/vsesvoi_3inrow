@@ -8,7 +8,14 @@
   --tile-b: #000000;
   --cell: 76px;
   --gap: 4px;
-  --tg-ui-offset: 0px;
+  /* Telegram publishes its own insets as CSS variables (Bot API 8.0+). The
+     viewport meta has no viewport-fit=cover, so env() alone reads 0 inside the
+     WebView; take whichever is larger. The content inset is the strip under
+     Telegram's own header buttons in fullscreen and 0 otherwise, which replaces
+     the old fixed 84px that left an empty band outside fullscreen. */
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--tg-safe-area-inset-top, 0px));
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--tg-safe-area-inset-bottom, 0px));
+  --tg-ui-offset: var(--tg-content-safe-area-inset-top, 0px);
   --app-outer-gap: 10px;
   --ui-radius: 8px;
 }
@@ -125,9 +132,9 @@ body.app-booting .frame > :not(.maintenance-screen) {
   height: 100dvh;
   max-height: 100dvh;
   border: none;
-  padding-top: max(clamp(14px, 2vw, 22px), calc(env(safe-area-inset-top) + var(--tg-ui-offset) + 14px));
+  padding-top: max(clamp(14px, 2vw, 22px), calc(var(--safe-top) + var(--tg-ui-offset) + 14px));
   padding-right: clamp(14px, 2vw, 22px);
-  padding-bottom: max(clamp(14px, 2vw, 22px), calc(env(safe-area-inset-bottom) + var(--app-outer-gap)));
+  padding-bottom: max(clamp(14px, 2vw, 22px), calc(var(--safe-bottom) + var(--app-outer-gap)));
   padding-left: clamp(14px, 2vw, 22px);
   background: #000000;
   backdrop-filter: none;
@@ -1279,7 +1286,7 @@ h1 {
 .alpha-gamehub-card {
   width: min(100%, 430px);
   margin: 0 auto;
-  padding: calc(env(safe-area-inset-top) + 36px) 0 calc(env(safe-area-inset-bottom) + 24px);
+  padding: calc(var(--safe-top) + 36px) 0 calc(var(--safe-bottom) + 24px);
   display: grid;
   align-content: center;
   gap: 18px;
@@ -1336,8 +1343,8 @@ h1 {
   width: min(100%, 390px);
   min-height: 100%;
   margin: 0 auto;
-  padding-top: calc(env(safe-area-inset-top) + 96px);
-  padding-bottom: calc(env(safe-area-inset-bottom) + 36px);
+  padding-top: calc(var(--safe-top) + 96px);
+  padding-bottom: calc(var(--safe-bottom) + 36px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1454,7 +1461,7 @@ h1 {
   gap: 14px;
   position: relative;
   z-index: 1;
-  padding-top: calc(env(safe-area-inset-top) + var(--tg-ui-offset) + 54px);
+  padding-top: calc(var(--safe-top) + var(--tg-ui-offset) + 54px);
 }
 
 .shop-header-row {
@@ -3054,10 +3061,6 @@ h1 {
 
 @media (max-width: 620px) {
   :root {
-    --tg-ui-offset: 84px;
-  }
-
-  :root {
     --cell: calc((100vw - 62px) / 7);
     --gap: 3px;
   }
@@ -3106,7 +3109,7 @@ h1 {
   }
 
   .shop-shell {
-    padding-top: calc(env(safe-area-inset-top) + var(--tg-ui-offset) + 54px);
+    padding-top: calc(var(--safe-top) + var(--tg-ui-offset) + 54px);
   }
 
   .shop-copy h2 {
@@ -3156,8 +3159,8 @@ h1 {
 
 @media (max-height: 760px) {
   .maintenance-card {
-    padding-top: calc(env(safe-area-inset-top) + 54px);
-    padding-bottom: calc(env(safe-area-inset-bottom) + 24px);
+    padding-top: calc(var(--safe-top) + 54px);
+    padding-bottom: calc(var(--safe-bottom) + 24px);
   }
 
   .maintenance-image {

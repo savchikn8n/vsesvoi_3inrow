@@ -131,8 +131,8 @@ test('game runtime uses seeded board refill and shuffle for replay parity', () =
 test('game runtime scripts are cache-busted for Telegram webview updates', () => {
   const html = readRepoFile('index.html');
 
-  assert.match(html, /src="src\/game\/core\/rules-engine\.js\?v=20261028-beacon"/);
-  assert.match(html, /src="game\.js\?v=20261028-beacon"/);
+  assert.match(html, /src="src\/game\/core\/rules-engine\.js\?v=20261028-safearea"/);
+  assert.match(html, /src="game\.js\?v=20261028-safearea"/);
 });
 
 test('game.js delegates board math to the shared core instead of re-implementing it', () => {
